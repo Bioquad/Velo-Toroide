@@ -1,0 +1,2555 @@
+<!DOCTYPE html>
+<html lang="ca">
+<head>
+<meta charset="UTF-8">
+<title>Laboratori Toroide Plasma v5</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:"Segoe UI",system-ui,sans-serif;font-size:12px;color:#e8eaf0;background:#06080f;display:flex;flex-direction:column;height:100vh;overflow:hidden}
+canvas{display:block;width:100%;height:100%;background:#06080f;border-radius:6px}
+.hdr{display:grid;grid-template-columns:repeat(8,1fr);gap:3px;padding:4px 0;flex-shrink:0}
+.hc{background:#0d1220;border-radius:5px;padding:3px 6px;border:0.5px solid #1a2035}
+.hc-l{font-size:8px;color:#4a5468;text-transform:uppercase;letter-spacing:.04em}
+.hc-v{font-size:11px;font-weight:700;font-family:monospace}
+.mid{display:flex;gap:8px;flex:1;min-height:0}
+.pnl{width:294px;flex-shrink:0;overflow-y:auto;display:flex;flex-direction:column;gap:3px}
+.pnl::-webkit-scrollbar{width:3px}.pnl::-webkit-scrollbar-thumb{background:#1a2035;border-radius:2px}
+.sec{border:0.5px solid #1a2035;border-radius:5px;padding:6px 8px;flex-shrink:0}
+.sec-t{font-size:9px;text-transform:uppercase;letter-spacing:.07em;color:#3a4458;margin-bottom:4px;font-weight:700}
+.sec-t.warn{color:#a05030}.sec-t.em{color:#304880}
+.pr{margin-bottom:4px}
+.pr-h{display:flex;justify-content:space-between;align-items:center;margin-bottom:2px}
+.pr-l{font-size:10px;color:#8892aa}
+.pr-v{font-size:10px;font-weight:700;color:#e8eaf0;min-width:72px;text-align:right;font-family:monospace}
+.row{display:flex;align-items:center;gap:3px}
+.row input[type=range]{flex:1;height:3px;cursor:pointer;accent-color:#6450d8}
+.sp{display:flex;gap:2px}
+.sb{width:19px;height:19px;border:0.5px solid #2a3045;border-radius:3px;background:#0d1220;color:#8892aa;font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;user-select:none;transition:all .1s;font-family:inherit}
+.sb:hover{background:#1a2035;color:#e8eaf0}.sb:active{background:#6450d8;color:#fff}
+.fm{background:#080c14;border-radius:4px;padding:3px 6px;font-size:9px;color:#4a5468;line-height:1.9;margin-top:2px;font-family:monospace}
+.fm .v{color:#e0e4f0;font-weight:700}.fm .o{color:#ff9030;font-weight:700}
+.fm .g{color:#40c080;font-weight:700}.fm .r{color:#e05050;font-weight:700}.fm .b{color:#60a0f0;font-weight:700}
+.sg{display:flex;gap:2px;margin-bottom:3px}
+.sg-b{flex:1;padding:3px;border:0.5px solid #2a3045;border-radius:4px;background:#0d1220;font-size:9px;cursor:pointer;text-align:center;color:#8892aa;transition:all .1s}
+.sg-b.on{background:#1a3060;color:#60a0f0;border-color:#304080}
+.tr{display:flex;justify-content:space-between;align-items:center;margin-bottom:2px}
+.tr-l{font-size:10px;color:#8892aa}
+.sw{width:28px;height:15px;background:#0d1220;border-radius:8px;border:0.5px solid #2a3045;cursor:pointer;position:relative;transition:background .15s}
+.sw.on{background:#30c070;border-color:#30c070}
+.sw::after{content:'';position:absolute;top:2px;left:2px;width:9px;height:9px;border-radius:50%;background:#5a6480;transition:left .15s}
+.sw.on::after{left:15px;background:#fff}
+.pb{height:3px;background:#1a2035;border-radius:2px;overflow:hidden;margin-top:2px}
+.pbf{height:100%;border-radius:2px;transition:width .08s}
+.stab-bar{height:7px;background:#1a2035;border-radius:3px;overflow:hidden;margin-top:2px}
+.stab-fill{height:100%;border-radius:3px;transition:width .3s,background .3s}
+/* Barra de sincronització temporal — mostra el cicle de 20ms */
+.sync-bar{height:12px;background:#080c14;border-radius:4px;overflow:hidden;margin-top:3px;position:relative;border:0.5px solid #1a2035}
+.sync-em{position:absolute;top:0;height:100%;border-radius:2px;background:linear-gradient(90deg,rgba(216,90,48,0),rgba(216,90,48,0.8),rgba(216,90,48,0));width:4%}
+.sync-ac{position:absolute;top:0;height:100%;border-radius:2px;background:linear-gradient(90deg,rgba(100,180,255,0),rgba(100,180,255,0.9),rgba(100,180,255,0));width:4%}
+.sync-win{position:absolute;top:0;height:100%;background:rgba(64,192,128,0.15);border-radius:2px}
+.bot{display:flex;align-items:center;gap:6px;padding:4px 0;flex-shrink:0;border-top:0.5px solid #1a2035}
+.ph{flex:1;padding:3px 8px;background:#0d1220;border-radius:5px;font-size:10px;color:#8892aa;border-left:2px solid #2a3045;line-height:1.5;min-width:0}
+.ph .pn{display:block;font-weight:700}
+.bts{display:flex;gap:4px;flex-shrink:0}
+.bn{padding:5px 10px;border:0.5px solid #2a3045;border-radius:5px;background:#0d1220;color:#8892aa;font-size:10px;cursor:pointer;white-space:nowrap;transition:all .12s;font-family:inherit}
+.bn:hover{border-color:#4a5480;color:#e8eaf0}
+.preset-grid{display:grid;grid-template-columns:1fr 1fr;gap:3px;margin-bottom:3px}
+.pb-btn{padding:5px 4px;border:0.5px solid #1a2035;border-radius:4px;background:#080c14;color:#8892aa;font-size:9px;cursor:pointer;text-align:center;line-height:1.4;transition:all .12s;font-family:inherit;width:100%}
+.pb-btn:hover{border-color:#4a5480;color:#e8eaf0;background:#0d1220}
+.pb-btn.active{border-color:#30a060;color:#40e080;background:#0a1a0a}
+.pb-btn .pb-t{font-weight:700;font-size:9px;display:block}
+.pb-btn .pb-d{font-size:8px;color:#4a5468;display:block;margin-top:1px}.bn.go.on{background:#0a3020;color:#40e080}
+.bn.pa.on{background:#302010;border-color:#a07020;color:#e0a030}
+.bn.sync{border-color:#6050c0;color:#a090f0;font-size:9px;padding:4px 7px}.bn.sync:hover{background:#1a1040}
+.bn.opt{border-color:#306080;color:#60a0c0;font-size:9px;padding:4px 7px}.bn.opt:hover{background:#0a2030}
+</style>
+</head>
+<body>
+
+<div class="hdr">
+  <div class="hc"><div class="hc-l">h node S₁</div><div class="hc-v" id="hv-hn" style="color:#7f77dd">— m</div></div>
+  <div class="hc"><div class="hc-l">acoblament η</div><div class="hc-v" id="hv-eta" style="color:#60a0f0">—</div></div>
+  <div class="hc"><div class="hc-l">ionització</div><div class="hc-v" id="hv-ion" style="color:#e0a030">0%</div></div>
+  <div class="hc"><div class="hc-l">T plasma</div><div class="hc-v" id="hv-tt" style="color:#ff9030">— K</div></div>
+  <div class="hc"><div class="hc-l">marge M</div><div class="hc-v" id="hv-stab">—</div></div>
+  <div class="hc"><div class="hc-l">sync ac↔EM</div><div class="hc-v" id="hv-sync" style="color:#8892aa">—</div></div>
+  <div class="hc"><div class="hc-l">τ turbul.</div><div class="hc-v" id="hv-tturb" style="color:#8892aa">—</div></div>
+  <div class="hc"><div class="hc-l">estat</div><div class="hc-v" id="hv-es" style="color:#4a5468">aturat</div></div>
+</div>
+
+<div class="mid">
+<div style="flex:1;min-height:0;position:relative;overflow:hidden;border-radius:6px">
+<canvas id="cv"></canvas>
+
+<!-- OVERLAY OSCIL·LOSCOPI — top-right del canvas -->
+<div id="osc-panel" style="position:absolute;top:48px;right:4px;background:rgba(4,6,12,0.93);border:0.5px solid #1a3050;border-radius:5px;padding:5px 6px;width:160px;z-index:10">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px">
+    <span style="font-size:8px;color:#3a6080;font-weight:700">📊 OSCIL·LOSCOPI</span>
+    <button onclick="document.getElementById('osc-panel').style.display='none'" style="background:none;border:none;color:#406080;font-size:10px;cursor:pointer;padding:0 2px">✕</button>
+  </div>
+  <!-- S1 -->
+  <div style="margin-bottom:3px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1px">
+      <span style="font-size:7.5px;color:#30c050;font-family:monospace">S₁ <span id="osc-f-s1">—</span></span>
+      <span style="font-size:7px;color:#28a040;font-family:monospace;text-align:right" id="osc-val-s1">—</span>
+      <button id="spk-s1" onclick="toggleAudio('s1')" style="font-size:8px;background:#050a08;border:0.5px solid #1a3020;border-radius:2px;color:#305020;padding:1px 3px;cursor:pointer">🔊</button>
+    </div>
+    <canvas id="osc-s1" width="148" height="38" style="display:block;background:#02060a;border:0.5px solid #0a2010"></canvas>
+  </div>
+  <!-- S2 -->
+  <div style="margin-bottom:3px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1px">
+      <span style="font-size:7.5px;color:#d07020;font-family:monospace">S₂ <span id="osc-f-s2">—</span></span>
+      <span style="font-size:7px;color:#b06010;font-family:monospace;text-align:right" id="osc-val-s2">—</span>
+      <button id="spk-s2" onclick="toggleAudio('s2')" style="font-size:8px;background:#080501;border:0.5px solid #302010;border-radius:2px;color:#504020;padding:1px 3px;cursor:pointer">🔊</button>
+    </div>
+    <canvas id="osc-s2" width="148" height="38" style="display:block;background:#060400;border:0.5px solid #201800"></canvas>
+  </div>
+  <!-- MT -->
+  <div style="margin-bottom:3px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1px">
+      <span style="font-size:7.5px;color:#c09030;font-family:monospace">MT <span id="osc-f-mt">—</span></span>
+      <span style="font-size:7px;color:#a07020;font-family:monospace;text-align:right" id="osc-val-mt">—</span>
+      <button id="spk-mt" onclick="toggleAudio('mt')" style="font-size:8px;background:#060401;border:0.5px solid #302800;border-radius:2px;color:#504800;padding:1px 3px;cursor:pointer">🔊</button>
+    </div>
+    <canvas id="osc-mt" width="148" height="38" style="display:block;background:#050300;border:0.5px solid #1a1000"></canvas>
+  </div>
+  <!-- Cat -->
+  <div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1px">
+      <span style="font-size:7.5px;color:#2090c0;font-family:monospace">Cat <span id="osc-f-cat">—</span></span>
+      <span style="font-size:7px;color:#1070a0;font-family:monospace;text-align:right" id="osc-val-cat">—</span>
+      <button id="spk-cat" onclick="toggleAudio('cat')" style="font-size:8px;background:#010508;border:0.5px solid #082030;border-radius:2px;color:#205040;padding:1px 3px;cursor:pointer">🔊</button>
+    </div>
+    <canvas id="osc-cat" width="148" height="38" style="display:block;background:#000508;border:0.5px solid #001828"></canvas>
+  </div>
+  <div style="margin-top:3px;font-size:6.5px;color:#1a3040;text-align:center">S₁S₂&lt;20Hz → ×100 pitch per auditar</div>
+</div>
+
+<!-- OVERLAY INESTABILITATS — top-left del canvas, sempre visible -->
+<div style="position:absolute;top:48px;left:6px;background:rgba(6,8,15,0.92);border:0.5px solid #1a2035;border-radius:5px;padding:5px 6px;pointer-events:none;width:155px;overflow:hidden" id="ov-panel">
+  <div class="sec-t warn" style="margin-bottom:3px;font-size:8px">⚠ inestabilitats reals</div>
+  <div class="pr" style="margin-bottom:3px">
+    <div style="font-size:8px;color:#8892aa;margin-bottom:1px">model plasma</div>
+    <div class="sg" style="margin-top:1px;pointer-events:all;gap:1px">
+      <div class="sg-b on" id="pm-exc" onclick="setPlasmaModel('exc')" title="N2/O2 excitat" style="font-size:7.5px;padding:2px 3px">N₂exc</div>
+      <div class="sg-b" id="pm-fre" onclick="setPlasmaModel('fre')" title="Plasma fred" style="font-size:7.5px;padding:2px 3px">fred</div>
+      <div class="sg-b" id="pm-arc" onclick="setPlasmaModel('arc')" title="Arc clàssic" style="font-size:7.5px;padding:2px 3px">arc</div>
+    </div>
+    <div class="fm" style="margin-top:1px;font-size:7px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" id="pm-desc">N₂ excitat · T~300-800K</div>
+  </div>
+  <div class="pr" style="margin-bottom:2px"><div class="pr-h" style="margin-bottom:1px"><span style="font-size:8px;color:#8892aa">τ recomb.</span><span class="pr-v" id="lv-trec" style="font-size:8px">—</span></div><div class="stab-bar"><div class="stab-fill" id="pb-trec" style="width:0%"></div></div><div class="fm" style="font-size:7px">ne=<span class="v" id="fc-ne">—</span> · <span class="v" id="fc-recon">—</span></div></div>
+  <div class="pr" style="margin-bottom:2px"><div class="pr-h" style="margin-bottom:1px"><span style="font-size:8px;color:#8892aa">τ turbul.</span><span class="pr-v" id="lv-tturb" style="font-size:8px">—</span></div><div class="stab-bar"><div class="stab-fill" id="pb-tturb" style="width:0%"></div></div><div class="fm" style="font-size:7px">Re=<span class="v" id="fc-re">—</span> · <span class="v" id="fc-reg">—</span></div></div>
+  <div class="pr" style="margin-bottom:2px"><div class="pr-h" style="margin-bottom:1px"><span style="font-size:8px;color:#8892aa">τ Z-pinch</span><span class="pr-v" id="lv-tzp" style="font-size:8px">—</span></div><div class="stab-bar"><div class="stab-fill" id="pb-tzp" style="width:0%"></div></div><div class="fm" style="font-size:7px">v_A=<span class="v" id="fc-va">—</span></div></div>
+  <div class="pr" style="margin-bottom:2px"><div class="pr-h" style="margin-bottom:1px"><span style="font-size:8px;color:#8892aa">Q node</span><span class="pr-v" id="lv-qn" style="font-size:8px">—</span></div><div class="stab-bar"><div class="stab-fill" id="pb-qn" style="width:0%"></div></div></div>
+  <div class="pr" style="margin-bottom:0">
+    <div class="pr-h" style="margin-bottom:1px"><span style="font-size:8px;color:#e8eaf0;font-weight:700">MARGE M</span><span class="pr-v" id="lv-stab-tot" style="font-size:10px;font-weight:700">—</span></div>
+    <div class="stab-bar" style="height:7px"><div class="stab-fill" id="pb-stab" style="width:0%;height:100%"></div></div>
+    <div class="fm" style="font-size:7px">Segre: <span class="v" id="fc-seg22">—</span></div>
+  </div>
+  <!-- ── RESSONÀCIA CABLES MT/Cat ── -->
+  <div style="border-top:0.5px solid #1a2840;margin:3px -1px 2px -1px"></div>
+  <div style="font-size:7.5px;color:#3a6080;font-weight:700;margin-bottom:2px">⚡ CABLES MT/Cat</div>
+  <div class="pr" style="margin-bottom:2px">
+    <div class="pr-h" style="margin-bottom:1px">
+      <span style="font-size:8px;color:#8892aa">db corona</span>
+      <span class="pr-v" id="lv-db-cor" style="font-size:8px">—</span>
+    </div>
+    <div class="stab-bar"><div class="stab-fill" id="pb-db-cor" style="width:0%;background:linear-gradient(90deg,#1a3a1a,#30a050)"></div></div>
+    <div class="fm" style="font-size:7px">f_cable=<span class="v" id="fc-fcable">50</span>Hz · f_res=<span class="o" id="fc-fres">—</span>Hz</div>
+  </div>
+  <div class="pr" style="margin-bottom:0">
+    <div class="pr-h" style="margin-bottom:1px">
+      <span style="font-size:8px;color:#e8eaf0;font-weight:700">ACOBLAMENT</span>
+      <span class="pr-v" id="lv-acob" style="font-size:10px;font-weight:700">—</span>
+    </div>
+    <div class="stab-bar" style="height:7px;position:relative">
+      <div class="stab-fill" id="pb-acob" style="width:0%;height:100%"></div>
+      <div style="position:absolute;top:0;bottom:0;left:30%;width:1px;background:#e05050;opacity:0.7"></div>
+    </div>
+    <div class="fm" style="font-size:7px" id="fc-acob-note">—</div>
+  </div>
+</div>
+</div>
+<div class="pnl">
+
+  <div class="sec" style="border-color:#1a3050">
+    <div class="sec-t" style="color:#4a7090">⚙ configuració automàtica</div>
+    <div class="preset-grid">
+      <button class="pb-btn" id="pb-0" onclick="loadPreset(0)">
+        <span class="pb-t">🔬 Opció B — estable</span>
+        <span class="pb-d">f=18.70Hz · 100dB · M≈2.6</span>
+      </button>
+      <button class="pb-btn" id="pb-1" onclick="loadPreset(1)" style="border-color:#a05010;background:#120a02">
+        <span class="pb-t" style="color:#ff9030">🌊 Opció A — Segre</span>
+        <span class="pb-d" style="color:#a06020">f=3.57Hz · 78dB · 4 flames ↺</span>
+      </button>
+      <button class="pb-btn" id="pb-2" onclick="loadPreset(2)">
+        <span class="pb-t">🔥 Runaway — autònom</span>
+        <span class="pb-d">f=18.70Hz · 108dB · arc</span>
+      </button>
+      <button class="pb-btn" id="pb-3" onclick="loadPreset(3)">
+        <span class="pb-t">⚡ Màxim camp EM</span>
+        <span class="pb-d">línies prop. · 45kV · 55dB</span>
+      </button>
+      <button class="pb-btn" id="pb-4" onclick="loadPreset(4)">
+        <span class="pb-t">🌀 Batiment lent</span>
+        <span class="pb-d">f₁≠f₂ · Ω=0.1Hz · lent</span>
+      </button>
+      <button class="pb-btn" id="pb-5" onclick="loadPreset(5)">
+        <span class="pb-t">↻ Sentit invers</span>
+        <span class="pb-d">φ=−90° · remolí ↻</span>
+      </button>
+      <button class="pb-btn" id="pb-6" onclick="loadPreset(6)" style="border-color:#305030;background:#0a1208">
+        <span class="pb-t" style="color:#60d060">🧲 Autònom acústic</span>
+        <span class="pb-d" style="color:#406040">▶so → espera T>7000K → para so</span>
+      </button>
+      <button class="pb-btn" id="pb-7" onclick="loadPreset(7)" style="border-color:#203858;background:#080e18">
+        <span class="pb-t" style="color:#60a0ff">🌊 Autònom per S1+S2</span>
+        <span class="pb-d" style="color:#305080">▶so → espera ⑤runaway → para so</span>
+      </button>
+    </div>
+    <div style="font-size:8px;color:#2a3448;text-align:center">prem un preset → ajusta paràmetres → ▶ so + ⚡EM</div>
+  </div>
+
+  <!-- ═══ OBJECTIUS ACTIUS ═══ -->
+  <div class="sec" style="border-color:#203848">
+    <div class="sec-t" style="color:#50a0d0">🎯 objectius actius</div>
+
+    <!-- h_node -->
+    <div class="tr" style="margin-bottom:1px">
+      <span class="tr-l" style="font-weight:700">alçada node h</span>
+      <div class="sw" id="obj-h-sw" onclick="toggleObj('h')"></div>
+    </div>
+    <div id="obj-h-ctrl" style="display:none;padding:2px 0 3px 0">
+      <div class="pr" style="margin-bottom:2px">
+        <div class="pr-h"><span class="pr-l">h desitjat</span><span class="pr-v" id="lv-obj-h">10.0 m</span></div>
+        <div class="row"><div class="sp"><button class="sb" id="bm-obj-h">−</button><button class="sb" id="bp-obj-h">+</button></div><input type="range" id="sl-obj-h" min="0.5" max="150" step="0.5" value="10"></div>
+      </div>
+      <div class="fm" id="fc-obj-h">→ f_bat=— Hz · actual: —m</div>
+    </div>
+
+    <!-- nusos -->
+    <div class="tr" style="margin-bottom:1px">
+      <span class="tr-l" style="font-weight:700">nusos m</span>
+      <div class="sw" id="obj-m-sw" onclick="toggleObj('m')"></div>
+    </div>
+    <div id="obj-m-ctrl" style="display:none;padding:2px 0 3px 0">
+      <div class="pr" style="margin-bottom:2px">
+        <div class="pr-h"><span class="pr-l">nusos desitjats</span><span class="pr-v" id="lv-obj-m">4</span></div>
+        <div class="row"><div class="sp"><button class="sb" id="bm-obj-m">−</button><button class="sb" id="bp-obj-m">+</button></div><input type="range" id="sl-obj-m" min="1" max="12" step="1" value="4"></div>
+      </div>
+      <div class="fm" id="fc-obj-m">→ f₁=— Hz · actual: — nusos</div>
+    </div>
+
+    <!-- velocitat de gir -->
+    <div class="tr" style="margin-bottom:1px">
+      <span class="tr-l" style="font-weight:700">velocitat gir</span>
+      <div class="sw" id="obj-v-sw" onclick="toggleObj('v')"></div>
+    </div>
+    <div id="obj-v-ctrl" style="display:none;padding:2px 0 3px 0">
+      <div class="pr" style="margin-bottom:2px">
+        <div class="pr-h"><span class="pr-l">f_bat desitjat (Hz)</span><span class="pr-v" id="lv-obj-v">1.00 Hz</span></div>
+        <div class="row"><div class="sp"><button class="sb" id="bm-obj-v">−</button><button class="sb" id="bp-obj-v">+</button></div><input type="range" id="sl-obj-v" min="0.01" max="20" step="0.01" value="1"></div>
+      </div>
+      <div class="fm" id="fc-obj-v">→ h_node=— m · actual: — Hz</div>
+      <div class="fm" style="color:#a06020" id="fc-obj-hv-note" style="display:none">⚠ linked a h: s'usa h si tots dos actius</div>
+    </div>
+
+    <!-- direcció de gir -->
+    <div class="tr" style="margin-bottom:1px">
+      <span class="tr-l" style="font-weight:700">direcció gir</span>
+      <div class="sw" id="obj-d-sw" onclick="toggleObj('d')"></div>
+    </div>
+    <div id="obj-d-ctrl" style="display:none;padding:2px 0 3px 0">
+      <div class="sg">
+        <div class="sg-b on" id="obj-d-ccw" onclick="setObjDir(1)" style="font-size:10px">↺ antihorari</div>
+        <div class="sg-b" id="obj-d-cw" onclick="setObjDir(-1)" style="font-size:10px">↻ horari</div>
+      </div>
+      <div class="fm" id="fc-obj-d">→ φ=— · actual: —</div>
+    </div>
+
+    <!-- Status i botó aplicar -->
+
+    <!-- Objectiu: diàmetre anell -->
+    <div class="pr" style="margin:2px 0">
+      <div class="pr-h" style="margin-bottom:1px">
+        <span class="pr-l" style="color:#50a0d0">⬤ diàm. anell</span>
+        <div class="sw" id="obj-r-sw" onclick="toggleObj('r')"></div>
+      </div>
+    </div>
+    <div id="obj-r-ctrl" style="display:none;padding:2px 0 3px 0">
+      <div class="pr-h" style="margin-bottom:1px">
+        <span class="pr-l">diàmetre desitjat (m)</span><span class="pr-v" id="lv-obj-r">20.0 m</span>
+      </div>
+      <div class="row"><div class="sp"><button class="sb" id="bm-obj-r">−</button><button class="sb" id="bp-obj-r">+</button></div>
+        <input type="range" id="sl-obj-r" min="1" max="100" step="0.5" value="20">
+      </div>
+      <div class="fm" id="fc-obj-r">→ sl=— m · actual: —m diàm.</div>
+    </div>
+
+    <div class="fm" id="obj-status" style="margin-top:3px;color:#406080">activat cap objectiu</div>
+    <div style="display:flex;gap:3px;margin-top:3px">
+      <button class="bn opt" onclick="applyObjectives()" style="flex:2">▶ aplicar objectius</button>
+      <button class="bn sync" onclick="applyObjectivesLive();toggleObjLive()" id="obj-live-btn" style="flex:1">live</button>
+    </div>
+  </div>
+
+  <div class="sec">
+    <div class="sec-t">velocitat simulació</div>
+    <div class="pr"><div class="pr-h"><span class="pr-l">escala temporal</span><span class="pr-v" id="lv-spd">×1.00</span></div>
+    <div class="row"><div class="sp"><button class="sb" id="bm-spd">−</button><button class="sb" id="bp-spd">+</button></div><input type="range" id="sl-spd" min="-2" max="2" step="0.05" value="0"></div></div>
+  </div>
+
+  <div class="sec">
+    <div class="sec-t">condicions ambientals</div>
+    <div class="pr"><div class="pr-h"><span class="pr-l">temperatura (°C)</span><span class="pr-v" id="lv-T">35.0°C</span></div><div class="row"><div class="sp"><button class="sb" id="bm-T">−</button><button class="sb" id="bp-T">+</button></div><input type="range" id="sl-T" min="0" max="50" step="0.1" value="35"></div></div>
+    <div class="pr"><div class="pr-h"><span class="pr-l">pressió (hPa)</span><span class="pr-v" id="lv-P">1013 hPa</span></div><div class="row"><div class="sp"><button class="sb" id="bm-P">−</button><button class="sb" id="bp-P">+</button></div><input type="range" id="sl-P" min="950" max="1050" step="1" value="1013"></div></div>
+    <div class="pr"><div class="pr-h"><span class="pr-l">humitat (%)</span><span class="pr-v" id="lv-H">30%</span></div><div class="row"><div class="sp"><button class="sb" id="bm-H">−</button><button class="sb" id="bp-H">+</button></div><input type="range" id="sl-H" min="5" max="100" step="1" value="30"></div></div>
+    <div class="pr"><div class="pr-h"><span class="pr-l">vent (km/h)</span><span class="pr-v" id="lv-W">0.0 km/h</span></div><div class="row"><div class="sp"><button class="sb" id="bm-W">−</button><button class="sb" id="bp-W">+</button></div><input type="range" id="sl-W" min="0" max="40" step="0.1" value="0"></div></div>
+    <div class="pr"><div class="pr-h"><span class="pr-l">ionització residual (%)</span><span class="pr-v" id="lv-IR">0%</span></div><div class="row"><div class="sp"><button class="sb" id="bm-IR">−</button><button class="sb" id="bp-IR">+</button></div><input type="range" id="sl-IR" min="0" max="100" step="1" value="0"></div></div>
+    <div class="fm">v_so = <span class="v" id="fc-vs">351.0 m/s</span></div>
+  </div>
+
+  <!-- GEOMETRIA LÍNIES ELÈCTRIQUES: alçades independents MT i Cat -->
+  <div class="sec">
+    <div class="sec-t em">⚡ geometria línies elèctriques (0 cm – 50 m)</div>
+    <div class="pr"><div class="pr-h"><span class="pr-l">alçada MT sobre riu (m)</span><span class="pr-v" id="lv-hmt">10.00 m</span></div><div class="row"><div class="sp"><button class="sb" id="bm-hmt">−</button><button class="sb" id="bp-hmt">+</button></div><input type="range" id="sl-hmt" min="0.01" max="80" step="0.1" value="18"></div></div>
+    <div class="pr"><div class="pr-h"><span class="pr-l">alçada Cat sobre riu (m)</span><span class="pr-v" id="lv-hcat">10.00 m</span></div><div class="row"><div class="sp"><button class="sb" id="bm-hcat">−</button><button class="sb" id="bp-hcat">+</button></div><input type="range" id="sl-hcat" min="0.01" max="80" step="0.1" value="11"></div></div>
+    <div class="pr"><div class="pr-h"><span class="pr-l">separació horiz. MT↔Cat (m)</span><span class="pr-v" id="lv-sl">10.00 m</span></div><div class="row"><div class="sp"><button class="sb" id="bm-sl">−</button><button class="sb" id="bp-sl">+</button></div><input type="range" id="sl-sl" min="0.01" max="50" step="0.01" value="10"></div></div>
+    <div class="fm">
+      h_mig = (h_MT+h_Cat)/2 = <span class="v" id="fc-hmig">10.00 m</span><br>
+      Δh_línies = |h_MT−h_Cat| = <span class="v" id="fc-dhl">0.00 m</span><br>
+      h_líns ≈ 2·h_node (reflector a λ/2): <span class="v" id="fc-ok">—</span>
+    </div>
+  </div>
+
+  <!-- GEOMETRIA EMISSORS S1/S2 -->
+  <div class="sec">
+    <div class="sec-t">geometria emissors S₁/S₂</div>
+    <div class="pr"><div class="pr-h"><span class="pr-l">separació S₁/S₂ (m)</span><span class="pr-v" id="lv-so">10.00 m</span></div><div class="row"><div class="sp"><button class="sb" id="bm-so">−</button><button class="sb" id="bp-so">+</button></div><input type="range" id="sl-so" min="0.01" max="50" step="0.01" value="10"></div></div>
+    <!-- ══ GEOMETRIA RIU I PONT ══ -->
+    <div class="sec-title" style="margin-top:6px">🌊 Riu / Pont / Fonts</div>
+    <div class="pr"><div class="pr-h"><span class="pr-l">alçada S₁S₂ sobre riu (m)</span><span class="pr-v" id="lv-h_pont_riu">5.0 m</span></div><div class="row"><div class="sp"><button class="sb" id="bm-h_pont_riu">−</button><button class="sb" id="bp-h_pont_riu">+</button></div><input type="range" id="sl-h_pont_riu" min="0.01" max="50" step="0.1" value="5"></div></div>
+    <div class="pr" style="display:none"><div class="pr-h"><span class="pr-l">Cat sobre pont (m)</span><span class="pr-v" id="lv-h_cat_pont">6.0 m</span></div><div class="row"><div class="sp"><button class="sb" id="bm-h_cat_pont">−</button><button class="sb" id="bp-h_cat_pont">+</button></div><input type="range" id="sl-h_cat_pont" min="0.01" max="20" step="0.1" value="6"></div></div>
+    <div class="pr"><div class="pr-h"><span class="pr-l" style="color:#4080c0">Cat riu=pont+Cat</span><span class="pr-v" id="lv-hcat-calc" style="color:#4080c0">11.0 m</span></div></div>
+    <div class="pr"><div class="pr-h"><span class="pr-l">amplada riu (m)</span><span class="pr-v" id="lv-a_riu">30 m</span></div><div class="row"><div class="sp"><button class="sb" id="bm-a_riu">−</button><button class="sb" id="bp-a_riu">+</button></div><input type="range" id="sl-a_riu" min="5" max="500" step="1" value="30"></div></div>
+    <div class="pr"><div class="pr-h"><span class="pr-l">convergència θ (°)</span><span class="pr-v" id="lv-theta">0.0°</span></div><div class="row"><div class="sp"><button class="sb" id="bm-theta">−</button><button class="sb" id="bp-theta">+</button></div><input type="range" id="sl-theta" min="0" max="45" step="0.5" value="0"></div>
+    <div class="fm" style="font-size:7.5px">h_focus=<span class="v" id="fc-hfocus">—</span>m · h_node_riu=<span class="v" id="fc-hnode-riu">—</span>m</div></div>
+    <div class="fm">
+      h_node(S₁) = v_so/(4·f₁) = <span class="o" id="fc-hn1">—</span><br>
+      h_node(S₂) = v_so/(4·f₂) = <span class="o" id="fc-hn2">—</span><br>
+      Δh_nodes = <span class="v" id="fc-dhn">—</span> · α = <span class="v" id="fc-ag">—°</span><br>
+      η_so=<span class="b" id="fc-etaso">—</span> · η_f=<span class="b" id="fc-etaf">—</span> · η=<span class="g" id="fc-eta">—</span>
+    </div>
+  </div>
+
+  <div class="sec">
+    <div class="sec-t">generadors acústics S₁ i S₂</div>
+    <div class="pr"><div class="pr-h"><span class="pr-l">freqüència S₁</span><span class="pr-v" id="lv-f1">3.50 Hz</span></div><div class="row"><div class="sp"><button class="sb" id="bm-f1">−</button><button class="sb" id="bp-f1">+</button></div><input type="range" id="sl-f1" min="0.01" max="400" step="0.1" value="3.5714"></div></div>
+    <div class="pr"><div class="pr-h"><span class="pr-l">freqüència S₂</span><span class="pr-v" id="lv-f2">3.50 Hz</span></div><div class="row"><div class="sp"><button class="sb" id="bm-f2">−</button><button class="sb" id="bp-f2">+</button></div><input type="range" id="sl-f2" min="0.01" max="400" step="0.1" value="3.5714"></div></div>
+    <div style="display:flex;gap:3px;margin-bottom:4px">
+      <button class="bn sync" onclick="syncToEM(1)">sync f₁→50/n</button>
+      <button class="bn sync" onclick="syncToEM(2)">sync f₂→50/n</button>
+    </div>
+    <div class="pr"><div class="pr-h"><span class="pr-l">potència S₁ (dB SPL)</span><span class="pr-v" id="lv-db1">0 dB</span></div><div class="row"><div class="sp"><button class="sb" id="bm-db1">−</button><button class="sb" id="bp-db1">+</button></div><input type="range" id="sl-db1" min="0" max="250" step="1" value="0"></div><div class="pb"><div class="pbf" id="pb-db1" style="width:0%;background:linear-gradient(90deg,#4a4ab0,#c8782a,#ff8520,#ff2020)"></div></div></div>
+    <div class="pr"><div class="pr-h"><span class="pr-l">potència S₂ (dB SPL)</span><span class="pr-v" id="lv-db2">0 dB</span></div><div class="row"><div class="sp"><button class="sb" id="bm-db2">−</button><button class="sb" id="bp-db2">+</button></div><input type="range" id="sl-db2" min="0" max="250" step="1" value="0"></div><div class="pb"><div class="pbf" id="pb-db2" style="width:0%;background:linear-gradient(90deg,#4a4ab0,#c8782a,#ff8520,#ff2020)"></div></div></div>
+    <div class="fm">P_combinat=√(P₁²+P₂²+2P₁P₂cos(φ))=<span class="g" id="fc-db-comb">0 dB</span><br>OAM∝P₁·P₂·sin(φ)=<span class="o" id="fc-oam">0</span> · <span id="fc-oam-note" style="color:#4a5468">cap rotació si P₁=0 o P₂=0</span></div>
+    <div class="pr"><div class="pr-h"><span class="pr-l">desfasament S₁→S₂ φ_ac (°)</span><span class="pr-v" id="lv-phi">+90°</span></div><div class="row"><div class="sp"><button class="sb" id="bm-phi">−</button><button class="sb" id="bp-phi">+</button></div><input type="range" id="sl-phi" min="-180" max="180" step="1" value="90"></div></div>
+    <div class="pr"><div class="pr-h"><span class="pr-l">forma del senyal</span></div><div class="sg"><div class="sg-b on" id="sg-sin" onclick="setSig('sin')">sin</div><div class="sg-b" id="sg-sqr" onclick="setSig('sqr')">quad</div><div class="sg-b" id="sg-tri" onclick="setSig('tri')">tri</div></div></div>
+    <div class="pr"><div class="pr-h"><span class="pr-l">posició lateral S₁S₂ (m)</span><span class="pr-v" id="lv-sx_off">0.0 m</span></div><div class="row"><div class="sp"><button class="sb" id="bm-sx_off">−</button><button class="sb" id="bp-sx_off">+</button></div><input type="range" id="sl-sx_off" min="-30" max="30" step="0.1" value="0"></div></div>
+    <div class="pr" style="margin-top:3px">
+      <div class="pr-h">
+        <span class="pr-l" style="color:#8892aa">mode generadors</span>
+        <div class="sg" id="src-mode-sg" style="gap:2px">
+          <div class="sg-b on" id="src-static" onclick="setSrcMode('static')" title="Fonts fixes al pont — cal ajustar f/P manualment si l'anell deriva">📍 estàtic</div>
+          <div class="sg-b"   id="src-track"  onclick="setSrcMode('track')"  title="Fonts segueixen l'anell físicament — mantenen la distància i l'acoblament">🎯 seguiment</div>
+        </div>
+      </div>
+      <div class="fm" id="fc-src-mode" style="margin-top:2px">fonts fixes al pont · acoblament disminueix si l'anell deriva</div>
+    </div>
+    <div class="fm">
+      λ₁=<span class="v" id="fc-lam1">—</span> · λ₂=<span class="v" id="fc-lam2">—</span><br>
+      f_bat=<span class="v" id="fc-fbat">0.000 Hz</span> · Ω_vòrtex=<span class="o" id="fc-omrot">— Hz</span><br>
+      k₁=<span class="b" id="fc-k1">—</span> · k₂=<span class="b" id="fc-k2">—</span><br>
+      ∇×v·η=<span class="o" id="fc-rot">0.000</span> · <span class="v" id="fc-gir">—</span>
+    </div>
+  </div>
+
+  <!-- SINCRONITZACIÓ TEMPORAL: el cop de so i el cop de llamp -->
+  <div class="sec">
+    <div class="sec-t em">⚡🔊 sincronització temporal ac↔EM (µs)</div>
+
+    <div class="fm" style="margin-bottom:5px">
+      t_viatge = h_node/v_so = <span class="v" id="fc-tv">— µs</span><br>
+      t_viatge mod T_EM = <span class="v" id="fc-tvmod">— µs</span> / 20000µs<br>
+      <span style="color:#4a5468">Quan el "cop de so" arriba al node, el camp EM és a:</span><br>
+      fase_EM_natural = <span class="o" id="fc-fem-nat">—°</span> del cicle de 50Hz
+    </div>
+
+    <div class="pr">
+      <div class="pr-h"><span class="pr-l">retard τ_sync (µs)</span><span class="pr-v" id="lv-tau">0 µs</span></div>
+      <div class="row"><div class="sp"><button class="sb" id="bm-tau">−</button><button class="sb" id="bp-tau">+</button></div><input type="range" id="sl-tau" min="-10000" max="10000" step="1" value="0"></div>
+    </div>
+    <div style="display:flex;gap:3px;margin-bottom:4px">
+      <button class="bn opt" onclick="autoOptimize()">🎯 τ òptim</button>
+      <button class="bn sync" onclick="setTauZero()">τ=0</button>
+    </div>
+
+    <!-- Visualització del cicle EM amb la posició del cop de so -->
+    <div style="font-size:9px;color:#4a5468;margin-bottom:2px">cicle EM (20 ms = 20000 µs) ← posició del "cop de so"</div>
+    <div class="sync-bar" id="sync-bar">
+      <div class="sync-win" id="sync-win"></div>
+      <div class="sync-em" id="sync-em-pos"></div>
+      <div class="sync-ac" id="sync-ac-pos"></div>
+    </div>
+    <div style="display:flex;justify-content:space-between;font-size:8px;color:#2a3448;margin-top:1px"><span>0µs</span><span>5ms</span><span>10ms</span><span>15ms</span><span>20ms</span></div>
+
+    <div class="fm" style="margin-top:4px">
+      fase_EM_total = (t_viatge+τ)/(20000) × 360° = <span class="o" id="fc-fem-tot">—°</span><br>
+      qualitat sync = |sin(fase_tot)| = <span class="g" id="fc-qsync">—</span><br>
+      τ_òptim per a 90° = <span class="v" id="fc-tau-opt">— µs</span><br>
+      reducció llindar = <span class="g" id="fc-red-sync">—</span>
+    </div>
+  </div>
+
+  <!-- ═══ FÍSICA AVANÇADA DEL NODE ═══ -->
+  <div class="sec" style="border-color:#1a3050">
+    <div class="sec-t" style="color:#4080b0">⚙ física del node acústic</div>
+    <div class="pr">
+      <div class="pr-h"><span class="pr-l">fórmula h_node</span></div>
+      <div class="sg">
+        <div class="sg-b on" id="nf-cls" onclick="setNodeFormula('classic')" title="λ/4 — tub acústic (reflexió)">λ/4</div>
+        <div class="sg-b" id="nf-int" onclick="setNodeFormula('interferencia')" title="√((v/4f_bat)²-(so/2)²)">f_bat</div>
+        <div class="sg-b" id="nf-ray" onclick="setNodeFormula('rayleigh')" title="π(so/2)²/λ">Rayleigh</div>
+      </div>
+      <div class="fm">
+        f_bat=<span class="o" id="fc-fbat2">—</span>Hz · r=v/(4·f_bat)=<span class="v" id="fc-r-node">—</span>m<br>
+        h_node=√(r²-(so/2)²)=<span class="g" id="fc-hnode-int">—</span>m · m=C/λ₁=<span class="o" id="fc-mnodes">—</span> nusos
+      </div>
+    </div>
+    <div class="sec-t" style="color:#406080;margin-top:4px">⚙ mecanismes actius</div>
+    <div class="tr"><span class="tr-l" title="plasma mescla f₁ amb 50Hz → f_EM±f₁">mescla paramètrica f_EM±f₁</span><div class="sw" id="tg-pm" onclick="toggleMech('pm')"></div></div>
+    <div class="fm" id="fc-pm-info" style="display:none">f_mix=|50-f₁|=<span class="v" id="fc-pm-val">—</span>Hz → h=<span class="v" id="fc-pm-h">—</span>m · <span id="fc-pm-m">—</span> nusos</div>
+    <div class="tr"><span class="tr-l" title="harmònics n·f_bat: múltiples toroïds apilats">cascada harmònica n·f_bat</span><div class="sw" id="tg-hc" onclick="toggleMech('hc')"></div></div>
+    <div id="fc-hc-ctrl" style="display:none;padding:2px 0">
+      <div class="pr" style="margin-bottom:2px"><div class="pr-h"><span class="pr-l">N harmònics</span><span class="pr-v" id="lv-nharm">3</span></div>
+        <div class="row"><div class="sp"><button class="sb" id="bm-nharm">−</button><button class="sb" id="bp-nharm">+</button></div><input type="range" id="sl-nharm" min="1" max="6" step="1" value="3"></div></div>
+      <div class="fm" id="fc-hc-info">—</div>
+    </div>
+    <div class="tr"><span class="tr-l" title="f₁=v_so/sl=35.16Hz: λ=sl">ressonància espacial λ=sl</span><div class="sw" id="tg-sr" onclick="toggleMech('sr')"></div></div>
+    <div class="fm" id="fc-sr-info" style="display:none">f_res=v_so/sl=<span class="v" id="fc-sr-val">—</span>Hz · actual f₁: <span id="fc-sr-ok">—</span></div>
+    <div class="tr"><span class="tr-l" title="f₁=50/n₁, f₂=50/n₂, f_bat=50/m">triple ressonància 50/n</span><div class="sw" id="tg-tr" onclick="toggleMech('tr')"></div></div>
+    <div class="fm" id="fc-tr-info" style="display:none"><span id="fc-tr-val">—</span></div>
+    <div style="display:flex;gap:3px;margin-top:4px;margin-bottom:2px">
+      <button class="bn opt" onclick="calcTargetParams()" style="flex:1" title="Calcula f₁,f₂ per als objectius actius">🎯 calcula f₁,f₂</button>
+      <button class="bn sync" onclick="findTripleRes()" style="flex:1" title="Cerca la triple ressonància 50/n">🔗 triple res.</button>
+    </div>
+    <div class="fm" id="fc-tgt-result" style="line-height:1.6;color:#4a5468">activa objectius i prem calcula</div>
+  </div>
+
+  <div class="sec">
+    <div class="sec-t">acústica no-lineal (β)</div>
+    <div class="pr"><div class="pr-h"><span class="pr-l">coef. no-linealitat β</span><span class="pr-v" id="lv-beta">1.20</span></div><div class="row"><div class="sp"><button class="sb" id="bm-beta">−</button><button class="sb" id="bp-beta">+</button></div><input type="range" id="sl-beta" min="1.0" max="5.0" step="0.05" value="1.2"></div></div>
+    <div class="fm">
+      P_ac=<span class="v" id="fc-pa">—</span> · P_eff=<span class="g" id="fc-peff">—</span><br>
+      d_xoc=<span class="o" id="fc-dxoc">—</span> · <span id="fc-xoc-ok">—</span>
+    </div>
+  </div>
+
+  <div class="sec">
+    <div class="sec-t em">⚡ línies elèctriques</div>
+    <div class="pr"><div class="pr-h"><span class="pr-l">freqüència MT (Hz)</span><span class="pr-v" id="lv-f_mt">50.0 Hz</span></div><div class="row"><div class="sp"><button class="sb" id="bm-f_mt">−</button><button class="sb" id="bp-f_mt">+</button></div><input type="range" id="sl-f_mt" min="40" max="70" step="0.1" value="50"></div>
+    <div class="fm" style="font-size:8px">Cat: f_MT + φ_EM · f_bat vs S₁: <span class="o" id="fc-fres-em">—</span> Hz</div></div>
+    <div class="pr"><div class="pr-h"><span class="pr-l">tensió MT (kV)</span><span class="pr-v" id="lv-vmt">25.0 kV</span></div><div class="row"><div class="sp"><button class="sb" id="bm-vmt">−</button><button class="sb" id="bp-vmt">+</button></div><input type="range" id="sl-vmt" min="0" max="50" step="0.1" value="25"></div></div>
+    <div class="pr"><div class="pr-h"><span class="pr-l">tensió Cat. (kV)</span><span class="pr-v" id="lv-vcat">25.0 kV</span></div><div class="row"><div class="sp"><button class="sb" id="bm-vcat">−</button><button class="sb" id="bp-vcat">+</button></div><input type="range" id="sl-vcat" min="0" max="50" step="0.1" value="25"></div></div>
+    <div class="pr"><div class="pr-h"><span class="pr-l">desfasament MT↔Cat (°)</span><span class="pr-v" id="lv-ph">90°</span></div><div class="row"><div class="sp"><button class="sb" id="bm-ph">−</button><button class="sb" id="bp-ph">+</button></div><input type="range" id="sl-ph" min="0" max="180" step="1" value="90"></div></div>
+    <div class="fm">
+      ΔV=<span class="v" id="fc-dv">35.4 kV</span> · E=<span class="v" id="fc-em">2.5 kV/m</span><br>
+      E_rup=<span class="v" id="fc-er">—</span> &nbsp;<span id="fc-self" style="font-size:9px"></span> · k_total=<span class="b" id="fc-k">—</span><br>
+      llindar_eff=<span class="o" id="fc-lld">—</span> (base:<span id="fc-lldb">—</span>)<br>
+      <span class="r" id="fc-noem" style="display:none">⚠ ΔV=0 — sense ionització</span>
+      <div id="fc-autonom" style="display:none;background:#0a1a08;border:1px solid #306030;color:#60d060;padding:2px 6px;margin:2px 0;font-size:9px;text-align:center;border-radius:3px"></div>
+    </div>
+  </div>
+
+
+  <div class="sec">
+    <div class="sec-t">visualització</div>
+    <div class="tr"><span class="tr-l">ones S₁ i S₂</span><div class="sw on" id="tg-w" onclick="tv('w')"></div></div>
+    <div class="tr"><span class="tr-l">vectors ∇×v</span><div class="sw on" id="tg-v" onclick="tv('v')"></div></div>
+    <div class="tr"><span class="tr-l">spark EM + timing</span><div class="sw on" id="tg-s" onclick="tv('s')"></div></div>
+    <div class="tr"><span class="tr-l">inestabilitats</span><div class="sw on" id="tg-i" onclick="tv('i')"></div></div>
+    <div class="tr"><span class="tr-l">circulació plasma</span><div class="sw on" id="tg-c" onclick="tv('c')"></div></div>
+    <div class="tr"><span class="tr-l">línies elèctriques</span><div class="sw on" id="tg-e" onclick="tv('e')"></div></div>
+    <div class="tr"><span class="tr-l">etiquetes</span><div class="sw on" id="tg-lb" onclick="tv('lb')"></div></div>
+  </div>
+
+</div>
+</div>
+
+<div class="bot">
+  <div class="ph"><span class="pn" id="ph-n" style="color:#4a5468">aturat</span><span id="ph-d">Prem ▶ per iniciar</span></div>
+  <div class="bts">
+    <button class="bn go" id="b-go" onclick="toggleSig()">▶ so</button>
+    <button class="bn" id="b-em" onclick="toggleEM()" style="border-color:#a05020;color:#e07030">⚡ EM ON</button>
+    <button class="bn pa" id="b-pa" onclick="toggleP()">⏸ pausa</button>
+    <button class="bn" onclick="resetAll()">↺ reinicia</button>
+    <button class="bn" onclick="toggleOscPanel()" style="border-color:#1a3050;color:#3a6080">📊</button>
+    <button class="bn" onclick="toggleSavePanel()" style="border-color:#1a4020;color:#40a060">💾</button>
+  </div>
+</div>
+
+<script>
+const cv=document.getElementById('cv');
+const cx=cv.getContext('2d');
+function rc(){cv.width=cv.offsetWidth;cv.height=cv.offsetHeight;}
+window.addEventListener('resize',rc);
+const VIS={w:true,v:true,s:true,i:true,c:true,e:true,lb:true};
+function tv(k){VIS[k]=!VIS[k];document.getElementById('tg-'+k).classList.toggle('on',VIS[k]);}
+let SIG='sin';
+function setSig(s){SIG=s;['sin','sqr','tri'].forEach(x=>document.getElementById('sg-'+x).classList.toggle('on',x===s));refreshUI();}
+function updateSxOffLabel(){set('lv-sx_off',(S.sx_off||0).toFixed(1)+' m');}
+
+// ══ PRESETS DE CONFIGURACIÓ AUTOMÀTICA ══
+// ── ACOBLAMENT PARAMÈTRIC EM-ACÚSTIC (cables MT/Cat com a S₃/S₄) ──────────
+// f_res = |f₁ - f_cable| = freqüència de batiment entre S₁ i les cables
+// dB_corona = nivell acústic de la descàrrega corona de les cables al node
+// couplingParam = indicador combinat (0→1) de la força de l'acoblament paramètric
+const F_CABLE=50; // Hz — default MT
+function fEM(){return typeof S.f_mt!=='undefined'?S.f_mt:F_CABLE;} // Freq. MT dinàmica
+
+function fRes(){return Math.abs(S.f1-fEM());}
+
+function couplingParam(){
+  // Llei de Paschen modificada per pressió acústica (Meek & Craggs, 1953):
+  // Ionització quan E/ρ_local > (E/ρ)_critical
+  // ρ_local = ρ₀·(1 - P_ac/(γ·P_atm))  [rarefacció acústica redueix densitat]
+  // Amplificació paramètrica k·qSync: ressonància entre camp acústic i EM
+  const E_em=campEMAlNode()*1000;    // V/m al node
+  const E_rup=eRup()*1000;           // V/m llindar base Paschen
+  const P_ac=pAcCombined(S.db1,S.db2,S.phi); // Pa pressió acústica
+  const P_atm=S.P*100;               // Pa
+  const rho_0=P_atm*0.029/(8.314*(S.T+273)); // kg/m³ densitat ambient
+  // Rarefacció: l'ona acústica redueix la densitat local (facilita ionització)
+  const rho_local=Math.max(rho_0*(1-P_ac/(1.4*P_atm)), rho_0*0.05);
+  // Ràtio Paschen: >1 quan E/ρ supera el llindar
+  const ratio_paschen=(E_em/rho_local)/(E_rup/rho_0);
+  // Amplificació paramètrica k·qSync (ressonànica f₁ amb EM)
+  const k_param=S.f1>0.01?Math.max(1,Math.round(50/S.f1)):1;
+  const q=Math.max(qSync(),0.01);
+  return clamp(ratio_paschen*k_param*q, 0, 1);
+}
+
+// Nota visual per a f_res
+function fResNote(fr){
+  if(fr<1)   return '⚡ batiment <1Hz → node molt alt';
+  if(fr<4)   return '⚡ zona ressonànica h='+hNode_fres(fr).toFixed(0)+'m';
+  if(fr<10)  return 'bat mig · h≈'+hNode_fres(fr).toFixed(0)+'m';
+  if(fr<20)  return 'bat ràpid · h≈'+hNode_fres(fr).toFixed(0)+'m';
+  return 'lluny de ressonànica (>20Hz)';
+}
+function hNode_fres(fr){
+  // h_node des de f_bat=f_res amb φ actual
+  const phi_r=Math.max(Math.abs(S.phi)*Math.PI/180,0.001);
+  const so2=S.so/2, vsnd=vso();
+  const r=phi_r*vsnd/(2*Math.PI*Math.max(fr,0.001));
+  const h2=r*r-so2*so2;
+  return h2>0?Math.sqrt(h2):0;
+}
+// Escala LINEAL 0.01-400Hz pas 0.1Hz
+function freqToSl(f){return Math.round(Math.max(0.01,Math.min(400,f))*10)/10;}
+function slToFreq(v){return Math.round(Math.max(0.01,Math.min(400,+v))*10)/10;}
+function fmtFreq(f){
+  if(f>=1e6)return (f/1e6).toFixed(3)+' MHz';
+  if(f>=1e3)return (f/1e3).toFixed(2)+' kHz';
+  if(f>=10) return f.toFixed(2)+' Hz';
+  return f.toFixed(3)+' Hz';
+}
+function initFreqControls(){
+  ['f1','f2'].forEach(k=>{
+    const sl=document.getElementById('sl-'+k);if(!sl)return;
+    sl.value=S[k];
+    sl.addEventListener('input',()=>{S[k]=slToFreq(+sl.value);set('lv-'+k,fmtFreq(S[k]));refreshUI();});
+    // Pas ±0.1Hz lineal
+    document.getElementById('bm-'+k).addEventListener('click',()=>{
+      S[k]=Math.round(Math.max(0.01,S[k]-0.1)*10)/10;sl.value=S[k];set('lv-'+k,fmtFreq(S[k]));refreshUI();
+    });
+    document.getElementById('bp-'+k).addEventListener('click',()=>{
+      S[k]=Math.round(Math.min(400,S[k]+0.1)*10)/10;sl.value=S[k];set('lv-'+k,fmtFreq(S[k]));refreshUI();
+    });
+  });
+}
+
+// ═══ FÍSICA AVANÇADA DEL NODE ═══
+// NODE_FORMULA declarada a hNodeReal() més avall
+const MECH={pm:false,hc:false,sr:false,tr:false};
+const S_ADV={htgt:10,mtgt:4,nharm:3};
+
+function setNodeFormula(f){
+  NODE_FORMULA=f;
+  ['cls','int','ray'].forEach((x,i)=>document.getElementById('nf-'+x).classList.toggle('on',['classic','interferencia','rayleigh'][i]===f));
+  refreshUI();
+}
+function toggleMech(m){
+  MECH[m]=!MECH[m];
+  document.getElementById('tg-'+m).classList.toggle('on',MECH[m]);
+  const showMap={pm:'fc-pm-info',hc:'fc-hc-ctrl',sr:'fc-sr-info',tr:'fc-tr-info'};
+  const el=document.getElementById(showMap[m]);if(el)el.style.display=MECH[m]?'block':'none';
+  refreshUI();
+}
+// ── FÍSICA RIU: coordenades i ona estacionaria ──────────────────────────────
+// El riu Segre és el reflector acústic (R≈0.9994, reflector rígid)
+// Mesures en coordenades del RIU (y=0=superfície riu)
+function hCatRiu(){ return S.h_pont_riu+S.h_cat_pont; } // Cat sobre riu
+function hNodeRiu(){  // node λ/4 en coordenades riu, amb correcció obliqua
+  const theta_r=Math.max(0,S.theta)*Math.PI/180;
+  const cos_t=Math.max(Math.cos(theta_r),0.01);
+  return vso()/(4*Math.max(S.f1,0.0001)*cos_t);
+}
+// Ona estacionaria (reflector rígid a y=0): P(y)∝cos(ky), V(y)∝sin(ky)
+function fNodeEff(){
+  // Freqüència efectiva del node: la que dona la millor ressonànica
+  // Si el batiment |f1-f_MT| dona k màxim, és el mecanisme dominant
+  const fm=fEM();
+  const fbe=Math.abs(S.f1-fm);
+  const f_dir=S.f1;
+  // Comparar: quina freq té k més alt?
+  if(fbe>0.01 && factorK(fbe)>factorK(f_dir)) return fbe; // paramètric
+  return f_dir; // directe
+}
+function swP(h_riu){ // pressió normalitzada a alçada h_riu sobre el riu
+  return Math.abs(Math.cos(2*Math.PI*fNodeEff()/vso()*Math.max(h_riu,0)));
+}
+function swV(h_riu){ // velocitat normalitzada a alçada h_riu sobre el riu
+  return Math.abs(Math.sin(2*Math.PI*fNodeEff()/vso()*Math.max(h_riu,0)));
+}
+// Auto-actualitzar hcat quan canvien h_pont_riu o h_cat_pont
+function updateHcat(){ S.hcat=hCatRiu(); const el=document.getElementById('sl-hcat');if(el)el.value=S.hcat; }
+
+function hNodeReal(){
+  const fb=fBat(),vsnd=vso(),so2=S.so/2,lam=lambda1();
+  if(NODE_FORMULA==='classic') return vsnd/(4*Math.max(S.f1,0.0001));
+  if(NODE_FORMULA==='rayleigh') return Math.PI*so2*so2/Math.max(lam,0.001);
+  // ── Mode 'interferencia': selecció automàtica per so/λ ──
+  // so/λ < 0.5 (camp proper): model geomètric no vàlid → usar Rayleigh
+  // so/λ ≥ 0.5 (camp llunyà): interferència de camps d'ona separats → fórmula exacta
+  const f_crit=vsnd/(2*S.so); // f_crit on λ=2·so (so/λ=0.5)
+  if(S.f1<f_crit&&fb<0.01){
+    // Camp proper + sense batiment → rang de Rayleigh (difracció pura)
+    return Math.PI*so2*so2/Math.max(lam,0.001);
+  }
+  if(fb>0.01){
+    const phi_r=Math.max(Math.abs(S.phi)*Math.PI/180,0.001);
+    const r=phi_r*vsnd/(2*Math.PI*fb);
+    const h2=r*r-so2*so2;
+    if(h2>0) return Math.sqrt(h2);
+  }
+  // Fallback: Rayleigh per a camp proper, clàssic per a camp llunyà
+  return S.f1>=f_crit ? vsnd/(4*Math.max(S.f1,0.0001)) :
+                        Math.PI*so2*so2/Math.max(lam,0.001);
+}
+let NODE_FORMULA='classic'; // 'classic'=λ/4 | 'interferencia'=f_bat | 'rayleigh'=z_R
+function mNodesReal(h){return Math.max(1,Math.min(12,Math.round(2*Math.PI*h*S.f1/vso())));}
+function hNodeParamMix(){
+  const fm=Math.abs(fEM()-S.f1);if(fm<0.1)return null; // fEM() dinàmic, no 50 hardcoded
+  const phi_r=Math.max(Math.abs(S.phi)*Math.PI/180,0.001);
+  const r=phi_r*vso()/(2*Math.PI*fm),h2=r*r-Math.pow(S.so/2,2);
+  return h2>0?{h:Math.sqrt(h2),f_mix:fm,m:mNodesReal(Math.sqrt(h2))}:null;
+}
+function harmonicNodes(){
+  const fb=fBat(),nodes=[];if(fb<0.01)return nodes;
+  const phi_r=Math.max(Math.abs(S.phi)*Math.PI/180,0.001);
+  const vsnd=vso(),so2=S.so/2;
+  for(let n=1;n<=S_ADV.nharm;n++){
+    // Harmònic n: r_n = |φ_rad|·v_so/(2π·n·f_bat)
+    const r=phi_r*vsnd/(2*Math.PI*n*fb);
+    const h2=r*r-so2*so2;
+    if(h2>0)nodes.push({n,f:n*fb,h:Math.sqrt(h2),m:mNodesReal(Math.sqrt(h2))});
+  }
+  return nodes;
+}
+function calcTargetParams(){
+  const h=OBJ.h?OBJ_T.h:(OBJ.v?null:S_ADV.htgt);
+  const m=OBJ.m?OBJ_T.m:S_ADV.mtgt;
+  if(!h){document.getElementById('fc-tgt-result').textContent='Activa objectiu h o v primer';return;}
+  const so2=S.so/2;
+  // f_bat = |φ_rad|·v_so/(2π·r)   [fórmula general, no λ/4 fixat]
+  const phi_r=Math.max(Math.abs(S.phi)*Math.PI/180,0.001);
+  const r=Math.sqrt(h*h+so2*so2);
+  const fbat=phi_r*vso()/(2*Math.PI*r);
+  const f1=m*vso()/(2*Math.PI*h);
+  S.f1=Math.round(f1*100)/100;S.f2=Math.max(0.01,Math.round((f1-fbat)*100)/100);
+  const tv=r/vso()*1e6,tvm=((tv%20000)+20000)%20000;
+  let tau=15000;[90,270].forEach(fo=>{let t=fo/360*20000-tvm;while(t>10000)t-=20000;while(t<-10000)t+=20000;if(Math.abs(t)<Math.abs(tau))tau=t;});
+  S.tau=Math.round(tau);
+  const sf1=document.getElementById('sl-f1');if(sf1)sf1.value=freqToSl(S.f1);
+  const sf2=document.getElementById('sl-f2');if(sf2)sf2.value=freqToSl(S.f2);
+  const stau=document.getElementById('sl-tau');if(stau)stau.value=S.tau;
+  document.getElementById('fc-tgt-result').innerHTML=
+    `<span class="g">f₁=${fmtFreq(S.f1)} · f₂=${fmtFreq(S.f2)} · f_bat=${fmtFreq(fbat)}</span><br>`+
+    `φ=${S.phi.toFixed(0)}° · h≈${h.toFixed(1)}m · m=${m} · τ=${S.tau}µs`;
+  refreshUI();
+}
+function findTripleRes(){
+  const h=OBJ.h?OBJ_T.h:S_ADV.htgt;
+  const m_obj=OBJ.m?OBJ_T.m:S_ADV.mtgt;
+  let best=null,bestScore=1e9;
+  for(let n1=2;n1<=20;n1++){for(let n2=n1+1;n2<=30;n2++){
+    const mf=n1*n2/(n2-n1);if(Math.abs(mf-Math.round(mf))>0.01)continue;
+    const mi=Math.round(mf),f1=50/n1,f2=50/n2,fbat=50/mi;
+    const phi_r2=Math.max(Math.abs(S.phi)*Math.PI/180,0.001);
+    const r=phi_r2*vso()/(2*Math.PI*fbat),h2=r*r-Math.pow(S.so/2,2);if(h2<=0)continue;
+    const hc=Math.sqrt(h2),mc=mNodesReal(hc);
+    const score=Math.abs(hc-h)/Math.max(h,1)+Math.abs(mc-m_obj)*0.5;
+    if(score<bestScore){bestScore=score;best={f1,f2,fbat,h:hc,m:mc,n1,n2,mi};}
+  }}
+  if(!best){document.getElementById('fc-tgt-result').textContent='No trobat';return;}
+  S.f1=best.f1;S.f2=best.f2;
+  const tv=best.h/vso()*1e6,tvm=((tv%20000)+20000)%20000;
+  let tau=15000;[90,270].forEach(fo=>{let t=fo/360*20000-tvm;while(t>10000)t-=20000;while(t<-10000)t+=20000;if(Math.abs(t)<Math.abs(tau))tau=t;});
+  S.tau=Math.round(tau);
+  ['f1','f2','tau'].forEach(k=>{const el=document.getElementById('sl-'+k);if(el)el.value=S[k];});
+  document.getElementById('fc-tgt-result').innerHTML=`<span class="g">🔗 f₁=50/${best.n1}=${best.f1.toFixed(3)}Hz · f₂=50/${best.n2}=${best.f2.toFixed(3)}Hz</span><br>f_bat=50/${best.mi}=${best.fbat.toFixed(3)}Hz · h=${best.h.toFixed(1)}m · m=${best.m}`;
+  refreshUI();
+}
+function initAdvControls(){
+  const defs={htgt:[0.5,150,0.5,10],mtgt:[1,12,1,4],nharm:[1,6,1,3]};
+  Object.keys(defs).forEach(k=>{
+    const[mn,mx,st]=defs[k];
+    const sl=document.getElementById('sl-'+k);
+    if(sl)sl.addEventListener('input',()=>{S_ADV[k]=+sl.value;refreshUI();});
+    ['bm','bp'].forEach((pre,sign)=>{
+      const b=document.getElementById(pre+'-'+k);
+      if(b)b.addEventListener('click',()=>{S_ADV[k]=Math.max(mn,Math.min(mx,S_ADV[k]+(sign?st:-st)));const s=document.getElementById('sl-'+k);if(s)s.value=S_ADV[k];refreshUI();});
+    });
+  });
+}
+
+// ═══ OBJECTIUS ACTIUS ═══
+const OBJ={h:false,m:false,v:false,d:false,r:false};
+const OBJ_T={h:10,m:4,v:1.0,d:1,r:20}; // +r: diàmetre anell (m) → ajusta sl
+let OBJ_LIVE=false;
+
+function toggleObj(key){
+  OBJ[key]=!OBJ[key];
+  document.getElementById('obj-'+key+'-sw').classList.toggle('on',OBJ[key]);
+  document.getElementById('obj-'+key+'-ctrl').style.display=OBJ[key]?'block':'none';
+  // nota: h i v estan lligades
+  const note=document.getElementById('fc-obj-hv-note');
+  if(note)note.style.display=(OBJ.h&&OBJ.v)?'block':'none';
+  updateObjStatus();
+  if(OBJ_LIVE)applyObjectivesLive();
+}
+function setObjDir(d){
+  OBJ_T.d=d;
+  document.getElementById('obj-d-ccw').classList.toggle('on',d===1);
+  document.getElementById('obj-d-cw').classList.toggle('on',d===-1);
+  updateObjStatus();
+  if(OBJ_LIVE)applyObjectivesLive();
+}
+function toggleObjLive(){
+  OBJ_LIVE=!OBJ_LIVE;
+  const b=document.getElementById('obj-live-btn');
+  if(b){b.textContent=OBJ_LIVE?'⏸ live':'live';b.classList.toggle('on',OBJ_LIVE);}
+  if(OBJ_LIVE)applyObjectivesLive();
+}
+
+// Càlcul dels paràmetres que satisfan els objectius
+function computeObjParams(){
+  const vsnd=vso(),so2=S.so/2;
+  const result={f1:S.f1,f2:S.f2,phi:S.phi};
+  // Fórmula general: r = |φ_rad|·v_so/(2π·f_bat)  [φ=90° → r=λ/4, φ=120° → r=λ/3, etc.]
+  const phi_r=Math.max(Math.abs(S.phi)*Math.PI/180,0.001);
+
+  let fbat_target=null;
+  if(OBJ.h){
+    const r=Math.sqrt(OBJ_T.h**2+so2**2);
+    fbat_target=phi_r*vsnd/(2*Math.PI*r);
+  } else if(OBJ.v){
+    fbat_target=OBJ_T.v;
+  }
+
+  if(OBJ.m){
+    let h_use;
+    if(OBJ.h) h_use=OBJ_T.h;
+    else if(fbat_target){const r=phi_r*vsnd/(2*Math.PI*fbat_target);h_use=Math.sqrt(Math.max(0,r*r-so2*so2));}
+    else h_use=hNodeReal();
+    result.f1=Math.max(0.5,Math.round(OBJ_T.m*vsnd/(2*Math.PI*Math.max(h_use,0.1))*100)/100);
+  }
+
+  if(fbat_target!==null){
+    result.f2=Math.max(0.01,Math.round((result.f1-fbat_target)*100)/100);
+  }
+
+  if(OBJ.d) result.phi=OBJ_T.d*Math.abs(result.phi||S.phi);
+
+  const f1v=result.f1,f2v=Math.max(result.f2,0.1);
+  function eso(f){const x=Math.PI*S.so/(vsnd/f);return x<0.001?1:Math.abs(Math.sin(x)/x);}
+  const eta_exp=Math.sqrt(eso(f1v)*eso(f2v));
+  const phi_use=(result.phi||S.phi)*Math.PI/180;
+  const vx_exp=Math.abs(Math.sin(phi_use)*eta_exp)*Math.sqrt(S.db1*S.db2)/150;
+  const fb=fbat_target||Math.abs(f1v-f2v);
+  const r_nd=fb>0.01?phi_r*vsnd/(2*Math.PI*fb):Math.PI*so2*so2/Math.max(vsnd/f1v,0.001);
+  const h_exp=Math.sqrt(Math.max(0,r_nd*r_nd-so2*so2));
+  result._eta=eta_exp;result._vortex=vx_exp;result._h=h_exp;result._fbat=fb;
+  return result;
+}
+
+function applyObjectives(){
+  const p=computeObjParams();
+  S.f1=Math.max(0.01,Math.min(8e6,p.f1));
+  S.f2=Math.max(0.01,Math.min(8e6,p.f2));
+  S.phi=clamp(p.phi,DEF.phi[0],DEF.phi[1]);
+  // Actualitzar sliders (f1/f2 amb escala log)
+  const sf1=document.getElementById('sl-f1');if(sf1)sf1.value=freqToSl(S.f1);
+  const sf2=document.getElementById('sl-f2');if(sf2)sf2.value=freqToSl(S.f2);
+  const sphi=document.getElementById('sl-phi');if(sphi)sphi.value=S.phi;
+  // Si l'objectiu h o v és actiu: usar fórmula interferència (h node ve de f_bat)
+  if(OBJ.h||OBJ.v) setNodeFormula('interferencia');
+  autoOptimize();
+  const ok=p._vortex>0.35;
+  const fb=Math.abs(S.f1-S.f2);
+  const statusEl=document.getElementById('obj-status');
+  if(statusEl){
+    statusEl.innerHTML=
+      `<span style="color:${ok?'#40c080':'#e05050'}">${ok?'✓':'⚠'} `+
+      `f₁=${fmtFreq(S.f1)} · f₂=${fmtFreq(S.f2)} · f_bat=${fmtFreq(fb)}</span><br>`+
+      `h=${p._h.toFixed(1)}m · η=${p._eta.toFixed(3)} · vòrtex=${p._vortex.toFixed(3)} `+
+      `${ok?'→ ▶ engega el so':'→ ⚠ puja dB₁ i dB₂'}`;
+    statusEl.style.color=ok?'#40c080':'#e05050';
+  }
+  refreshUI();
+}
+function applyObjectivesLive(){if(Object.values(OBJ).some(v=>v))applyObjectives();}
+
+function updateObjStatus(){
+  const active=Object.entries(OBJ).filter(([k,v])=>v).map(([k])=>({h:'alçada',m:'nusos',v:'velocitat',d:'direcció'}[k]));
+  const statusEl=document.getElementById('obj-status');
+  if(statusEl&&active.length===0){statusEl.textContent='cap objectiu activat';statusEl.style.color='#406080';}
+  else if(statusEl){statusEl.textContent='actius: '+active.join(' · ');statusEl.style.color='#50a0d0';}
+  const vsnd=vso(),so2=S.so/2;
+  const phi_r=Math.max(Math.abs(S.phi)*Math.PI/180,0.001);
+  // h: usa fórmula φ-dependent
+  const fh=document.getElementById('fc-obj-h');
+  if(fh){const r=Math.sqrt(OBJ_T.h**2+so2**2),fb=phi_r*vsnd/(2*Math.PI*r);
+    fh.textContent='→ f_bat='+fb.toFixed(3)+'Hz (φ='+S.phi.toFixed(0)+'°) · actual: '+hNodeReal().toFixed(1)+'m';}
+  // m
+  const fm2=document.getElementById('fc-obj-m');
+  if(fm2){const h_cur=hNodeReal();const f1_need=OBJ_T.m*vsnd/(2*Math.PI*Math.max(h_cur,0.1));
+    fm2.textContent='→ f₁≈'+fmtFreq(f1_need)+' · actual: '+mNodesReal(h_cur)+' nusos';}
+  // v: usa fórmula φ-dependent
+  const fv=document.getElementById('fc-obj-v');
+  if(fv){const r=phi_r*vsnd/(2*Math.PI*OBJ_T.v),h2=r*r-so2**2;
+    const h=h2>0?Math.sqrt(h2).toFixed(1):'N/A';
+    fv.textContent='→ h_node≈'+h+'m (φ='+S.phi.toFixed(0)+'°) · actual: '+fmtFreq(fBat());}
+  // d
+  const fd=document.getElementById('fc-obj-d');
+  // Objectiu diàmetre anell: ajusta sl → diàmetre visual ≈ sl*2.2
+  if(OBJ.r){
+    const sl_target=Math.max(1, OBJ_T.r/1.1); // diàmetre = sl*1.1*2 → sl=r/1.1
+    S.sl=parseFloat(sl_target.toFixed(1));
+    const slEl=document.getElementById('sl-sl');if(slEl)slEl.value=S.sl;
+    const lvEl=document.getElementById('lv-sl');if(lvEl)lvEl.textContent=S.sl.toFixed(2)+' m';
+  }
+  if(fd){const cur=S.phi>=0?'↺ antihorari':'↻ horari';const tgt=OBJ_T.d===1?'↺':'↻';
+    fd.textContent='→ objectiu: '+tgt+' · actual: '+cur;}
+  set('lv-obj-h',OBJ_T.h.toFixed(1)+' m');set('lv-obj-m',OBJ_T.m);set('lv-obj-v',OBJ_T.v.toFixed(2)+' Hz');set('lv-obj-r',OBJ_T.r.toFixed(1)+' m');
+  // Info diàmetre actual: sl determina el diàmetre visual (rRx≈sl*1.1)
+  const dia_actual=(S.sl*1.1*2).toFixed(1);
+  const sl_need=(OBJ_T.r/1.1).toFixed(1);
+  set('fc-obj-r','→ sl='+sl_need+'m · actual: '+dia_actual+'m diàm.');
+}
+
+function initObjControls(){
+  // h
+  const slh=document.getElementById('sl-obj-h');if(slh)slh.addEventListener('input',()=>{OBJ_T.h=+slh.value;updateObjStatus();if(OBJ_LIVE)applyObjectivesLive();});
+  const slr=document.getElementById('sl-obj-r');if(slr)slr.addEventListener('input',()=>{OBJ_T.r=+slr.value;updateObjStatus();if(OBJ_LIVE)applyObjectivesLive();});
+  document.getElementById('bm-obj-r').addEventListener('click',()=>{OBJ_T.r=Math.max(1,Math.round((OBJ_T.r-0.5)*2)/2);const sr=document.getElementById('sl-obj-r');if(sr)sr.value=OBJ_T.r;updateObjStatus();if(OBJ_LIVE)applyObjectivesLive();});
+  document.getElementById('bp-obj-r').addEventListener('click',()=>{OBJ_T.r=Math.min(100,Math.round((OBJ_T.r+0.5)*2)/2);const sr=document.getElementById('sl-obj-r');if(sr)sr.value=OBJ_T.r;updateObjStatus();if(OBJ_LIVE)applyObjectivesLive();});
+  document.getElementById('bm-obj-h').addEventListener('click',()=>{OBJ_T.h=Math.max(0.5,OBJ_T.h-0.5);const s=document.getElementById('sl-obj-h');if(s)s.value=OBJ_T.h;updateObjStatus();if(OBJ_LIVE)applyObjectivesLive();});
+  document.getElementById('bp-obj-h').addEventListener('click',()=>{OBJ_T.h=Math.min(100,OBJ_T.h+0.5);const s=document.getElementById('sl-obj-h');if(s)s.value=OBJ_T.h;updateObjStatus();if(OBJ_LIVE)applyObjectivesLive();});
+  // m
+  const slm=document.getElementById('sl-obj-m');if(slm)slm.addEventListener('input',()=>{OBJ_T.m=+slm.value;updateObjStatus();if(OBJ_LIVE)applyObjectivesLive();});
+  document.getElementById('bm-obj-m').addEventListener('click',()=>{OBJ_T.m=Math.max(1,OBJ_T.m-1);const s=document.getElementById('sl-obj-m');if(s)s.value=OBJ_T.m;updateObjStatus();if(OBJ_LIVE)applyObjectivesLive();});
+  document.getElementById('bp-obj-m').addEventListener('click',()=>{OBJ_T.m=Math.min(12,OBJ_T.m+1);const s=document.getElementById('sl-obj-m');if(s)s.value=OBJ_T.m;updateObjStatus();if(OBJ_LIVE)applyObjectivesLive();});
+  // v
+  const slv=document.getElementById('sl-obj-v');if(slv)slv.addEventListener('input',()=>{OBJ_T.v=+slv.value;updateObjStatus();if(OBJ_LIVE)applyObjectivesLive();});
+  document.getElementById('bm-obj-v').addEventListener('click',()=>{OBJ_T.v=Math.max(0.01,Math.round((OBJ_T.v-0.1)*100)/100);const s=document.getElementById('sl-obj-v');if(s)s.value=OBJ_T.v;updateObjStatus();if(OBJ_LIVE)applyObjectivesLive();});
+  document.getElementById('bp-obj-v').addEventListener('click',()=>{OBJ_T.v=Math.min(20,Math.round((OBJ_T.v+0.1)*100)/100);const s=document.getElementById('sl-obj-v');if(s)s.value=OBJ_T.v;updateObjStatus();if(OBJ_LIVE)applyObjectivesLive();});
+}
+
+const PRESETS=[
+  { // 0 — Opció B: Segre estable sense vent
+    // f=3.5714Hz (=50/14): k=25, h_node_riu=24.6m >> hmt=18m hcat=11m ✓
+    vals:{T:35,P:1013,H:30,W:0,IR:50,
+          hmt:18,hcat:11,sl:10,so:10,h_pont_riu:5,a_riu:30,theta:0,
+          f1:3.5714,f2:3.5714,db1:100,db2:100,phi:90,tau:-5001,beta:1.2,
+          vmt:25,vcat:25,ph:90,f_mt:50,spd:0,sx_off:0},
+    model:'exc',sig:'sin',nodeFormula:'classic'
+  },
+  { // 1 — Opció A: Segre 2022 — 4 flames antihoraris amb vent W=3km/h
+    vals:{T:35,P:1013,H:30,W:3,IR:50,
+          hmt:18,hcat:11,sl:10,so:10,h_pont_riu:5,a_riu:30,theta:0,
+          f1:3.5714,f2:3.5714,db1:100,db2:100,phi:90,tau:-5001,beta:1.2,
+          vmt:25,vcat:25,ph:90,f_mt:50,spd:0,sx_off:0},
+    model:'exc',sig:'sin',nodeFormula:'classic'
+  },
+  { // 2 — Runaway arc (plasma autònom)
+    // f=10Hz (=50/5): k=25, h_node_riu=8.79m >> hmt=hcat=3m ✓
+    // Infraestructura baixa (h_pont_riu=2m)
+    vals:{T:35,P:1013,H:15,W:0,IR:70,
+          hmt:3,hcat:3,sl:6,so:10,h_pont_riu:2,a_riu:40,theta:0,
+          f1:10.0,f2:10.0,db1:120,db2:120,phi:90,tau:2000,beta:1.5,
+          vmt:25,vcat:25,ph:90,f_mt:50,spd:0,sx_off:0},
+    model:'arc',sig:'sin',nodeFormula:'classic'
+  },
+  { // 3 — Màxim camp EM (node molt proper als cables)
+    // f=16.667Hz (=50/3): k=25, h_node_riu=5.27m >> hmt=hcat=3m ✓
+    vals:{T:35,P:1013,H:20,W:0,IR:70,
+          hmt:3,hcat:3,sl:5,so:8,h_pont_riu:1.5,a_riu:30,theta:0,
+          f1:16.6667,f2:16.6667,db1:85,db2:85,phi:90,tau:1200,beta:1.2,
+          vmt:45,vcat:45,ph:90,f_mt:50,spd:0,sx_off:0},
+    model:'exc',sig:'sin',nodeFormula:'classic'
+  },
+  { // 4 — Batiment lent (f_bat=0.1Hz, rotació 1 òrbita/10s)
+    // f₁=3.52Hz, f₂=3.62Hz → f_bat=0.10Hz, h_node≈24.6m ✓
+    vals:{T:35,P:1013,H:30,W:0,IR:50,
+          hmt:18,hcat:11,sl:10,so:10,h_pont_riu:5,a_riu:30,theta:0,
+          f1:3.52,f2:3.62,db1:100,db2:100,phi:90,tau:-5001,beta:1.2,
+          vmt:25,vcat:25,ph:90,f_mt:50,spd:0,sx_off:0},
+    model:'exc',sig:'sin',nodeFormula:'classic'
+  },
+  { // 5 — Sentit invers φ=-90° (rotació CW)
+    vals:{T:35,P:1013,H:30,W:0,IR:50,
+          hmt:18,hcat:11,sl:10,so:10,h_pont_riu:5,a_riu:30,theta:0,
+          f1:3.5714,f2:3.5714,db1:100,db2:100,phi:-90,tau:-5001,beta:1.2,
+          vmt:25,vcat:25,ph:90,f_mt:50,spd:0,sx_off:0},
+    model:'exc',sig:'sin',nodeFormula:'classic'
+  },
+  { // 6 — Autònom acústic: arc brut → pAcSelf manté l'anell sense altaveus
+    // ▶so → espera T>7000K (⑤runaway) → para so → observa AUTO-SO
+    vals:{T:35,P:1013,H:15,W:0,IR:70,
+          hmt:3,hcat:3,sl:6,so:10,h_pont_riu:2,a_riu:40,theta:0,
+          f1:10.0,f2:10.0,db1:130,db2:130,phi:90,tau:2000,beta:1.5,
+          vmt:35,vcat:35,ph:90,f_mt:50,spd:0,sx_off:0},
+    model:'arc',sig:'sin',nodeFormula:'classic'
+  },
+  { // 7 — Autònom per S1+S2 (geometria Segre): el SO és el driver
+    // Sense S1+S2 no hi ha ionització a 24.6m (llindar ~58dB sense ressonància)
+    // AMB so k=25: llindar baixa a ~30dB → ▶so → espera runaway → para so
+    vals:{T:35,P:1013,H:30,W:0,IR:70,
+          hmt:18,hcat:11,sl:10,so:10,h_pont_riu:5,a_riu:30,theta:0,
+          f1:3.5714,f2:3.5714,db1:125,db2:125,phi:90,tau:-5001,beta:1.2,
+          vmt:25,vcat:25,ph:90,f_mt:50,spd:0,sx_off:0},
+    model:'arc',sig:'sin',nodeFormula:'classic'
+  }
+];
+let activePreset=-1;
+function loadPreset(idx){
+  if(sigOn)toggleSig();
+  resetAll();
+
+  // Desactivar tots els objectius i live per evitar que sobreescriguin el preset
+  OBJ_LIVE=false;
+  const liveBtn=document.getElementById('obj-live-btn');
+  if(liveBtn){liveBtn.textContent='live';liveBtn.classList.remove('on');}
+  Object.keys(OBJ).forEach(k=>{
+    if(OBJ[k]){
+      OBJ[k]=false;
+      const sw=document.getElementById('obj-'+k+'-sw');if(sw)sw.classList.remove('on');
+      const ctrl=document.getElementById('obj-'+k+'-ctrl');if(ctrl)ctrl.style.display='none';
+    }
+  });
+  const statusEl=document.getElementById('obj-status');
+  if(statusEl){statusEl.textContent='cap objectiu activat';statusEl.style.color='#406080';}
+
+  const p=PRESETS[idx];
+  Object.keys(p.vals).forEach(k=>{
+    S[k]=p.vals[k];
+    const el=document.getElementById('sl-'+k);
+    if(!el)return;
+    if(k==='f1'||k==='f2') el.value=freqToSl(S[k]);
+    else el.value=S[k];
+  });
+  setPlasmaModel(p.model);
+  setSig(p.sig);
+  T_plasma_K=S.T+273;
+  slowOrbit=p.slowOrbit||false;
+  // Aplicar la fórmula del node del preset
+  if(p.nodeFormula) setNodeFormula(p.nodeFormula);
+  activePreset=idx;
+  document.querySelectorAll('.pb-btn').forEach((b,i)=>b.classList.toggle('active',i===idx));
+  refreshUI();
+  // Auto-inici del so per a presets arc: no cal prémer ▶ so manualment
+  if(p.model==='arc'&&!sigOn){
+    setTimeout(()=>{if(!sigOn)toggleSig();},200);
+  }
+}
+
+function syncToEM(which){
+  const fKey=which===1?'f1':'f2';
+  const n=Math.max(1,Math.round(50/S[fKey]));
+  S[fKey]=Math.round(50/n*1000)/1000;
+  const sl=document.getElementById('sl-'+fKey);
+  if(sl)sl.value=freqToSl(S[fKey]);
+  refreshUI();
+}
+function setTauZero(){S.tau=0;document.getElementById('sl-tau').value=0;refreshUI();}
+
+// τ_òptim: el retard que fa que fase_EM_total = 90° (pic de sensibilitat d'ionització)
+// fase_EM_total = ((t_viatge + τ) / T_EM) * 2π
+// Per a fase=90°: (t_viatge + τ) = T_EM/4 + n*T_EM
+// τ_opt = T_EM/4 - (t_viatge mod T_EM)
+// Si τ_opt > T_EM/2, restem T_EM per agafar el cicle més proper
+function autoOptimize(){
+  const tv_us=hNode1()/vso()*1e6;
+  const T_EM_us=20000;
+  const tv_mod=((tv_us%T_EM_us)+T_EM_us)%T_EM_us;
+  // Amb Math.abs(sin) els pics òptims són 90° I 270° — trobar el de menor |τ|
+  let tau_best=15000;
+  [90,270].forEach(fase_obj=>{
+    let tau=fase_obj/360*T_EM_us-tv_mod;
+    while(tau>T_EM_us/2)tau-=T_EM_us;
+    while(tau<-T_EM_us/2)tau+=T_EM_us;
+    if(Math.abs(tau)<Math.abs(tau_best))tau_best=tau;
+  });
+  S.tau=Math.max(-10000,Math.min(10000,Math.round(tau_best)));
+  document.getElementById('sl-tau').value=S.tau;
+  refreshUI();
+}
+
+const DEF={
+  spd:[-2,2,0.05,0],
+  T:[0,50,0.1,35],P:[950,1050,1,1013],H:[5,100,1,30],W:[0,40,0.1,0],IR:[0,100,1,0],
+  // ── GEOMETRIA LÍNIES ELÈCTRIQUES (coordenades respecte al RIU) ──
+  hmt:[0.01,80,0.1,18],    // MT sobre riu (pals a la riba/riu)
+  hcat:[0.01,80,0.1,11],   // Cat sobre riu (auto: h_pont_riu+h_cat_pont)
+  sl:[0.01,50,0.01,10],    // separació horitzontal MT↔Cat
+  // ── GEOMETRIA RIU I FONTS ──
+  h_pont_riu:[0.01,50,0.1,5],   // alçada pont sobre riu
+  h_cat_pont:[0.01,20,0.1,6],   // alçada Cat sobre pont
+  a_riu:[5,100,1,30],            // amplada del riu (m) [max 100m]
+  theta:[0,45,0.5,0],           // angle convergència fonts (°)
+  so:[0.01,50,0.01,10],    // separació S1/S2
+  // ── FREQÜÈNCIES (lineal 0.01-400Hz, pas 0.1Hz) ──
+  f1:[0.01,400,0.1,3.5714],f2:[0.01,400,0.1,3.5714],
+  db1:[0,250,1,0],db2:[0,250,1,0],phi:[-180,180,1,90],
+  tau:[-10000,10000,1,0],  // retard en µs
+  beta:[1.0,5.0,0.05,1.2],
+  vmt:[0,50,0.1,25],vcat:[0,50,0.1,25],ph:[0,180,1,90],
+  f_mt:[40,70,0.1,50],  // Freqüència línia MT Hz (Cat=f_mt+ph)
+  sx_off:[-30,30,0.1,0]  // Posició lateral S₁S₂ (m, + dreta / - esquerra)
+};
+const S={};Object.keys(DEF).forEach(k=>S[k]=DEF[k][3]);
+function clamp(v,a,b){return Math.max(a,Math.min(b,v));}
+function rnd(v,d){const p=Math.pow(10,d==null?4:d);return Math.round(v*p)/p;}
+function initControls(){Object.keys(DEF).forEach(k=>{
+  if(k==='f1'||k==='f2')return; // f1/f2: gestió lineal per initFreqControls
+  // hcat: ara és directament configurable des del riu (no auto des de h_cat_pont)
+  const[mn,mx,st]=DEF[k];const sl=document.getElementById('sl-'+k);if(sl)sl.addEventListener('input',()=>{S[k]=+sl.value;if(k==='h_pont_riu'||k==='h_cat_pont')updateHcat();refreshUI();});const bm=document.getElementById('bm-'+k);if(bm)bm.addEventListener('click',()=>{S[k]=rnd(clamp(S[k]-st,mn,mx),4);const s2=document.getElementById('sl-'+k);if(s2)s2.value=S[k];refreshUI();});const bp=document.getElementById('bp-'+k);if(bp)bp.addEventListener('click',()=>{S[k]=rnd(clamp(S[k]+st,mn,mx),4);const s2=document.getElementById('sl-'+k);if(s2)s2.value=S[k];refreshUI();});});}
+
+const F_EM=50;
+const MU0=4*Math.PI*1e-7;
+const ALPHA_RECOMB=2e-13;
+const P0=101325;
+const T_EM_US=20000; // µs
+
+function vso(){return 331*Math.sqrt((S.T+273)/273);}
+// RANG DE RAYLEIGH i fórmules alternatives — hNodeReal() tria la fórmula activa
+function hNode1(){return hNodeReal();}
+function hNode2(){
+  // per a S₂: usa la mateixa fórmula però amb f₂
+  const f1_orig=S.f1;S.f1=S.f2;const h=hNodeReal();S.f1=f1_orig;return h;
+}
+function lambda1(){return vso()/Math.max(S.f1,0.0001);}
+function lambda2(){return vso()/Math.max(S.f2,0.0001);}
+function alphaEm(){return Math.atan((S.so/2)/Math.max(hNode1(),0.001))*180/Math.PI;}
+// Les línies han d'estar PER SOTA del node — usem la més alta de les dues
+function hLinsMax(){return Math.max(S.hmt,S.hcat);} // coords riu
+function hLinsMig(){return (S.hmt+S.hcat)/2;}               // coords riu
+function hLinsMaxFonts(){return Math.max(0,hLinsMax()-S.h_pont_riu);} // sobre fonts
+function hLinsMigFonts(){return Math.max(0,hLinsMig()-S.h_pont_riu);}  // sobre fonts
+// Condició física real del reflector acústic:
+// Les ones pugen des del terra → reflexió parcial a les línies → ona estacionària
+// Node de velocitat (màxim vòrtex) a λ/4 des del terra = h_node
+// Les línies han d'estar a λ/2 = 2·h_node per ser el reflector correcte
+// (on la velocitat és mínima → les línies no pertorben el flux)
+// Tolerància: ±25% de λ/4 per admetre resonàncies imperfectes
+function linesOk(){
+  // Condició mínima: les línies existeixen amb alçada positiva.
+  // La condició d'alçada òptima (h_cables≈2·h_node) es mostra com a informació
+  // però no bloqueja el càlcul — el camp EM arriba al node sempre.
+  return S.hmt>0.001&&S.hcat>0.001;
+}
+function fBat(){return Math.abs(S.f1-S.f2);}
+function fRotVortex(){return fBat()>0.01?fBat():S.f1;}
+function sgGir(t){
+  const fb=fBat();
+  // Si l'objectiu de direcció és actiu → φ constant (no oscil·la amb el batiment)
+  // Si no → φ varia amb el temps creant l'oscil·lació natural del batiment
+  const useTimePhi=fb>0.01&&!(typeof OBJ!=='undefined'&&OBJ.d);
+  const phi=S.phi*Math.PI/180+(useTimePhi?2*Math.PI*fb*(t||0):0);
+  const r=Math.sin(phi)*eta();
+  return Math.abs(r)<0.03?0:r>0?1:-1;
+}
+
+// Acoblament η
+// ── Acoblament η per a ones VIATGERES ──
+// η_so(f): eficiència de l'apertura d'array en funció de f
+// Per a ones viatgeres: η = √(η_so(f₁) · η_so(f₂))
+// La fórmula anterior sinc(π·Δh/λ) era per a ones ESTACIONÀRIES — incorrecta aquí
+function etaSo(){const x=Math.PI*S.so/lambda1();return x<0.001?1:Math.abs(Math.sin(x)/x);}
+function etaSo2(){const x=Math.PI*S.so/lambda2();return x<0.001?1:Math.abs(Math.sin(x)/x);}
+function etaF(){return Math.sqrt(etaSo()*etaSo2());} // η correcta ones viatgeres
+function eta(){return etaF();} // η = √(η_so(f₁)·η_so(f₂))
+function rotEfectiu(){return Math.sin(S.phi*Math.PI/180)*eta();}
+
+// ── SINCRONITZACIÓ TEMPORAL ac↔EM en µs ──
+// t_viatge: temps que triga l'ona acústica des del transductor fins al node
+function tViatgeUs(){return hNode1()/vso()*1e6;} // µs
+
+// fase_EM quan el pic acústic arriba al node + el retard τ
+// fase_total = ((t_viatge + τ) / T_EM) * 360° (en graus)
+function faseEMTotal(){
+  const t_tot_us=tViatgeUs()+S.tau;
+  return ((t_tot_us%T_EM_US+T_EM_US)%T_EM_US)/T_EM_US*360; // 0°-360°
+}
+// Qualitat de sincronització: màxima quan fase=90° (EM al pic de pujada)
+// q_sync = sin(fase_total) si fase entre 0-180°, màxim a 90°
+// CORRECCIÓ: Math.abs() no Math.max(0,...) — el camp EM ionitza tant al pic +90° com al -270°
+// |sin(90°)|=1 ✓, |sin(270°)|=|-1|=1 ✓, |sin(0°)|=0 ✓, |sin(180°)|=0 ✓
+function qSync(){return Math.abs(Math.sin(faseEMTotal()*Math.PI/180));}
+
+// Factor k: ressonància paramètrica
+function factorK(f){
+  // Corba Lorentziana: k(Δf) = k_max / (1+(Δf/Δf₀)²)
+  // Δf₀ = f₀/(2Q) = semibanda de ressonànica (Q depèn estabilitat plasma)
+  // Retorna el MÀXIM dels harmònics (no la suma) — cada freqüència resona amb
+  // el seu millor harmònic. k_max=25 igual per a tots els harmònics n (física correcta:
+  // l'amplificació màxima a ressonànica és independent de quin harmònic és).
+  if(f<=0.001)return 0.8;
+  const F_em=S.f_mt||F_CABLE;
+  const Q=PLASMA_MODEL==='exc'?30:PLASMA_MODEL==='arc'?10:20;
+  let k_best=0.8; // mínim de fons
+  for(let n=1;n<=14;n++){
+    const f0=F_em/n;       // harmònic n-èssim
+    const df0=f0/(2*Q);    // semibanda Lorentz
+    const k_n=25/(1+Math.pow((f-f0)/df0,2)); // k_max=25 constant
+    if(k_n>k_best)k_best=k_n; // agafar el MÀXIM, no sumar
+  }
+  return k_best;
+}
+function factorKTotal(){
+  // Mecànismes de ressonància disponibles:
+  // 1. S1 directe                     → factorK(f1)
+  // 2. S2 directe                     → factorK(f2)
+  // 3. Batiment S1−S2                 → factorK(|f1−f2|)
+  // 4. Batiment paramètric S1−MT      → factorK(|f1−f_MT|)  ← CLAU per a 46.4Hz+50Hz
+  // 5. Batiment paramètric S2−Cat     → factorK(|f2−f_MT|)
+  // S'agafa el MÀXIM: si qualsevol mecanisme és en ressonànica, el sistema s'acobla
+  const fm=fEM();
+  const fb=fBat();                   // |f1-f2|
+  const fbe1=Math.abs(S.f1-fm);     // |f1-f_MT| batiment paramètric
+  const fbe2=Math.abs(S.f2-fm);     // |f2-f_MT| batiment paramètric
+  return Math.max(
+    factorK(S.f1),
+    factorK(S.f2),
+    fb>0.01  ? factorK(fb)   : 0,
+    fbe1>0.01? factorK(fbe1) : 0,   // ressonànica paramètrica MT−S1
+    fbe2>0.01? factorK(fbe2) : 0,   // ressonànica paramètrica Cat−S2
+    0.8
+  );
+}
+
+// EM
+function dvEM(){const ph=S.ph*Math.PI/180;return Math.sqrt(S.vmt**2+S.vcat**2-2*S.vmt*S.vcat*Math.cos(ph));}
+// Camp EM al node: distància 2D real entre el node i cada línia
+// Inclou la separació horitzontal sl/2 — evita E→∞ quan h_node≈h_linia
+function campEMAlNode(){
+  // Coordenades riu: h_node_riu = hNode1() + h_pont_riu
+  if(dvEM()<0.001)return 0;
+  const hn_riu=hNode1()+S.h_pont_riu; // node en coordenades riu
+  const d_mt=Math.sqrt(Math.pow(S.sl/2,2)+Math.pow(hn_riu-S.hmt,2));
+  const d_cat=Math.sqrt(Math.pow(S.sl/2,2)+Math.pow(hn_riu-S.hcat,2));
+  const e_mt=S.vmt/Math.max(d_mt,0.1);
+  const e_cat=S.vcat/Math.max(d_cat,0.1);
+  // MT (zona velocitat): acoblament cinètic ponderat per V(h_mt)
+  // Cat (zona pressió): acoblament ionitzador ponderat per P(h_cat)
+  const v_mt=swV(S.hmt), p_cat=swP(S.hcat);
+  // Suma dels dos acoblaments (MT cinètic + Cat ionitzador) — no normalitzar
+  return e_mt*v_mt+e_cat*p_cat;
+}
+function campEMCat(){ // camp EM Cat per corona (ionització)
+  if(dvEM()<0.001)return 0;
+  const hn_riu=hNode1()+S.h_pont_riu;
+  const d=Math.sqrt(Math.pow(S.sl/2,2)+Math.pow(hn_riu-S.hcat,2));
+  return S.vcat/Math.max(d,0.1)*swP(S.hcat);
+}
+function campEMMT(){ // camp EM MT per acoblament cinètic
+  if(dvEM()<0.001)return 0;
+  const hn_riu=hNode1()+S.h_pont_riu;
+  const d=Math.sqrt(Math.pow(S.sl/2,2)+Math.pow(hn_riu-S.hmt,2));
+  return S.vmt/Math.max(d,0.1)*swV(S.hmt);
+}
+function temHaEm(){return emOn&&dvEM()>0.5;} // respecta toggle ⚡ EM ON/OFF
+function eRup(){
+  // Llei de Paschen modificada per rarefacció acústica (Meek & Craggs, 1953)
+  // La ionització succeeix DURANT LA RAREFACCIÓ: P_local = P_atm - P_ac
+  // (la compressió augmenta el llindar; la rarefacció el redueix)
+  const Tk=S.T+273;
+  const P_atm_Pa=S.P*100; // Pa (P_atm estàtica)
+  const P_ac_Pa=pAc();    // Pa (amplitud pressió acústica)
+  // Pressió mínima del cicle: és quan la ionització es pot produir
+  const P_min=Math.max(100, P_atm_Pa-P_ac_Pa); // 100 Pa = buit gairebé pur (saturació acústica)
+  // Efecte tèrmic i humitat: factors de reducció empírics
+  return 3000*(P_min/101325)*(293/Tk)*Math.max(0.3,1-S.H*0.003)*Math.max(0.5,1-S.IR*0.005);
+}
+
+// La sincronització µs ara entra directament com a factor de reducció
+// Factor sync = q_sync = sin(fase_total) — depèn del retard τ
+// Quan q_sync=1 (fase=90°): ionització màxima → llindar mínim
+// ── POTÈNCIES INDEPENDENTS S₁ i S₂ ──
+// La física exigeix AMBDUES fonts:
+// • Ionització: P_combinat = √(P₁²+P₂²+2P₁P₂cos(φ)) — redueix llindar
+// • OAM/rotació: ∝ P₁·P₂·sin(φ) — ZERO si qualsevol font és apagada
+// → S₁ i S₂ són simètriques i mútuament necessàries per al toroide
+function pAc1(){return 20e-6*Math.pow(10,Math.min(S.db1,250)/20);}
+function pAc2(){return 20e-6*Math.pow(10,Math.min(S.db2,250)/20);}
+function pAcCombined(){const p1=pAc1(),p2=pAc2(),phi_r=S.phi*Math.PI/180;return Math.sqrt(p1*p1+p2*p2+2*p1*p2*Math.cos(phi_r));}
+function pAcSelf(){
+  // Auto-ressonància acústica: el plasma calent emet so per ell mateix
+  // Mecanisme: radiació acústica de Lighthill per vòrtex calent turbulent (1952)
+  // P_self ∝ η_ac × (T/T₀)² × (r_pl/R_tor)² × P_atm
+  // η_ac = 0.001 (0.1% eficiència acústica típica per plasma turbulent)
+  // Freqüència dominant: c_s/(2πr_pl) — si coincideix amb f_node → k=25
+  if(toroideSmooth<0.25||T_plasma_K<800)return 0;
+  const T0=300,P_atm=S.P*100;
+  const r_pl=Math.max(rPlasmaFromBennett(ionSmooth),0.05);
+  const R_tor=Math.max(hNode1(),1);
+  const eta_ac=0.001; // eficiència acústica 0.1%
+  // Emissió creixent amb T² i amb l'estabilitat del toroide
+  const P_self=eta_ac*P_atm*Math.pow(T_plasma_K/T0,2)*Math.pow(r_pl/R_tor,2)*toroideSmooth;
+  // Freqüència d'emissió: verificar si és ressonant amb el node
+  const c_s_pl=Math.sqrt(1.4*1.38e-23*T_plasma_K/(28*1.66e-27));
+  const f_emit=c_s_pl/(2*Math.PI*r_pl); // freqüència de vibració del canal
+  // Coincideix amb un harmònic de 50Hz? → amplificació per k-factor
+  const k_self=Math.min(factorKTotal(),25); // usa el k actual (depèn de f1)
+  // Factor de coincidència: freqüència d'emissió vs freqüència del node acústic
+  // Si f_emit ≈ f_node → ressonància màxima (k_self aplicat)
+  const f_node_Hz=vso()/(4*Math.max(hNode1(),1));
+  // Factor de coincidència suau (tolerant a variacions de T)
+  const ratio=f_emit/Math.max(f_node_Hz,0.001);
+  const match=1/(1+Math.pow(Math.log(Math.max(ratio,1e-6)),2)*0.5);
+  return P_self*(1+match*k_self*0.2);
+}
+function pAc(){return pAcCombined()+(sigOn?0:pAcSelf());} // so extern O auto-generat
+function pAcTotal(){return pAcCombined()+pAcSelf();} // suma total per a la física
+function dbCombined(){
+  const pa=sigOn?pAcCombined():Math.max(pAcCombined(),pAcSelf());
+  return pa>0?Math.max(0,20*Math.log10(pa/20e-6)):0;
+}
+function dbSelf(){const ps=pAcSelf();return ps>0?20*Math.log10(ps/20e-6):0;}
+function oamStrength(){return pAc1()*pAc2()*Math.abs(Math.sin(S.phi*Math.PI/180));}
+function pAcEff(){const pa=pAc();return pa*(1+S.beta*Math.sqrt(pa/P0));}
+function eRupEff(){
+  const k=factorKTotal(),qs=qSync();
+  const pac_norm=clamp(dbCombined()/150,0,1);
+  return eRup()/Math.max(1,1+k*qs*pac_norm);
+}
+function dXoc(){const pa=pAc();if(pa<1e-6)return 9999;const rho=1.2*(S.P/1013)*(293/(S.T+273));return rho*vso()*vso()/(S.beta*2*Math.PI*S.f1*pa);}
+function xocAbansDeNode(){return dXoc()<hNode1();}
+function llindarEff(){
+  if(!temHaEm())return 999;
+  const Er=eRupEff()/1000,Em=campEMAlNode();
+  if(Em<Er*0.005)return 199;
+  const et=Math.max(eta(),0.01),xf=xocAbansDeNode()?1.0:Math.min(S.beta,2);
+  return clamp(20*Math.log10(Math.max(632*Math.pow(1/Math.max(Em/Er,0.02),2.5)/(et*xf),20e-6)/20e-6),20,250);
+}
+function llindarBase(){
+  if(!temHaEm())return 999;
+  const Er=eRup()/1000,Em=campEMAlNode();
+  if(Em<Er*0.005)return 199;
+  return clamp(20*Math.log10(Math.max(632*Math.pow(1/Math.max(Em/Er,0.02),2.5),20e-6)/20e-6),70,250);
+}
+
+// Inestabilitats
+// Model de plasma: 'exc' = N2 excitat, 'fre' = plasma fred, 'arc' = arc clàssic
+let PLASMA_MODEL='exc';
+function setPlasmaModel(m){
+  PLASMA_MODEL=m;
+  ['exc','fre','arc'].forEach(x=>document.getElementById('pm-'+x).classList.toggle('on',x===m));
+  const descs={
+    exc:'N₂ excitat · T~300-800K',
+    fre:'Plasma fred · T~500-2000K',
+    arc:'Arc clàssic · T~5-15kK'
+  };
+  document.getElementById('pm-desc').textContent=descs[m];
+  refreshUI();
+}
+
+function Tplasma(ion){
+  // NOTA: aquesta funció JA NO s'usa en càlculs de física interns.
+  // Tots els càlculs usen T_plasma_K (temperatura dinàmica real).
+  // Tplasma() es conserva ÚNICAMENT com a referència de la temperatura
+  // d'equilibri estimada si ionSmooth → equilibri instantani.
+  if(ion<=0||!temHaEm())return S.T+273;
+  const Em=campEMAlNode(),Er=eRup()/1000;
+  if(PLASMA_MODEL==='exc')return(S.T+273)+ion*(800-(S.T+273)); // màx 800K
+  if(PLASMA_MODEL==='fre')return(S.T+273)+ion*(2000-(S.T+273)); // màx 2000K
+  // arc:
+  return 2000+clamp(Em/Er,0,5)*2500*ion; // fins 15000K
+}
+
+function ne_plasma(ion){
+  if(ion<=0)return 0;
+  if(PLASMA_MODEL==='exc'){
+    // N2 excitat: ionització parcial molt baixa, ne~10^13-10^15
+    return Math.pow(10,13+ion*2); // 10^13 → 10^15
+  }
+  if(PLASMA_MODEL==='fre'){
+    // Plasma fred: ionització parcial, ne~10^14-10^16
+    return Math.pow(10,14+ion*2); // 10^14 → 10^16
+  }
+  // arc: ne alta com abans
+  if(ion<0.3)return Math.pow(10,15+ion*7);
+  return Math.pow(10,17+(ion-0.3)/0.7*5);
+}
+
+function tauRecomb(ion){
+  const ne=ne_plasma(ion);if(ne<1)return 9999;
+  // Usar T_plasma_K (temperatura dinàmica real) en lloc de Tplasma(ion) (lookup estàtica)
+  const Tp=Math.max(T_plasma_K, S.T+273);
+  const alpha=ALPHA_RECOMB*Math.sqrt(300/Math.max(Tp,300));
+  return 1/(alpha*ne);
+}
+// ── VISCOSITAT FÍSICA: Llei de Sutherland (gas) + Spitzer (plasma) ──────
+// Sutherland: μ(T) = μ_ref·(T/T_ref)^(3/2)·(T_ref+S_C)/(T+S_C)
+// Spitzer (ionitzat): μ ∝ T^(5/2)/ln(Λ) [Λ=Coulomb log≈10]
+// ν = μ/ρ on ρ = P·M/(R·T) per gas ideal
+const MU_REF=1.716e-5, T_VISCO_REF=273.15, S_SUTH=110.4; // Sutherland constants aire
+function muSutherland(T_K){
+  return MU_REF*Math.pow(T_K/T_VISCO_REF,1.5)*(T_VISCO_REF+S_SUTH)/(T_K+S_SUTH);
+}
+function nuVisc(T_K){
+  // Per sota de 1000K: gas neutral → Sutherland
+  // Per sobre: plasma → viscositat Spitzer (creix amb T^5/2)
+  const mu = T_K<1000 ? muSutherland(T_K) :
+             muSutherland(1000)*Math.pow(T_K/1000,2.5)/10; // Spitzer ~T^5/2
+  const rho=(S.P*100)*0.029/(8.314*T_K); // densitat kg/m³ (gas ideal)
+  return mu/rho; // viscositat cinemàtica m²/s
+}
+// Reynolds: Re = v·L/ν — on v és la velocitat característica del vòrtex
+function reNum(v_char,L_char,T_K){
+  return v_char*L_char/Math.max(nuVisc(T_K),1e-10);
+}
+
+// ── r_plasma DES DE BENNETT (Z-pinch autoinduït) ─────────────────────────
+// Equilibri de pressió: p_tèrmica = p_magnètica_autoinduïda
+// a_Bennett = I / (2π · √(2·ne·kT/μ₀))
+// NOTA HONESTA: per a N₂ excitat (ne baix), a_Bennett >> R_tor →
+// el plasma NO és magèticament confinat. En aquest règim usem el rang de Rayleigh.
+function rPlasmaFromBennett(ion){
+  // Equilibri Bennett Z-pinch: μ₀·I² = 8π·N·kT, N = π·r²·nₑ
+  // → r_B = I / (2π·√(2·nₑ·kT/μ₀))
+  // SENSE r_min artificial: s'usa el criteri físic d'existència del Z-pinch.
+  // Criteri: Z-pinch format quan I > I_thresh (corrent mínim per a confinament).
+  // Per sota: plasma difús no confinat → r_plasma → R_tor → nm=1.
+  const ne=ne_plasma(Math.max(ion,0.01));
+  // Temperatura real: per 'exc' és propera a l'ambient (convecció la manté freda)
+  const T_real=PLASMA_MODEL==='exc'?Math.min(T_plasma_K,800):T_plasma_K;
+  const kT=1.38e-23*Math.max(T_real,300);
+  const I=Math.max(I_plasma_A,0.001);
+  const denom=2*Math.PI*Math.sqrt(2*ne*kT/MU0);
+  if(denom<1e-10)return hNode1();
+  const r_B=I/denom;
+  const R_tor=hNode1();
+  // I_thresh: corrent per a r_B = R_tor (nm=1 lower bound)
+  // Quan I < 1% de I_thresh → plasma completament difús → nm=1
+  const I_thresh=R_tor*denom;
+  if(I<I_thresh*0.01){return R_tor;} // plasma difús, nm=1
+  // Sense cap artificial r_min: r_B pot ser qualsevol valor físic
+  // Únic límit: no pot superar R_tor (plasma no pot excedir el toroide)
+  return Math.min(r_B, R_tor);
+}
+
+// ── SOROLL CORONA EM com a S₂ opcional ──────────────────────────────────
+// Les línies elèctriques emeten acústicament per descàrrega corona:
+// f_corona = 50Hz, 100Hz, 150Hz... (harmònics de la xarxa)
+// Si S.emCorona=true i f₁≈50-Δf: f_bat=Δf → node a height
+let emCoronaMode=false; // activable per l'usuari
+function f_corona_dominant(){return 50;} // Hz - primer harmònic
+function dbCorona(){
+  // Soroll de corona: fórmula empírica CIGRE / IEEE Std 430-2017
+  // L = K + 40·log10(V/V_ref) - 20·log10(d/d_ref)
+  // K=55dB: conductor 1-2cm, condicions seques, V_ref=25kV, d_ref=10m
+  // (ref anterior db_ref=-20 era incorrecta — nivell real 25kV a 10m: ~55dB)
+  const K=55, V_ref=25, d_ref=10;
+  const v_max=Math.max(S.vmt,S.vcat,0.1);
+  // node en coords riu = hNode1()+h_pont_riu; cables ja en coords riu
+  const d_node=Math.sqrt(Math.pow(S.sl/2,2)+Math.pow(hNode1()+S.h_pont_riu-S.hmt,2));
+  const H_corr=(S.H>80?4:S.H>60?2:S.H<30?-2:0); // humitat: +4dB si H>80%
+  return K + 40*Math.log10(v_max/V_ref) - 20*Math.log10(Math.max(d_node,1)/d_ref) + H_corr;
+}
+
+function tauTurb(){
+  // Temps de turbulència: L/v_rms
+  // v_rms depèn de la velocitat del vent I de la flotabilitat tèrmica
+  // Correcció: la turbulència cau quan T és molt alta (Re baix → flux laminar)
+  const L=hNode1(), vW=S.W/3.6;
+  const Tk=Math.max(S.T+273, 273);
+  const T_eff=T_plasma_K>Tk+50?T_plasma_K:Tk;
+  const nu=nuVisc(T_eff);
+  const v_mec=Math.max(0.01,0.15*vW);
+  const dT_dz=(S.T-18)/Math.max(L,0.1);
+  const v_term=Math.sqrt(Math.max(0,9.81/Tk*Math.abs(dT_dz)*L));
+  const v_rms=Math.sqrt(v_mec*v_mec+v_term*v_term);
+  // Turbulència suprimida si Re < 2300 (flux laminar)
+  const Re_tor=reNum(v_rms,L,T_eff);
+  const turb_factor=Re_tor>2300?1:clamp((Re_tor-500)/1800,0,1);
+  return L/(Math.max(v_rms,0.001)*Math.max(turb_factor,0.001));
+}
+function tauZpinch(ion){
+  // Nota física: l'ona d'Alfvén (v_A = B/√(μ₀ρ)) NO aplica a plasma atmosfèric feblament
+  // ionitzat (fracció iònica ~0.001%), on la massa de l'aire neutre no és arrossegada
+  // pel camp magnètic. El temps de col·lapse del Z-pinch es governa pel temps acústic
+  // de travessa: τ_Z ≈ R_tor / c_so (Kruskal-Shafranov 1958).
+  if(PLASMA_MODEL==='exc')return 9999; // N₂ excitat: sense corrent → Z-pinch no aplica
+  // Arc model: l'estabilitat ve del runaway tèrmic, no del Z-pinch.
+  // La temperatura puja ràpidament (>1000K/s) fent c_s >> v_node → tauZpinch→0.
+  // Per arc, la limitació és tau_recomb (igual que exc): el EM pot re-ionitzar
+  // mentre hi ha recombinació → estabilitat per tau_recomb.
+  if(PLASMA_MODEL==='arc')return 9999;
+  if(ion<0.05||!temHaEm())return 9999;
+  // Criteri Kruskal-Shafranov per a altres models (fre):
+  const T_K=Math.max(T_plasma_K, S.T+273);
+  const c_s=Math.sqrt(1.4*1.38e-23*T_K/(28*1.66e-27));
+  const R_tor=Math.max(hNode1(),1.0);
+  return R_tor/Math.max(c_s,1);
+}
+function qNode(){const r=0.3,h=hNode1(),lam=lambda1();return clamp(r*Math.abs(Math.sin(Math.PI*h/(lam/2)))*Math.exp(-h/lam)+0.05,0,1);}
+function margeEstabilitat(ion){
+  if((!sigOn&&!plasmaAutonom)||ion<0.01)return 0;
+  const t_min=Math.min(tauRecomb(ion),tauTurb(),tauZpinch(ion));
+  const qs=qSync();
+  // La sincronització ac↔EM (qSync) augmenta l'eficàcia de cada cicle de reionització:
+  // quan el "cop de so" coincideix exactament amb el pic del camp EM,
+  // cada 20ms el plasma rep una reionització de força (1+qSync) vegades major
+  // → τ_reion_efectiu = τ_reion / (Q * (1 + qSync))
+  const t_r=(1/F_EM)/(Math.max(qNode(),0.01)*(1+qs));
+  return t_min/t_r;
+}
+
+function calcIon(){
+  // Ionització tèrmica Saha: activa quan T_plasma>5000K (arc, independent d'EM extern)
+  // Dura ~τ_recomb=17ms → breve auto-sustentació física real
+  if(PLASMA_MODEL==='arc'&&T_plasma_K>5000&&toroideSmooth>0.3){
+    // Saha simplificat: xe ∝ exp(-E_i/2kT), normalitzat a 1% a 7000K
+    const Saha_frac=Math.min(0.6, Math.exp(-(1.5e4/T_plasma_K))*0.8);
+    if(Saha_frac>0.01) return Saha_frac; // es manté parcialment sense EM
+  }
+  // So extern O auto-generat permeten la ionització
+  const hasSoundSelf=pAcSelf()>1e-3; // >34dB auto-so suficient
+  if((!sigOn&&!hasSoundSelf)||!linesOk()||!temHaEm())return 0;
+  const ld=llindarEff();if(ld>=199)return 0;
+  // Ionització directa: pressió acústica COMBINADA (qualsevol font activa ajuda)
+  const dbc=dbCombined();
+  const r=dbc/ld;
+  let ion_direct=0;
+  if(r>=0.5){
+    if(r<0.8)ion_direct=clamp((r-0.5)/0.3*0.3,0,0.3);
+    else if(r<1)ion_direct=clamp(0.3+(r-0.8)/0.2*0.4,0,0.7);
+    else ion_direct=clamp(0.7+(r-1)*0.5,0,1);
+  }
+  // M3 — Bombeig paramètric N₂ metaestable (Adamovich et al. 2015):
+  // Corona de la línia MT pre-activa N₂; ressonància acústica transfereix
+  // energia EM al plasma. Màx. +4% quan tot és òptim; desapareix sota llindar.
+  // [Bug corregit: db_ratio=dbc/llindar en lloc d'E_ratio=campEM/eRupEff*1000]
+  const db_ratio=clamp(dbc/Math.max(ld,1),0,1);
+  const taxa_em=db_ratio*qSync()*clamp(dbCombined()/120,0,1)*0.04;
+  return clamp(ion_direct+taxa_em,0,1);
+}
+function calcVortex(){
+  // So auto-generat manté el vòrtex si el plasma és prou calent i estable
+  const hasSelf=pAcSelf()>20e-6*Math.pow(10,30/20); // >30dB auto-so
+  if(!sigOn&&!hasSelf&&!plasmaAutonom)return 0;
+  if(!sigOn&&!hasSelf)return 0;
+  const re=Math.abs(rotEfectiu());if(re<0.03)return 0;
+  // OAM ∝ P₁·P₂·sin(φ) — ZERO si P₁=0 o P₂=0 (simetria física real)
+  // Si una font és apagada → cap rotació, per molt que l'altra emeti
+  // Normalitzat: √(db₁·db₂)/150
+  return re*Math.sqrt(S.db1*S.db2)/150;
+}
+
+function fmtT(s){if(s>=9999)return'>9999s';if(s>1)return s.toFixed(1)+'s';if(s>0.001)return(s*1000).toFixed(1)+'ms';return(s*1e6).toFixed(0)+'µs';}
+function fmtPa(pa){if(pa<1e-3)return(pa*1e6).toFixed(1)+'µPa';if(pa<1)return(pa*1e3).toFixed(1)+'mPa';if(pa<1000)return pa.toFixed(0)+'Pa';if(pa<1e6)return(pa/1000).toFixed(1)+'kPa';return(pa/1e5).toFixed(2)+'bar';}
+
+function refreshUI(){
+  const spd=Math.pow(10,S.spd);set('lv-spd','×'+(spd<0.01?spd.toFixed(3):spd.toFixed(2)));
+  set('lv-T',S.T.toFixed(1)+'°C');set('lv-P',S.P.toFixed(0)+' hPa');set('lv-H',S.H.toFixed(0)+'%');
+  set('lv-W',S.W.toFixed(1)+' km/h');set('lv-IR',S.IR.toFixed(0)+'%');
+  set('lv-hmt',S.hmt.toFixed(2)+' m');set('lv-hcat',S.hcat.toFixed(2)+' m');set('lv-sl',S.sl.toFixed(2)+' m');
+  set('lv-so',S.so.toFixed(2)+' m');
+  set('lv-f1',fmtFreq(S.f1));set('lv-f2',fmtFreq(S.f2));
+  set('lv-db1',S.db1.toFixed(0)+' dB');set('lv-db2',S.db2.toFixed(0)+' dB');set('lv-phi',(S.phi>=0?'+':'')+S.phi.toFixed(0)+'°');
+  set('lv-tau',(S.tau>=0?'+':'')+S.tau.toFixed(0)+' µs');
+  set('lv-beta',S.beta.toFixed(2));
+  set('lv-vmt',S.vmt.toFixed(1)+' kV');set('lv-vcat',S.vcat.toFixed(1)+' kV');set('lv-ph',S.ph.toFixed(0)+'°');
+  document.getElementById('pb-db1').style.width=(S.db1/250*100)+'%';document.getElementById('pb-db2').style.width=(S.db2/250*100)+'%';
+  // dB combinat i OAM
+  const dbc=dbCombined(),oam_s=oamStrength();
+  const dbcEl=document.getElementById('fc-db-comb');if(dbcEl){dbcEl.textContent=dbc.toFixed(0)+' dB';dbcEl.style.color=dbc>100?'#40c080':dbc>50?'#e0a030':'#8892aa';}
+  const oamEl=document.getElementById('fc-oam');
+  if(oamEl){
+    const p1=pAc1(),p2=pAc2(),oam_max=Math.max(p1*p1,p2*p2);
+    const oam_norm=oam_max>0?oam_s/oam_max:0;
+    oamEl.textContent=(oam_norm*100).toFixed(1)+'%';oamEl.style.color=oam_norm>0.8?'#40c080':oam_norm>0.3?'#e0a030':'#e05050';
+    const noteEl=document.getElementById('fc-oam-note');
+    if(noteEl){
+      if(S.db1<1)noteEl.textContent='S₁ apagada → OAM=0';
+      else if(S.db2<1)noteEl.textContent='S₂ apagada → OAM=0';
+      else if(Math.abs(S.db1-S.db2)<3)noteEl.textContent='✓ equilibrades → OAM màxim';
+      else noteEl.textContent='desequilibri P₁≠P₂ → OAM reduït';
+      noteEl.style.color=oam_norm>0.8?'#40c080':oam_norm>0.3?'#e0a030':'#e05050';
+    }
+  }
+
+  set('fc-vs',vso().toFixed(1)+' m/s');
+  // Geometria línies
+  const hmig=hLinsMig(),dhl=Math.abs(S.hmt-S.hcat);
+  set('fc-hmig',hmig.toFixed(2)+' m');set('fc-dhl',dhl.toFixed(2)+' m');
+  const okEl=document.getElementById('fc-ok');
+  if(okEl){
+    const hn=hNode1(),hmax=hLinsMax(),h_ideal=2*hn,lam=lambda1(),tol=lam*0.25;
+    const inOptRange=Math.abs(hmax-h_ideal)<tol;
+    okEl.textContent=inOptRange?'✓ òptim h_líns='+hmax.toFixed(1)+'m≈2·'+hn.toFixed(1)+'m':'ⓘ ideal='+h_ideal.toFixed(1)+'m actual='+hmax.toFixed(1)+'m';
+    okEl.style.color=inOptRange?'#40c080':'#e0a030';
+  }
+  // Geometria emissors
+  const hn1=hNode1(),hn2=hNode2(),dhn=Math.abs(hn1-hn2);
+  set('fc-hn1',hn1.toFixed(2)+'m');set('fc-hn2',hn2.toFixed(2)+'m');set('hv-hn',hn1.toFixed(1)+' m');
+  const dhnEl=document.getElementById('fc-dhn');dhnEl.textContent=dhn.toFixed(2)+'m';dhnEl.style.color=dhn<0.5?'#40c080':dhn<3?'#e0a030':'#e05050';
+  set('fc-ag',alphaEm().toFixed(2));
+  const es=etaSo(),ef=etaF(),et=eta();
+  set('fc-etaso',es.toFixed(3));set('fc-etaf',ef.toFixed(3));
+  const etEl=document.getElementById('fc-eta');etEl.textContent=et.toFixed(3);etEl.style.color=et>0.8?'#40c080':et>0.4?'#e0a030':'#e05050';
+  set('hv-eta',(et*100).toFixed(0)+'%');document.getElementById('hv-eta').style.color=et>0.8?'#40c080':et>0.4?'#e0a030':'#e05050';
+
+  set('fc-lam1',lambda1().toFixed(1)+'m');set('fc-lam2',lambda2().toFixed(1)+'m');
+  set('fc-fbat',fBat().toFixed(3)+' Hz');set('fc-omrot',fRotVortex().toFixed(3)+' Hz');
+  // ── Física avançada del node ──
+  const fb=fBat(),hn_real=hNodeReal(),mn=mNodesReal(hn_real);
+  const phi_r_disp=Math.max(Math.abs(S.phi)*Math.PI/180,0.001);
+  const r_node=fb>0.01?phi_r_disp*vso()/(2*Math.PI*fb):Infinity;
+  set('fc-fbat2',fb.toFixed(4));
+  set('fc-r-node',isFinite(r_node)?r_node.toFixed(1):'∞');
+  const hnEl=document.getElementById('fc-hnode-int');
+  if(hnEl){hnEl.textContent=hn_real.toFixed(2)+'m';hnEl.style.color=fb>0.01?'#40c080':'#e0a030';}
+  set('fc-mnodes',mn);
+  set('lv-htgt',S_ADV.htgt.toFixed(1)+' m');set('lv-mtgt',S_ADV.mtgt);set('lv-nharm',S_ADV.nharm);
+  // Mescla paramètrica
+  if(MECH.pm){const pm=hNodeParamMix();if(pm){set('fc-pm-val',pm.f_mix.toFixed(3));set('fc-pm-h',pm.h.toFixed(1));set('fc-pm-m',pm.m+' nusos');}}
+  // Cascada harmònica
+  if(MECH.hc){const hn_arr=harmonicNodes();const txt=hn_arr.map(n=>`n${n.n}:${n.h.toFixed(1)}m(m=${n.m})`).join(' · ');set('fc-hc-info',txt||'—');}
+  // Ressonància espacial
+  if(MECH.sr){const f_res=vso()/S.sl;set('fc-sr-val',f_res.toFixed(2));const diff=Math.abs(S.f1-f_res)/f_res;const okEl=document.getElementById('fc-sr-ok');if(okEl){okEl.textContent=diff<0.05?'✓ f₁ a ressonància!':'f₁ difereix '+Math.round(diff*100)+'%';okEl.style.color=diff<0.05?'#40c080':'#8892aa';}}
+  // Triple ressonància
+  if(MECH.tr){
+    const n1r=Math.round(50/S.f1),n2r=Math.round(50/S.f2),n_bat=Math.round(50/fb);
+    const ok1=Math.abs(S.f1-50/n1r)/(50/n1r)<0.005,ok2=Math.abs(S.f2-50/n2r)/(50/n2r)<0.005,ok3=fb>0.01&&Math.abs(fb-50/n_bat)/(50/n_bat)<0.005;
+    const trEl=document.getElementById('fc-tr-val');
+    if(trEl){trEl.innerHTML=`f₁=50/${n1r} ${ok1?'<span style="color:#40c080">✓</span>':'<span style="color:#e05050">✗</span>'} · f₂=50/${n2r} ${ok2?'<span style="color:#40c080">✓</span>':'<span style="color:#e05050">✗</span>'} · f_bat=50/${n_bat} ${ok3?'<span style="color:#40c080">✓</span>':'<span style="color:#e05050">✗</span>'}`;trEl.parentElement.style.background=ok1&&ok2&&ok3?'rgba(64,192,128,0.05)':'transparent';}
+  }
+  const k1=factorK(S.f1),k2=factorK(S.f2);
+  const k1El=document.getElementById('fc-k1');k1El.textContent=k1.toFixed(0)+(k1>=15?' ✓':'');k1El.style.color=k1>=15?'#40c080':k1>=5?'#e0a030':'#8892aa';
+  const k2El=document.getElementById('fc-k2');k2El.textContent=k2.toFixed(0)+(k2>=15?' ✓':'');k2El.style.color=k2>=15?'#40c080':k2>=5?'#e0a030':'#8892aa';
+  const re=rotEfectiu();set('fc-rot',re.toFixed(3));document.getElementById('fc-rot').style.color=Math.abs(re)<0.03?'#e05050':re>0?'#40c080':'#e08040';
+  const sg0=sgGir(simT);set('fc-gir',sg0>0?'↺ antihorari':sg0<0?'↻ horari':'— φ=0°');document.getElementById('fc-gir').style.color=sg0!==0?'#40c080':'#e05050';
+
+  // ── SINCRONITZACIÓ TEMPORAL ──
+  const tv_us=tViatgeUs(),tvmod=((tv_us%T_EM_US)+T_EM_US)%T_EM_US;
+  set('fc-tv',tv_us.toFixed(0)+' µs');set('fc-tvmod',tvmod.toFixed(0)+' µs');
+  const femNat=tvmod/T_EM_US*360;
+  set('fc-fem-nat',femNat.toFixed(1)+'°');document.getElementById('fc-fem-nat').style.color=Math.abs(femNat-90)<10?'#40c080':'#8892aa';
+  const femTot=faseEMTotal(),qs=qSync();
+  set('fc-fem-tot',femTot.toFixed(1)+'°');document.getElementById('fc-fem-tot').style.color=femTot>60&&femTot<120?'#40c080':'#8892aa';
+  const qsEl=document.getElementById('fc-qsync');qsEl.textContent=qs.toFixed(3)+(qs>0.9?' ✓ ÒPTIM':qs>0.5?' ✓ bo':'');qsEl.style.color=qs>0.9?'#40c080':qs>0.5?'#e0a030':'#e05050';
+  set('hv-sync',(qs*100).toFixed(0)+'%');document.getElementById('hv-sync').style.color=qs>0.9?'#40c080':qs>0.5?'#e0a030':'#e05050';
+  // τ òptim per a fase=90°
+  let tau_best_ui=15000;[90,270].forEach(fo=>{let t=fo/360*T_EM_US-tvmod;while(t>T_EM_US/2)t-=T_EM_US;while(t<-T_EM_US/2)t+=T_EM_US;if(Math.abs(t)<Math.abs(tau_best_ui))tau_best_ui=t;});
+  set('fc-tau-opt',Math.round(tau_best_ui)+' µs (90° o 270°)');
+  const red_sync=qs>0.1?(factorKTotal()*qs*clamp(dbCombined()/150,0,1)).toFixed(1)+'× menys dB necessari':'cap';
+  set('fc-red-sync',red_sync);
+
+  // Visualització barra de cicle EM (20ms)
+  const posEM=(femTot/360*100); // % de posició del pic de camp EM al cicle
+  const posAC=(tvmod/T_EM_US*100); // % de posició on arriba l'ona acústica (sense τ)
+  const posAC_tot=((tvmod+S.tau)/T_EM_US*100+100)%100; // amb τ
+  document.getElementById('sync-em-pos').style.left=Math.max(0,posEM-2)+'%';
+  document.getElementById('sync-ac-pos').style.left=Math.max(0,posAC_tot-2)+'%';
+  // Finestra d'ionització òptima: 60°-120° del cicle EM
+  document.getElementById('sync-win').style.left='16.7%';document.getElementById('sync-win').style.width='16.6%';
+
+  // No-lineal
+  const pa=pAc(),paEff=pAcEff(),dx=dXoc();
+  set('fc-pa',fmtPa(pa));set('fc-peff',fmtPa(paEff));document.getElementById('fc-peff').style.color=paEff>pa*1.5?'#40c080':'#8892aa';
+  set('fc-dxoc',dx>9998?'>9999m':dx.toFixed(1)+'m');document.getElementById('fc-dxoc').style.color=dx>hn1?'#40c080':'#e05050';
+  const xocEl=document.getElementById('fc-xoc-ok');xocEl.textContent=dx>hn1?'✓ ona intacta al node':'⚠ xoc a '+dx.toFixed(1)+'m';xocEl.style.color=dx>hn1?'#40c080':'#e0a030';
+
+  // EM
+  set('fc-dv',dvEM().toFixed(1)+' kV');
+  const emEl=document.getElementById('fc-em');emEl.textContent=campEMAlNode().toFixed(3)+' kV/m';emEl.style.color=campEMAlNode()>eRup()/1000*0.03?'#40c080':campEMAlNode()>0.01?'#e0a030':'#e05050';
+  set('fc-er',eRup().toFixed(0)+' kV/m');
+  const ds=dbSelf();
+  const fcSelf=document.getElementById('fc-self');
+  if(fcSelf){fcSelf.textContent=ds>20?'🔊 auto: '+ds.toFixed(0)+'dB':'';
+    fcSelf.style.color=ds>60?'#ff8030':ds>30?'#ffcc30':'#606060';}
+  document.getElementById('fc-noem').style.display=temHaEm()?'none':'block';
+  // Indicador d'autonomia acústica
+  const autoEl=document.getElementById('fc-autonom');
+  if(autoEl){
+    const ds2=dbSelf();
+    if(!sigOn&&ds2>30&&toroideSmooth>0.2){
+      autoEl.textContent='🧲 AUTO-SO '+ds2.toFixed(0)+'dB · anell autònom';
+      autoEl.style.display='block';
+    } else if(!sigOn&&toroideSmooth>0.1&&ds2<=30){
+      autoEl.textContent='⚠ auto-so insuficient ('+ds2.toFixed(0)+'dB < 30dB) · decaient...';
+      autoEl.style.display='block';
+    } else {
+      autoEl.style.display='none';
+    }
+  }
+  // Mostrar τ_vida quan EM tallat
+  if(!emOn&&window._tallat!=null){
+    const tau_vis=simT-window._tallat;
+    const pct=Math.round(toroideSmooth*100);
+    const el=document.getElementById('fc-noem');
+    if(el){el.innerHTML=`⚡ EM TALLAT | τ=${tau_vis.toFixed(2)}s | anell=${pct}%`+(toroideSmooth<0.05?' → COL·LAPSAT':'');}
+  }
+  const kTot=factorKTotal();const kEl=document.getElementById('fc-k');kEl.textContent=kTot.toFixed(1)+(kTot>=10?' ✓':'');kEl.style.color=kTot>=10?'#40c080':kTot>=3?'#e0a030':'#8892aa';
+  const ldE=llindarEff(),ldB=llindarBase();
+  const ldEl=document.getElementById('fc-lld');ldEl.textContent=ldE>=199?'impossible':ldE.toFixed(0)+' dB';ldEl.style.color=ldE>=199?'#e05050':ldE<ldB-5?'#40c080':'#8892aa';
+  set('fc-lldb',ldB>=199?'∞':ldB.toFixed(0));
+
+  // Inestabilitats
+  const ion_e=Math.max(ionSmooth,0.05);
+  const t_rec=tauRecomb(ion_e),t_turb=tauTurb(),t_zp=tauZpinch(ion_e),Q=qNode();
+  set('lv-trec',fmtT(t_rec));const pRec=document.getElementById('pb-trec');pRec.style.width=Math.min(100,Math.log10(Math.max(t_rec,1e-6)/1e-6)/6*100)+'%';pRec.style.background=t_rec>0.02?'#40c080':t_rec>0.001?'#e0a030':'#e05050';
+  set('fc-ne',ne_plasma(ion_e).toExponential(1)+'/m³');const rconEl=document.getElementById('fc-recon');rconEl.textContent=t_rec>0.02?'✓ SÍ':'✗ NO';rconEl.style.color=t_rec>0.02?'#40c080':'#e05050';
+  set('lv-tturb',fmtT(t_turb));set('hv-tturb',fmtT(t_turb));document.getElementById('hv-tturb').style.color=t_turb>1?'#40c080':t_turb>0.1?'#e0a030':'#e05050';
+  const pTurb=document.getElementById('pb-tturb');pTurb.style.width=Math.min(100,Math.log10(Math.max(t_turb,0.001)/0.001)/4*100)+'%';pTurb.style.background=t_turb>1?'#40c080':t_turb>0.1?'#e0a030':'#e05050';
+  const Re_num=hNode1()*Math.max(S.W/3.6,0.1)/1.5e-5;set('fc-re',Re_num.toExponential(1));set('fc-reg',Re_num>1e6?'turbulent':Re_num>1e3?'transitori':'laminar');
+  set('lv-tzp',fmtT(t_zp));const pZp=document.getElementById('pb-tzp');pZp.style.width=Math.min(100,Math.log10(Math.max(t_zp,1e-6)/1e-6)/5*100)+'%';pZp.style.background=t_zp>0.02?'#40c080':t_zp>0.001?'#e0a030':'#e05050';
+  const rho_pl=ne_plasma(ion_e)*28.8*1.66e-27;const I_est=dvEM()*1000/Math.max(50,100*(1-ion_e));const B_est=MU0*I_est/(2*Math.PI*0.5);const vA_est=rho_pl>0?B_est/Math.sqrt(MU0*rho_pl):0;set('fc-va',vA_est>0?vA_est.toFixed(0):'—');
+  set('lv-qn',(Q*100).toFixed(0)+'%');const pQn=document.getElementById('pb-qn');pQn.style.width=(Q*100)+'%';pQn.style.background=Q>0.5?'#40c080':Q>0.2?'#e0a030':'#e05050';
+  const M=margeEstabilitat(ion_e);const Mc=M>1?'#40c080':M>0.5?'#e0a030':'#e05050';
+  set('lv-stab-tot',M.toFixed(2));document.getElementById('lv-stab-tot').style.color=Mc;
+  // ── Riu / Pont / Fonts ──
+  const hcat_calc=S.h_pont_riu+S.h_cat_pont;
+  set('lv-h_pont_riu',S.h_pont_riu.toFixed(1)+' m (S₁S₂ sobre riu)');
+  set('lv-h_cat_pont',S.h_cat_pont.toFixed(1)+' m');
+  set('lv-hcat-calc',hcat_calc.toFixed(1)+' m');
+  set('lv-a_riu',S.a_riu.toFixed(0)+' m');
+  set('lv-theta',S.theta.toFixed(1)+'°');
+  // Focus geomètric i node riu
+  const theta_r_ui=Math.max(0,S.theta)*Math.PI/180;
+  const h_node_riu_ui=vso()/(4*Math.max(S.f1,0.0001)*Math.max(Math.cos(theta_r_ui),0.01));
+  const h_focus_ui=S.theta>0.1?S.h_pont_riu+(S.so/2)/Math.tan(theta_r_ui):null;
+  set('fc-hnode-riu',h_node_riu_ui.toFixed(1));
+  set('fc-hfocus',h_focus_ui?h_focus_ui.toFixed(1):'—');
+  // Standing wave positions
+  const p_mt=swP(S.hmt), v_mt=swV(S.hmt);
+  const p_cat=swP(S.hcat), v_cat=swV(S.hcat);
+  // Actualitzar hcat auto
+  if(Math.abs(S.hcat-hcat_calc)>0.05){S.hcat=hcat_calc;const el=document.getElementById('sl-hcat');if(el)el.value=S.hcat;}
+  set('hv-stab',M>1?'ESTABLE':M>0.5?'MARG.':'INEST.');document.getElementById('hv-stab').style.color=Mc;
+  const pStab=document.getElementById('pb-stab');pStab.style.width=Math.min(100,M*50)+'%';pStab.style.background=Mc;
+  // ── Actualització CABLES MT/Cat ──
+  const fr=fRes(), dbc_cor=Math.max(0,dbCorona()), cp=couplingParam();
+  // db corona
+  set('lv-db-cor',dbc_cor.toFixed(0)+' dB');
+  const pbCor=document.getElementById('pb-db-cor');
+  if(pbCor){pbCor.style.width=clamp(dbc_cor/250*100,0,100)+'%';pbCor.style.background=dbc_cor>40?'linear-gradient(90deg,#1a3a1a,#30c060)':dbc_cor>20?'linear-gradient(90deg,#1a3a1a,#30a050)':'linear-gradient(90deg,#1a3a1a,#204030)';}
+  set('fc-fres',fr.toFixed(2));
+  updateSxOffLabel();
+  const fres_em=Math.abs(S.f1-fEM());set('fc-fres-em',fres_em.toFixed(3));
+  set('lv-f_mt',(S.f_mt||50).toFixed(1)+' Hz');
+  set('fc-fcable','50');
+  // Standing wave zones
+  const swZone=document.getElementById('fc-acob-note');
+  const v_mt_ov=swV(S.hmt),p_cat_ov=swP(S.hcat);
+  const zone_mt=v_mt_ov>0.85?'MT:vel.màx':v_mt_ov>0.6?'MT:zona vel.':'MT:zona pres.';
+  const zone_cat=p_cat_ov>0.85?'Cat:pres.màx':p_cat_ov>0.6?'Cat:zona pres.':'Cat:zona vel.';
+  if(swZone)swZone.textContent=zone_mt+' · '+zone_cat;
+  // Acoblament
+  const cpPct=Math.round(cp*100);
+  const cpC=cp>0.5?'#40c080':cp>0.3?'#e0a030':'#e05050';
+  set('lv-acob',cpPct+'%');document.getElementById('lv-acob').style.color=cpC;
+  const pbAcob=document.getElementById('pb-acob');
+  if(pbAcob){pbAcob.style.width=cpPct+'%';pbAcob.style.background=cpC;}
+  const acobNoteEl=document.getElementById('fc-acob-note');
+  if(acobNoteEl){acobNoteEl.textContent=fResNote(fr);acobNoteEl.style.color=cp>0.3?'#40c080':'#8892aa';}
+  // Cas Segre 2022
+  const Sv={...S};Object.assign(S,{T:35,W:3,f1:3.5,f2:3.5,vmt:25,vcat:25,ph:90,hmt:10,hcat:10,sl:10,so:10,phi:90,tau:0,db1:140,db2:140,IR:50,H:30,P:1013,beta:1.2});
+  const M22=margeEstabilitat(0.6),Q22=qNode(),tv22=tViatgeUs();
+  Object.assign(S,Sv);
+  const s22El=document.getElementById('fc-seg22');s22El.textContent='M='+M22.toFixed(2)+' Q='+Q22.toFixed(2)+' t_v='+tv22.toFixed(0)+'µs';s22El.style.color=M22>1?'#40c080':M22>0.5?'#e0a030':'#e05050';
+  // Capçalera
+  // Header: T_plasma_K és la temperatura real dinàmica (Joule−convecció−SB)
+  // Tplasma(ion) era una lookup estàtica inconsistent — eliminada dels càlculs
+  const Tp=T_plasma_K;
+  const TpC=Math.round(Tp-273);
+  const TpStr=Tp>S.T+273+50?(Math.round(Tp).toLocaleString()+' K / '+TpC+'°C'):'— K';
+  set('hv-tt',TpStr);document.getElementById('hv-tt').style.color=Tp>8000?'#ff5520':Tp>4000?'#ff9030':Tp>1000?'#ffb840':'#4a5468';
+  set('hv-ion',Math.round(ionSmooth*100)+'%');document.getElementById('hv-ion').style.color=ionSmooth>0.7?'#ff9030':ionSmooth>0.3?'#e0a030':'#8892aa';
+}
+
+
+
+// ══ CONTROL DE POTÈNCIA ACÚSTICA (ambdós modes) ═══════════════════════════
+// P-controller: ajusta db1 i db2 per mantenir ionSmooth ≈ 0.65.
+// Mode 'static': fonts fixes, db compensa la pèrdua d'acoblament per deriva.
+// Mode 'track':  fonts segueixen l'anell, db s'ajusta a la nova geometria.
+function applySourceControl(dt){
+  if(!sigOn||toroideSmooth<0.01)return;
+  const vsnd=vso();
+
+  // ── Potència: P-controller sobre ionSmooth ─────────────────────
+  const ION_TARGET=0.65;
+  const ion_err=ION_TARGET-ionSmooth;
+  const db_delta=clamp(ion_err*8.0,-5.0,5.0)*dt; // guany=8 dB/(unitat·s)
+  S.db1=clamp(S.db1+db_delta,0,250);
+  S.db2=clamp(S.db2+db_delta,0,250);
+  const sl1=document.getElementById('sl-db1');if(sl1)sl1.value=S.db1;
+  const sl2=document.getElementById('sl-db2');if(sl2)sl2.value=S.db2;
+  set('lv-db1',Math.round(S.db1)+' dB');
+  set('lv-db2',Math.round(S.db2)+' dB');
+
+  // ── Freqüència: P-controller sobre h_node vs h_òptima ──────────
+  // h_opt: objectiu actiu → OBJ_T.h, sinó 40% sobre el cable més alt
+  const h_opt=OBJ&&OBJ.h ? OBJ_T.h : Math.max(S.hmt,S.hcat)*1.4;
+  const h_cur=hNodeRiu();
+  const h_err=h_opt-h_cur; // positiu=node massa baix, negatiu=massa alt
+  // f=vso/(4h) → per pujar h cal baixar f i viceversa
+  const f_target=vsnd/(4*Math.max(h_opt,0.5));
+  const f_delta=clamp((f_target-S.f1)*0.2,-0.2,0.2)*dt;
+  S.f1=clamp(S.f1+f_delta,0.01,400);
+  S.f2=clamp(S.f2+f_delta,0.01,400);
+  const slf1=document.getElementById('sl-f1');if(slf1)slf1.value=S.f1;
+  const slf2=document.getElementById('sl-f2');if(slf2)slf2.value=S.f2;
+  set('lv-f1',fmtFreq(S.f1));set('lv-f2',fmtFreq(S.f2));
+
+  // ── Indicador ──────────────────────────────────────────────────
+  const modeStr=SRC_MODE==='track'?'🎯':'📍';
+  set('fc-src-mode',modeStr+' f='+S.f1.toFixed(2)+'Hz db='+Math.round(S.db1)+'dB · ion='+Math.round(ionSmooth*100)+'%');
+}
+function setSrcMode(mode){
+  SRC_MODE=mode;
+  document.getElementById('src-static').classList.toggle('on',mode==='static');
+  document.getElementById('src-track').classList.toggle('on',mode==='auto');
+  const desc=mode==='static'?
+    'manual: f₁ f₂ db sense ajust automàtic':
+    '🎯 seguiment · fonts mouen + db s\'ajusta';
+  set('fc-src-mode',desc);
+}
+function set(id,txt){const e=document.getElementById(id);if(e)e.textContent=txt;}
+
+let simT=0,animT=0,PAUSED=false,sigOn=false,emOn=true;
+let orbAngle=0,windDrift=0,noisePhase=0;
+let srcTrackX=0; // deriva suau dels generadors seguint l'anell (px relatius a CX)
+let SRC_MODE='static'; // 'static': fonts fixes | 'track': fonts segueixen l'anell
+
+// Arc elèctric esgarrat — funció global (no redefinida cada frame)
+function drawJaggedArc(cx,x1,y1,x2,y2,col,lw,noise_seed,noiseP){
+  cx.strokeStyle=col;cx.lineWidth=lw;cx.beginPath();cx.moveTo(x1,y1);
+  const segs=6;
+  for(let i=1;i<=segs;i++){
+    const t=i/segs;
+    const mx=lerp(x1,x2,t),my=lerp(y1,y2,t);
+    const jit=i<segs?turbNoise(t+noise_seed*0.07,noiseP*6+i)*12*(1-t*0.5):0;
+    cx.lineTo(mx+jit,my+jit*0.3);
+  }
+  cx.stroke();
+}
+let ionSmooth=0,vortexSmooth=0,toroideSmooth=0,sparkIntens=0;
+let slowOrbit=false; // DEPRECATED — no té base física, mantingut per compatibilitat
+// ── THERMAL RUNAWAY ──
+let T_plasma_K=308;     // temperatura real del plasma (K) — comença a T_ambient (35°C=308K)
+let I_plasma_A=0;       // corrent al canal de plasma (A)
+let nmSmooth=1.0;       // nm suavitzat — evita salts bruscos entre modes KH
+let plasmaAutonom=false;// plasma es manté sol sense so
+
+const T_RUNAWAY=7000;   // K — temperatura d'escapada tèrmica
+const T_PLASMA_MAX=100000;
+
+// Resistència del canal de plasma (Ω) — model de Mayr
+// R alta quan fred (aire no ionitzat) → baixa quan ionitzat i calent
+function R_arc(T_K, ion){
+  // RESISTÈNCIA DEL CANAL DE PLASMA — dependent del model físic
+  // 'exc' N₂ excitat: gas dèbilment ionitzat, T<800K → R molt alta (~150kΩ/m)
+  //   → I ≈ 1-2A → r_plasma ≈ 0.38m → nm=4 ✓
+  // 'fre' plasma fred: R moderada (~5kΩ/m)
+  // 'arc' arc tèrmic: R baixa (~500Ω/m) — valor original correcte per a arc
+  const R_fred = PLASMA_MODEL==='exc' ? 150000 :
+                 PLASMA_MODEL==='fre' ? 5000 : 500;
+  // T0: temperatura on R comença a baixar significativament
+  // 'exc': T0 alta (2000K) perquè T<800K → R pràcticament constant
+  // 'arc': T0=3000K (model Mayr original)
+  const T0 = PLASMA_MODEL==='exc' ? 2000 : 3000;
+  const R_termic=R_fred/(1+Math.pow(T_K/T0,2));
+  const R_ion=R_termic/(1+ion*8);
+  return Math.max(R_ion,0.01);
+}
+
+// Longitud del canal toroïdal
+function L_canal(){return 2*Math.PI*Math.max(hNode1()*0.5,0.5);}
+
+// Corrent de plasma
+function calcIplasma(T_K, ion){
+  if(!temHaEm())return 0;
+  const R=R_arc(T_K,ion)*L_canal()/75; // normalitzat per canal de 75m
+  const I_base=dvEM()*1000/Math.max(R,0.001);
+
+  // M1 — Paschen dinàmic: rarefacció sincronitzada amb pic EM (Meek & Craggs 1953)
+  // Efecte petit (~0.002% a 100dB) però físicament correcte: ionització durant rarefacció
+  const qs_=qSync(),pAc_ratio=pAc()/(S.P*100);
+  const efecte_paschen=Math.max(0.5,1-pAc_ratio*qs_);
+  // M2 — Streaming acústic Eckart: aire humit forma columna de baixa impedància (Lighthill 1978)
+  const streaming_factor=1+0.05*(S.H/100)*clamp(dbCombined()/120,0,1)*qs_;
+  return (I_base/efecte_paschen)*streaming_factor;
+}
+
+// Escalfament òhmic net (K/s)
+// dT/dt = (P_ohmic - P_perdes) / (rho*cp*vol_canal)
+function dTdt(T_K, I_A){
+  if(!temHaEm()||I_A<0.001)return T_K>S.T+273?-(T_K-(S.T+273))*2:0;
+  const R_m=R_arc(T_K,ionSmooth);
+  const P_ohm=I_A*I_A*R_m/100;
+  // ── Convecció forçada (Siple-Passel) ─────────────────────────────────
+  const v_vent=S.W/3.6;
+  const h_Siple=Math.max(10.45-v_vent+10*Math.sqrt(v_vent),5);
+  const F_vent=h_Siple/10.45;
+  const P_conv=(T_K-(S.T+273))*(0.3*F_vent);
+  // ── Radiació tèrmica de cos negre (Stefan-Boltzmann) ─────────────────
+  // P_rad = ε·σ·(A/V)·(T⁴-T_env⁴)  [llei de Stefan-Boltzmann]
+  // σ=5.67e-8 W/(m²K⁴), A/V=2/r_plasma per a cilindre
+  // ε=0.1 per a plasma fred (exc), ε=0.5 per a plasma calent (arc)
+  // Normalitzat /100 coherent amb P_ohm=I²·R/100
+  const SIGMA=5.67e-8;
+  const eps_max=PLASMA_MODEL==='arc'?0.5:PLASMA_MODEL==='fre'?0.25:0.1;
+  // Emissivitat real: proporcional a la fracció ionitzada (Kirchhoff 1860)
+  // L'aire neutre és transparent; el plasma ionitzat emet com a cos gairebé negre.
+  // floor 0.05: emissió mínima de la columna calenta fins i tot sense ionització
+  const eps=eps_max*Math.max(0.05,ionSmooth);
+  const r_pl=Math.max(rPlasmaFromBennett(ionSmooth),0.01);
+  const T_env=S.T+273;
+  const P_rad=Math.max(0,eps*SIGMA*(2/r_pl)*(Math.pow(T_K,4)-Math.pow(T_env,4))/100);
+  // Pèrdues totals: convecció + radiació
+  const P_loss=P_conv+P_rad;
+  const rho_cp=1200;
+  return(P_ohm-P_loss)/rho_cp;
+}
+
+function toggleEM(){
+  emOn=!emOn;
+  const b=document.getElementById('b-em');
+  b.textContent=emOn?'⚡ EM ON':'🔌 EM TALLAT';
+  b.style.borderColor=emOn?'#a05020':'#c03030';
+  b.style.color=emOn?'#e07030':'#ff5050';
+  if(!emOn&&toroideSmooth>0.05){
+    // Marcar moment del tall per mesurar τ_vida
+    if(!window._tallat){window._tallat=simT;window._torMax=toroideSmooth;}
+  } else if(emOn){window._tallat=null;}
+}
+
+// Override temHaEm per respectar el boto EM
+const _temHaEm_orig=temHaEm;
+function temHaEmCtrl(){return emOn&&dvEM()>0.5;}
+
+function toggleSig(){
+  sigOn=!sigOn;
+  const b=document.getElementById('b-go');
+  b.textContent=sigOn?'⏹ so':'▶ so';
+  b.classList.toggle('on',sigOn);
+}
+// Atura el so des del codi mantenint el botó sincronitzat
+function stopSoIntern(){
+  if(!sigOn)return;
+  sigOn=false;
+  const b=document.getElementById('b-go');
+  b.textContent='▶ so';
+  b.classList.remove('on');
+}
+function toggleP(){PAUSED=!PAUSED;const b=document.getElementById('b-pa');b.classList.toggle('on',PAUSED);b.textContent=PAUSED?'▶ reprèn':'⏸ pausa';}
+function resetAll(){
+  sigOn=false;PAUSED=false;emOn=true;simT=0;animT=0;
+  orbAngle=0;windDrift=0;srcTrackX=0;ionSmooth=0;vortexSmooth=0;toroideSmooth=0;
+  sparkIntens=0;noisePhase=0;T_plasma_K=S.T+273;I_plasma_A=0;plasmaAutonom=false;slowOrbit=false;nmSmooth=1.0;
+  const b=document.getElementById('b-go');b.textContent='▶ so';b.classList.remove('on');
+  const bp=document.getElementById('b-pa');bp.classList.remove('on');bp.textContent='⏸ pausa';
+  const be=document.getElementById('b-em');be.textContent='⚡ EM ON';be.style.borderColor='#a05020';be.style.color='#e07030';
+}
+
+function getEstat(){
+  // Estat autònom: plasma viu sense so
+  if(plasmaAutonom&&!sigOn){
+    if(T_plasma_K>T_RUNAWAY*0.8)
+      return{n:'🔥 plasma autònom',d:'T='+Math.round(T_plasma_K).toLocaleString()+'K · I='+I_plasma_A.toFixed(0)+'A · so ATURAT · EM sustenta',c:'#ff5520'};
+    return{n:'⑦ refreda lentament',d:'T='+Math.round(T_plasma_K).toLocaleString()+'K · runaway esgotat',c:'#e0a030'};
+  }
+  if(!sigOn&&!plasmaAutonom&&T_plasma_K>S.T+273+100)
+    return{n:'⑦ refreda',d:'T='+Math.round(T_plasma_K).toLocaleString()+'K refredant-se...',c:'#e0a030'};
+  if(!sigOn)return{n:'aturat',d:'Prem ▶ per iniciar so',c:'#4a5468'};
+  if(!linesOk())return{n:'⚠ sense línies EM',d:'Configura hmt i hcat > 0',c:'#e05050'};
+  if(!temHaEmCtrl())return{n:'⚠ EM inactiu',d:'Activa ⚡ EM per ionitzar',c:'#e05050'};
+  const M=margeEstabilitat(Math.max(ionSmooth,0.1)),Q=qNode(),et=eta(),qs=qSync(),ldE=llindarEff();
+  if(et<0.05)return{n:'⚠ η≈0',d:'Ajusta separació S₁/S₂ o f₁≈f₂',c:'#e05050'};
+  if(Math.abs(rotEfectiu())<0.03)return{n:'⚠ ∇×v≈0',d:'Canvia φ_ac per generar remolí',c:'#e05050'};
+  if(vortexSmooth<0.1)return{n:'① ones actives',d:'f₁='+S.f1.toFixed(2)+' f₂='+S.f2.toFixed(2)+'Hz · τ='+S.tau+'µs',c:'#7f77dd'};
+  if(ionSmooth<0.03){const tip=qs<0.5?'⚡ τ_sync no òptim':'✓ sync='+Math.round(qs*100)+'%';return{n:'② remolí acústic',d:tip+' · llindar='+ldE.toFixed(0)+'dB',c:'#8860e0'};}
+  if(M<0.5)return{n:'⚡ plasma inestable',d:'M='+M.toFixed(2),c:'#e05050'};
+  if(M<1)return{n:'⚡ plasma marginal',d:'M='+M.toFixed(2)+' · sync='+Math.round(qs*100)+'%',c:'#e0a030'};
+  if(ionSmooth<0.4){
+    const Td=Math.round(T_plasma_K); // temperatura real dinàmica
+    return{n:'③ ionització',d:'ion='+Math.round(ionSmooth*100)+'% · T='+Td+'K · M='+M.toFixed(2),c:'#e0a030'};
+  }
+  // Runaway progress
+  const rw_pct=Math.min(100,Math.round(T_plasma_K/T_RUNAWAY*100));
+  if(T_plasma_K<T_RUNAWAY*0.5)return{n:'④ escalfament òhmic',d:'T='+Math.round(T_plasma_K).toLocaleString()+'K · I='+I_plasma_A.toFixed(0)+'A · runaway='+rw_pct+'%',c:'#e87020'};
+  if(T_plasma_K<T_RUNAWAY)return{n:'⑤ camí al runaway',d:'T='+Math.round(T_plasma_K).toLocaleString()+'K · '+rw_pct+'% · I='+I_plasma_A.toFixed(0)+'A',c:'#ff6020'};
+  if(T_plasma_K>=T_RUNAWAY&&!plasmaAutonom)return{n:'🔥 RUNAWAY!',d:'T='+Math.round(T_plasma_K).toLocaleString()+'K · I='+I_plasma_A.toFixed(0)+'A · ja pots aturar el so!',c:'#ff3000'};
+  if(toroideSmooth<0.5)return{n:'⑥ remolí plasma calent',d:'T='+Math.round(T_plasma_K).toLocaleString()+'K · Ω='+fRotVortex().toFixed(3)+'Hz',c:'#ff6020'};
+  return{n:'⑥ toroide estable',d:'M='+M.toFixed(2)+' · T='+Math.round(T_plasma_K).toLocaleString()+'K · Ω='+fRotVortex().toFixed(3)+'Hz',c:'#ff9030'};
+}
+
+function updatePhysics(dt){
+  const ionT=calcIon(),vxT=calcVortex(),M=margeEstabilitat(Math.max(ionSmooth,0.05));
+
+  // ── THERMAL RUNAWAY: escalfament òhmic del canal de plasma ──
+  // El so crea la ionització inicial → abaixa R → I puja → T puja → R baixa → runaway
+  // I_plasma_A s'activa quan hi ha suficient ionització acústica (ionSmooth>0.05)
+  // o quan el toroide ja s'ha format (toroideSmooth>0.2)
+  // Justificació: el gas ionitzat conduits elèctricament des del moment de la ionització,
+  // no cal esperar que el toroide sigui "visible" per iniciar el corrent.
+  if((toroideSmooth>0.2||ionSmooth>0.05)&&temHaEmCtrl()){
+    I_plasma_A=calcIplasma(Math.max(T_plasma_K,S.T+273),ionSmooth);
+    const dT=dTdt(Math.max(T_plasma_K,S.T+273),I_plasma_A);
+    // Límit físic: Stefan-Boltzmann + convecció limiten naturalment la temperatura.
+    // Cap de seguretat numèrica = T_PLASMA_MAX (20000K). No hi ha cap artificial a 800K.
+    T_plasma_K=Math.max(S.T+273,Math.min(T_plasma_K+dT*dt*50,T_PLASMA_MAX));
+    // Runaway (plasmaAutonom) NOMÉS per a model 'arc' — N₂ excitat no pot sostenir arc
+    if(T_plasma_K>=T_RUNAWAY&&!plasmaAutonom && PLASMA_MODEL==='arc'){
+      plasmaAutonom=true; // el plasma és ara autònom
+    }
+  }else if(!plasmaAutonom||!temHaEmCtrl()){
+    // Refreda si no hi ha plasma actiu o si s'apaga l'EM
+    if(T_plasma_K>S.T+273){
+      T_plasma_K=Math.max(S.T+273,T_plasma_K-dt*(T_plasma_K-(S.T+273))*0.3);
+    }
+    if(T_plasma_K<=S.T+273+50){I_plasma_A=0;plasmaAutonom=false;}
+  }
+
+  // Si el plasma és autònom (runaway assolit), es manté sense so
+  // el toroide es sustenta per Z-pinch toroïdal del corrent propi
+  if(plasmaAutonom&&temHaEmCtrl()){
+    // Actualitza corrent i temperatura amb el plasma autònom
+    I_plasma_A=calcIplasma(T_plasma_K,Math.max(ionSmooth,0.3));
+    const dT=dTdt(T_plasma_K,I_plasma_A);
+    T_plasma_K=Math.max(S.T+273,Math.min(T_plasma_K+dT*dt*50,T_PLASMA_MAX));
+    // Manté el toroide viu (Z-pinch toroïdal sense necessitar so)
+    toroideSmooth=Math.max(toroideSmooth,0.3*clamp(T_plasma_K/T_RUNAWAY,0,1));
+    ionSmooth=Math.max(ionSmooth,0.2*clamp(T_plasma_K/T_RUNAWAY,0,1));
+    if(T_plasma_K<T_RUNAWAY*0.5){plasmaAutonom=false;}
+  }
+
+  // Per a model arc: sense decaïment addicional (el corrent alt manté la ionització)
+  // Per a exc/fre: decaïment proporcional a (1-M) quan el camp EM és insuficient
+  const ionDecay=(PLASMA_MODEL==='arc'||plasmaAutonom)?0:(M<1?dt*(1-M)*1.5:0);
+  ionSmooth+=((ionT-ionSmooth)/(ionT>ionSmooth?(PLASMA_MODEL==='arc'?2:4):8))*dt-ionDecay;
+  vortexSmooth+=((vxT-vortexSmooth)/(vxT>vortexSmooth?(PLASMA_MODEL==='arc'?1.5:3):5))*dt;
+  ionSmooth=clamp(ionSmooth,0,1);vortexSmooth=clamp(vortexSmooth,0,1);
+
+  // Toroide: quan el so s'atura, decau gradualment (no instantàniament)
+  // Temps de decaïment proporcional a M i a la temperatura del plasma
+  // Si M>1 i T alta: el toroide pot durar uns quants segons
+  // Si M<1: decau més ràpid però no instantàniament
+  let torT, torDecay;
+  if(plasmaAutonom){
+    torT=Math.min(Math.max(ionSmooth,0.3),1)*clamp(M>0?M:1,0,1);
+    torDecay=0;
+  }else if(ionSmooth>0.35&&vortexSmooth>0.35&&M>0.5){
+    torT=Math.min(ionSmooth,vortexSmooth)*clamp(M,0,1);
+    torDecay=0;
+  }else if(!sigOn&&toroideSmooth>0){
+    // So aturat: decau gradualment en ~τ_rec segons
+    torT=0;
+    const tau_dec=Math.max(tauRecomb(Math.max(ionSmooth,0.1)),0.5); // mínim 0.5s
+    torDecay=toroideSmooth/tau_dec*dt;
+  }else{
+    torT=0;
+    torDecay=M<0.5?dt*(0.5-M)*3:0;
+  }
+  toroideSmooth=clamp(toroideSmooth+((torT-toroideSmooth)/(torT>toroideSmooth?(PLASMA_MODEL==='arc'?2:4):3))*dt-torDecay,0,1);
+  let spT=0;
+  if(temHaEmCtrl()){
+    // Puls visual a 2Hz real (no a freqüència EM) → elimina flickering
+    const sparkPulse=0.5+0.5*Math.abs(Math.sin(2*Math.PI*2.0*performance.now()/1000));
+    spT=ionSmooth*qSync()*sparkPulse*0.85*(1+factorKTotal()*0.1);
+  }
+  sparkIntens+=(spT-sparkIntens)*(1-Math.exp(-dt/0.12));
+  sparkIntens=clamp(sparkIntens,0,1);
+  if(toroideSmooth>0.1){
+    orbAngle+=2*Math.PI*fRotVortex()*sgGir(simT)*eta()*dt;
+  }
+  if(toroideSmooth>0.2)windDrift+=S.W/3.6*dt;
+  // srcTrackX: en mode 'track', les fonts segueixen l'anell (τ≈2s)
+  // Mode 'track': fonts segueixen físicament l'anell
+  if(SRC_MODE==='track'&&toroideSmooth>0.1){
+    srcTrackX+=(windDrift-srcTrackX)*(dt/2.0); // τ≈2s
+  }else{
+    srcTrackX*=Math.max(0,1-dt*3.0); // retorn a 0 ràpid
+  }
+  // P-controller db: actiu en AMBDÓS modes quan l'anell existeix
+  if(toroideSmooth>0.01||ionSmooth>0.01) applySourceControl(dt);
+  noisePhase+=dt*Math.max(S.W/3.6,0.05)*2;
+  // Actualitza capçalera T plasma (ara usa T_plasma_K real)
+  const Tp_display=T_plasma_K>S.T+273+50?T_plasma_K:Tplasma(ionSmooth);
+  set('hv-tt',Tp_display>S.T+273+50?Math.round(Tp_display).toLocaleString()+' K':'— K');
+  const tpc=Tp_display>12000?'#ffffff':Tp_display>8000?'#ff5520':Tp_display>4000?'#ff9030':Tp_display>1000?'#ffb840':'#4a5468';
+  document.getElementById('hv-tt').style.color=tpc;
+  set('hv-ion',Math.round(ionSmooth*100)+'%');document.getElementById('hv-ion').style.color=ionSmooth>0.7?'#ff9030':ionSmooth>0.3?'#e0a030':'#8892aa';
+  const est=getEstat();set('hv-es',est.n.replace(/[①②③④⑤⑥⑦⚠⚡🔥] /,''));document.getElementById('hv-es').style.color=est.c;
+  document.getElementById('ph-n').textContent=est.n;document.getElementById('ph-n').style.color=est.c;document.getElementById('ph-d').textContent=est.d;
+  refreshUI();
+}
+
+function lerp(a,b,t){return a+(b-a)*t;}
+function norm(v,a,b){return Math.max(0,Math.min(1,(v-a)/(b-a)));}
+function eO(t){return 1-Math.pow(1-t,3);}
+function bzPt(ox,oy,c1x,c1y,c2x,c2y,dx,dy,t){const m=1-t;return{x:m*m*m*ox+3*m*m*t*c1x+3*m*t*t*c2x+t*t*t*dx,y:m*m*m*oy+3*m*m*t*c1y+3*m*t*t*c2y+t*t*t*dy};}
+function turbNoise(x,t){return Math.sin(x*3.7+t*2.3)*Math.sin(x*1.1+t*5.7)*0.5+Math.sin(x*7.3-t*1.9)*0.5;}
+
+function draw(aT,sT){
+  const W=cv.width,H=cv.height;if(!W||!H)return;
+  // CX i constants geomètriques PRIMER — evita ReferenceError si el bloc riu s'executa
+  const CX=W/2;
+  const hn1=hNode1(),hn2=hNode2();
+  const h_riu_px=Math.min(S.h_pont_riu*8,H*0.18); // escala correcta per h_pont_riu
+  const gy=H-38-Math.round(h_riu_px*2);
+  const maxH=Math.max(Math.max(0,hn1-S.h_pont_riu),Math.max(0,hn2-S.h_pont_riu),Math.max(0,S.hmt-S.h_pont_riu),Math.max(0,S.hcat-S.h_pont_riu))*1.45+4;
+  const pxM=Math.min((gy-48)/Math.max(maxH,0.1),30);
+  const riu_y=gy+S.h_pont_riu*pxM;
+  const dPx=clamp(windDrift*pxM,-W*0.26,W*0.26);
+  const n1Y=riu_y-hn1*pxM, n2Y=riu_y-hn2*pxM;
+  const hmt_fonts=Math.max(0,S.hmt-S.h_pont_riu);
+  const hcat_fonts=Math.max(0,S.hcat-S.h_pont_riu);
+  const lmtY=gy-hmt_fonts*pxM;
+  const lcatY=gy-hcat_fonts*pxM;
+  const torCX=toroideSmooth>0.2?CX+dPx:CX;
+  const hLP=(S.sl/2)*pxM;
+  const lx1=CX-hLP,lx2=CX+hLP; // posicions horitzontals de les línies
+  const hSP=(S.so/2)*pxM;
+  // sx_off: desplaçament lateral manual · srcTrackX: seguiment mode 'track'
+  const sxBase=((S.sx_off||0)+srcTrackX)*pxM;
+  const sx1=CX-hSP+sxBase, sx2=CX+hSP+sxBase;
+  const angEm=alphaEm()*Math.PI/180,sg=sgGir(simT);
+  const convX=toroideSmooth>0.2?torCX:CX,convY=n1Y;
+  const et=eta(),M=margeEstabilitat(Math.max(ionSmooth,0.05)),Q=qNode(),qs=qSync();
+  const turb_amp=M<1?4*(1-M)*(S.W/10+0.2):0;
+  const turb_dx=turb_amp*turbNoise(1,noisePhase),turb_dy=turb_amp*turbNoise(2,noisePhase)*0.4;
+  const heat=ionSmooth*0.3+toroideSmooth*0.5;
+
+  cx.clearRect(0,0,W,H);
+  cx.fillStyle=`rgb(${Math.floor(4+heat*24)},${Math.floor(5+heat*5)},${Math.floor(14+heat*6)})`;cx.fillRect(0,0,W,H);
+  for(let i=0;i<44;i++){const sx=(i*137.5)%W,sy=(i*89.3)%90;cx.fillStyle=`rgba(255,255,255,${(1-heat*0.9)*0.2*Math.abs(Math.sin(i+aT*0.06))})`;cx.fillRect(sx,sy,1,1);}
+  cx.fillStyle='#0d0b08';cx.fillRect(0,gy,W,H-gy);cx.fillStyle='#060f1e';cx.fillRect(CX-138,gy-15,276,30);
+  cx.strokeStyle='rgba(25,90,150,0.18)';cx.lineWidth=1;for(let i=0;i<3;i++){cx.beginPath();cx.moveTo(CX-138,gy-10+i*5);cx.bezierCurveTo(CX-48,gy-12+i*5,CX+48,gy-8+i*5,CX+138,gy-10+i*5);cx.stroke();}
+  // Riu APRÈS el fons (no queda tapat)
+  if(riu_y<H-2){const rh=Math.min((S.a_riu/2)*pxM,W*0.45);cx.fillStyle='rgba(15,45,105,0.45)';cx.fillRect(CX-rh,Math.min(riu_y,H-2),rh*2,H-Math.min(riu_y,H-2));cx.strokeStyle='rgba(40,120,220,0.5)';cx.lineWidth=1;cx.setLineDash([3,4]);cx.beginPath();cx.moveTo(CX-rh,riu_y);cx.lineTo(CX-rh,H);cx.stroke();cx.beginPath();cx.moveTo(CX+rh,riu_y);cx.lineTo(CX+rh,H);cx.stroke();cx.setLineDash([]);cx.strokeStyle='rgba(40,140,240,0.7)';cx.lineWidth=1.5;cx.beginPath();cx.moveTo(CX-rh,riu_y);cx.lineTo(CX+rh,riu_y);cx.stroke();cx.fillStyle='rgba(100,170,230,0.8)';cx.font='bold 8px sans-serif';cx.textAlign='center';cx.fillText('~Riu '+S.a_riu.toFixed(0)+'m',CX,Math.min(riu_y-3,H-6));}
+  if(toroideSmooth>0.1){const rG=cx.createRadialGradient(torCX,gy-4,0,torCX,gy-4,60);rG.addColorStop(0,`rgba(255,110,20,${toroideSmooth*0.12})`);rG.addColorStop(1,'rgba(0,0,0,0)');cx.fillStyle=rG;cx.fillRect(CX-138,gy-18,276,24);}
+
+  // ── CONVERGÈNCIA θ: feixos inclinats des dels emissors al punt focus ──
+  if(S.theta>0.1&&sigOn){
+    const th_r=S.theta*Math.PI/180;
+    const h_focus_fonts=(S.so/2)/Math.tan(th_r); // focus sobre fonts
+    const focY=gy-h_focus_fonts*pxM;
+    if(focY>20&&focY<gy){
+      cx.save();cx.globalAlpha=0.65;
+      cx.strokeStyle='rgba(80,220,120,0.7)';cx.lineWidth=1.2;cx.setLineDash([5,3]);
+      cx.beginPath();cx.moveTo(sx1,gy);cx.lineTo(CX,focY);cx.stroke();
+      cx.beginPath();cx.moveTo(sx2,gy);cx.lineTo(CX,focY);cx.stroke();
+      cx.setLineDash([]);
+      // Punt focus
+      cx.fillStyle='rgba(80,255,120,0.85)';cx.beginPath();cx.arc(CX,focY,5,0,Math.PI*2);cx.fill();
+      cx.strokeStyle='rgba(80,255,120,0.4)';cx.lineWidth=1;cx.beginPath();cx.arc(CX,focY,10,0,Math.PI*2);cx.stroke();
+      if(VIS.lb){cx.fillStyle='rgba(80,255,120,0.9)';cx.font='bold 9px sans-serif';cx.textAlign='center';cx.fillText('⊕ focus θ='+S.theta.toFixed(0)+'° h='+h_focus_fonts.toFixed(0)+'m',CX,focY-13);}
+      cx.restore();
+    }
+  }
+
+  // Inestabilitats visuals
+  if(VIS.i&&M<1&&sigOn&&ionSmooth>0.1){const turbA=(1-M)*0.1*ionSmooth;cx.strokeStyle=`rgba(220,80,40,${turbA})`;cx.lineWidth=1;for(let i=0;i<5;i++){const ty=lerp(n1Y-15,gy-20,i/4);cx.beginPath();cx.moveTo(32,ty);for(let x=32;x<W-32;x+=10){cx.lineTo(x,ty+turbNoise(x/W,noisePhase+i)*10*turbA*12);}cx.stroke();}if(VIS.lb){cx.fillStyle=`rgba(220,80,40,${turbA*4})`;cx.font='bold 9px sans-serif';cx.textAlign='center';cx.fillText('⚠ INESTABLE M='+M.toFixed(2),CX,n1Y-30);}}
+
+  // Línies elèctriques — MT i Cat a ALÇADES INDEPENDENTS
+  if(VIS.e){
+    const haEM=temHaEm();
+    const t_viatge_s=hNode1()/vso();
+    const tau_fase=S.tau/1e6*2*Math.PI*F_EM;
+    const fase_actual=haEM?2*Math.PI*F_EM*(simT-t_viatge_s)+tau_fase:0;
+    const ep1=haEM?0.45+0.35*Math.abs(Math.sin(2*Math.PI*F_EM*simT)):0.15;
+    const ep2=haEM?0.45+0.35*Math.abs(Math.sin(2*Math.PI*F_EM*simT+S.ph*Math.PI/180)):0.15;
+    // Pals verticals per a cada línia
+    cx.strokeStyle='rgba(140,140,118,0.2)';cx.lineWidth=1.5;
+    // Pal MT: des del RIU (pals a la riba) → riu_y
+    const mt_pal_base=Math.min(riu_y<H-4?riu_y:gy+2, gy+2);
+    cx.beginPath();cx.moveTo(lx1,mt_pal_base);cx.lineTo(lx1,lmtY-3);cx.stroke();
+    // Pal Cat: des del PONT (suports sobre el pont) → gy
+    cx.beginPath();cx.moveTo(lx2,gy);cx.lineTo(lx2,lcatY-3);cx.stroke();
+    // Línia MT — a la seva alçada
+    cx.strokeStyle=`rgba(216,90,48,${ep1})`;cx.lineWidth=1.8;cx.setLineDash([8,5]);
+    cx.beginPath();cx.moveTo(22,lmtY);cx.lineTo(W-22,lmtY);cx.stroke();cx.setLineDash([]);
+    cx.fillStyle=`rgba(216,90,48,${haEM?ep1+0.2:0.2})`;cx.beginPath();cx.arc(lx1,lmtY,4,0,Math.PI*2);cx.fill();
+    // Línia Cat — a la seva alçada (pot ser diferent!)
+    cx.strokeStyle=`rgba(55,138,221,${ep2})`;cx.lineWidth=1.8;cx.setLineDash([8,5]);
+    cx.beginPath();cx.moveTo(22,lcatY);cx.lineTo(W-22,lcatY);cx.stroke();cx.setLineDash([]);
+    cx.fillStyle=`rgba(55,138,221,${haEM?ep2+0.2:0.2})`;cx.beginPath();cx.arc(lx2,lcatY,4,0,Math.PI*2);cx.fill();
+    // Separació horitzontal MT-Cat (sl)
+    if(VIS.lb&&S.sl>0.5){
+      const midY=Math.min(lmtY,lcatY)+Math.abs(lmtY-lcatY)/2;
+      cx.strokeStyle='rgba(160,160,100,0.25)';cx.lineWidth=0.5;cx.setLineDash([2,3]);
+      cx.beginPath();cx.moveTo(lx1,midY);cx.lineTo(lx2,midY);cx.stroke();cx.setLineDash([]);
+      cx.fillStyle='rgba(160,160,80,0.5)';cx.font='7.5px sans-serif';cx.textAlign='center';
+      cx.fillText('↔ sl='+S.sl.toFixed(0)+'m',CX,midY+8);
+    }
+    // Línia puntejada mostrant la diferència d'alçada
+    if(Math.abs(S.hmt-S.hcat)>0.1){cx.strokeStyle='rgba(148,148,128,0.12)';cx.lineWidth=0.5;cx.setLineDash([2,4]);cx.beginPath();cx.moveTo(lx1,lmtY);cx.lineTo(lx2,lcatY);cx.stroke();cx.setLineDash([]);}
+    if(VIS.lb){
+      cx.fillStyle=S.vmt>0.5?'rgba(216,90,48,0.6)':'rgba(216,90,48,0.25)';cx.font='9px sans-serif';cx.textAlign='left';
+      cx.fillText('MT '+S.vmt.toFixed(0)+'kV riu='+S.hmt.toFixed(1)+'m pont='+hmt_fonts.toFixed(1)+'m',22,lmtY-4);
+      cx.fillStyle=S.vcat>0.5?'rgba(55,138,221,0.6)':'rgba(55,138,221,0.25)';
+      cx.fillText('Cat '+S.vcat.toFixed(0)+'kV riu='+S.hcat.toFixed(1)+'m pont='+hcat_fonts.toFixed(1)+'m',22,lcatY+12);
+      cx.fillStyle=dvEM()>1?'rgba(64,192,128,0.4)':'rgba(220,80,40,0.4)';cx.textAlign='center';
+      cx.fillText('ΔV='+dvEM().toFixed(1)+'kV · E_node='+campEMAlNode().toFixed(3)+'kV/m',CX,Math.max(lmtY,lcatY)+22);
+    }
+    // Visualització del "cop de llamp" al node (spark sincronitzat)
+    if(haEM&&VIS.s&&sparkIntens>0.05){
+      // Arc s'esvaeix quan el toroide és autònom (no cal arc un cop format)
+      const arcFade=toroideSmooth<0.4?1.0:toroideSmooth<0.85?(0.85-toroideSmooth)/0.45:0.0;
+      if(arcFade>0.02){
+      const emAlNode=Math.abs(Math.sin(fase_actual));
+      if(emAlNode>0.3&&ionSmooth>0.1){
+        const syncA=emAlNode*sparkIntens*ionSmooth*arcFade;
+
+        // ── Punt d'ancoratge de l'arc: punt MÉS PROPER del cable a l'anell ──
+        // L'arc NO sempre ve del centre: llisca al llarg del cable seguint l'anell
+        const arcXmt  = clamp(convX, 22, W-22);  // punt del cable MT més proper
+        const arcXcat = clamp(convX, 22, W-22);  // punt del cable Cat més proper
+
+        // ── Puls d'energia viatjant pel cable cap al punt d'ancoratge ──
+        // El corrent arriba des del costat més proper al ring
+        const f_em=fEM();
+        const pulsePhase = (simT * f_em * 1.5) % 1.0;
+        const mtPulseStart  = convX <= CX ? 22    : W-22;
+        const catPulseStart = convX <= CX ? W-22  : 22;
+        const mtPulseX  = lerp(mtPulseStart,  arcXmt,  pulsePhase);
+        const catPulseX = lerp(catPulseStart, arcXcat, pulsePhase);
+        // Dibuixar puls MT
+        const pg1=cx.createRadialGradient(mtPulseX,lmtY,0,mtPulseX,lmtY,5+syncA*6);
+        pg1.addColorStop(0,`rgba(255,220,80,${syncA*0.9})`);pg1.addColorStop(1,'rgba(255,120,20,0)');
+        cx.fillStyle=pg1;cx.beginPath();cx.arc(mtPulseX,lmtY,5+syncA*6,0,Math.PI*2);cx.fill();
+        // Dibuixar puls Cat
+        const pg2=cx.createRadialGradient(catPulseX,lcatY,0,catPulseX,lcatY,5+syncA*6);
+        pg2.addColorStop(0,`rgba(140,180,255,${syncA*0.9})`);pg2.addColorStop(1,'rgba(60,90,255,0)');
+        cx.fillStyle=pg2;cx.beginPath();cx.arc(catPulseX,lcatY,5+syncA*6,0,Math.PI*2);cx.fill();
+
+        // ── Arc elèctric esgarrat: crida a funció global (no redefinida cada frame) ──
+        drawJaggedArc(cx,arcXmt,lmtY,convX,convY,`rgba(255,230,100,${syncA*0.7})`,1.5+syncA*2,1,noisePhase);
+        drawJaggedArc(cx,arcXmt,lmtY,convX,convY,`rgba(255,255,200,${syncA*0.25})`,0.5,2,noisePhase);
+        drawJaggedArc(cx,arcXcat,lcatY,convX,convY,`rgba(150,180,255,${syncA*0.7})`,1.5+syncA*2,3,noisePhase);
+        drawJaggedArc(cx,arcXcat,lcatY,convX,convY,`rgba(200,220,255,${syncA*0.25})`,0.5,4,noisePhase);
+
+        // Impacte al node
+        const ng=cx.createRadialGradient(convX,convY,0,convX,convY,15*syncA);
+        ng.addColorStop(0,`rgba(255,240,150,${syncA*0.9})`);ng.addColorStop(0.5,`rgba(255,140,30,${syncA*0.4})`);ng.addColorStop(1,'rgba(255,80,0,0)');
+        cx.fillStyle=ng;cx.beginPath();cx.arc(convX,convY,15*syncA,0,Math.PI*2);cx.fill();
+
+        // Highlight punt d'ancoratge al cable (mostra on l'arc toca el cable)
+        const hg1=cx.createRadialGradient(arcXmt,lmtY,0,arcXmt,lmtY,8*syncA);
+        hg1.addColorStop(0,`rgba(255,200,60,${syncA*0.8})`);hg1.addColorStop(1,'rgba(255,100,0,0)');
+        cx.fillStyle=hg1;cx.beginPath();cx.arc(arcXmt,lmtY,8*syncA,0,Math.PI*2);cx.fill();
+        const hg2=cx.createRadialGradient(arcXcat,lcatY,0,arcXcat,lcatY,8*syncA);
+        hg2.addColorStop(0,`rgba(120,160,255,${syncA*0.8})`);hg2.addColorStop(1,'rgba(40,80,255,0)');
+        cx.fillStyle=hg2;cx.beginPath();cx.arc(arcXcat,lcatY,8*syncA,0,Math.PI*2);cx.fill();
+
+        if(VIS.lb){cx.fillStyle=`rgba(255,200,80,${syncA*0.8})`;cx.font='bold 9px sans-serif';cx.textAlign='center';cx.fillText('⚡ SPARK · τ='+S.tau+'µs · sync='+Math.round(qs*100)+'%',convX,convY-20);}
+      }
+      } // fi arcFade
+    }
+    // Sparks a les línies (també esvaïts)
+    if(haEM&&VIS.s&&sparkIntens>0.05){
+      const af=toroideSmooth<0.4?1.0:toroideSmooth<0.85?(0.85-toroideSmooth)/0.45:0.0;
+      if(af>0.02){
+      const arcXmt=clamp(convX,22,W-22),arcXcat=clamp(convX,22,W-22);
+      const sA=sparkIntens*ep1*0.7*af;cx.beginPath();cx.arc(arcXmt,lmtY,sA*14,0,Math.PI*2);const sg1=cx.createRadialGradient(arcXmt,lmtY,0,arcXmt,lmtY,sA*14);sg1.addColorStop(0,`rgba(255,255,180,${sA*0.9})`);sg1.addColorStop(0.5,`rgba(255,150,20,${sA*0.5})`);sg1.addColorStop(1,'rgba(255,60,0,0)');cx.fillStyle=sg1;cx.fill();
+      const sA2=sparkIntens*ep2*0.7*af;if(sA2>0.05){cx.beginPath();cx.arc(arcXcat,lcatY,sA2*14,0,Math.PI*2);const sg2=cx.createRadialGradient(arcXcat,lcatY,0,arcXcat,lcatY,sA2*14);sg2.addColorStop(0,`rgba(180,200,255,${sA2*0.9})`);sg2.addColorStop(0.5,`rgba(80,100,255,${sA2*0.5})`);sg2.addColorStop(1,'rgba(40,60,255,0)');cx.fillStyle=sg2;cx.fill();}
+      }
+    }
+  }
+
+  if(!linesOk()&&VIS.lb&&sigOn){cx.fillStyle='rgba(220,140,30,0.8)';cx.font='bold 10px sans-serif';cx.textAlign='center';cx.fillText('⚠ configura alçada de línies EM',CX,H/2);}
+  if(!temHaEm()&&sigOn&&VIS.lb){cx.fillStyle='rgba(220,80,40,0.7)';cx.font='bold 9px sans-serif';cx.textAlign='center';cx.fillText('⚠ ΔV=0 — ionització impossible',CX,n1Y+20);}
+
+  // Nodes acústics
+  // Node: NOMÉS visible quan és per sobre del pont (físicament vàlid)
+  const nodeValid=n1Y<gy-8; // node per sobre del pont en coords canvas
+  if(sigOn&&dbCombined()>5&&vortexSmooth>0.02&&linesOk()&&nodeValid){
+    cx.strokeStyle=`rgba(100,80,200,${vortexSmooth*0.22*Q})`;cx.lineWidth=1;cx.setLineDash([4,4]);cx.beginPath();cx.moveTo(32,n1Y);cx.lineTo(W-32,n1Y);cx.stroke();cx.setLineDash([]);
+    if(Math.abs(hn1-hn2)>0.1){cx.strokeStyle='rgba(125,95,225,0.14)';cx.lineWidth=1;cx.setLineDash([2,5]);cx.beginPath();cx.moveTo(32,n2Y);cx.lineTo(W-32,n2Y);cx.stroke();cx.setLineDash([]);}
+    if(VIS.lb){cx.fillStyle=`rgba(100,80,200,${vortexSmooth*0.4})`;cx.font='9px sans-serif';cx.textAlign='left';cx.fillText('node S₁ h='+hn1.toFixed(2)+'m · sync='+Math.round(qs*100)+'% · τ='+S.tau+'µs',34,n1Y-3);}
+  } else if(sigOn&&!nodeValid&&VIS.lb){
+    // Avís: freqüència massa alta, node sota el pont
+    cx.fillStyle='rgba(220,80,40,0.7)';cx.font='bold 8px sans-serif';cx.textAlign='center';
+    cx.fillText('⚠ f='+S.f1.toFixed(1)+'Hz → node h='+hn1.toFixed(1)+'m < pont h='+S.h_pont_riu+'m',CX,gy-22);
+  }
+
+  // Ones vòrtex — generadors S₁/S₂ segueixen l'anell (canvien angle d'apunt)
+  if(VIS.w&&sigOn&&(S.db1>0||S.db2>0)&&linesOk()){
+    const wA=norm(dbCombined(),0,250),ws1=0.009*Math.min(S.f1,80),ws2=0.009*Math.min(S.f2,80),phiRad=S.phi*Math.PI/180;
+    // Destí de les ones: quan l'anell existeix, les ones apunten ON ÉS REALMENT l'anell
+    const haRing=toroideSmooth>0.1;
+    const ringDestX=haRing?convX:CX;
+    // Les ones SEMPRE apunten CAP AMUNT (node físicament per sobre del pont)
+    // Clamp per evitar que les fletxes apuntin cap al riu quan h_node < h_pont_riu
+    // destY: SEMPRE per sobre dels altaveus (oy=gy-4)
+    // Mínim: 60px per sobre del pont per tenir camí visual clar cap amunt
+    // Si h_node vàlid: destY = posició real; si no: posició per sobre del pont
+    const rawDestY=haRing?convY:(nodeValid?Math.min(n1Y,gy-60):(gy-80));
+    const ringDestY=Math.min(rawDestY, gy-60); // garantir ≥60px per sobre del pont
+    [sx1,sx2].forEach((ox,si)=>{
+      const col=si===0?'85,65,205':'125,95,225',oy=gy-4,ws=si===0?ws1:ws2;
+      // Destí real cap a l'anell (no sempre al centre)
+      const destX=ringDestX, destY=ringDestY;
+      const fb=fBat();const phOff=si===0?0:(phiRad+2*Math.PI*fb*simT);
+      // Control points de la corba Bezier: assegurar que c1y,c2y < oy (cap amunt)
+      const c1x=lerp(ox,destX,0.3)+(si===0?-22:22);
+      const c1y=Math.min(lerp(oy,destY,0.28), oy-15); // sempre per sobre de la font
+      const c2x=lerp(ox,destX,0.72)+(si===0?-8:8);
+      const c2y=Math.min(lerp(oy,destY,0.72), oy-8);
+      if(VIS.lb){
+        // Angle d'apunt real des del generador cap a l'anell
+        // Angle sempre cap amunt: mai positiu (que seria cap al riu)
+        const rawAim=Math.atan2(destY-oy, destX-ox);
+        const aimAngle=Math.min(rawAim,-0.08); // mínim -0.08rad (gairebé horitzontal cap amunt)
+        const as=si===0?-1:1;
+        cx.save();cx.translate(ox,oy);
+        // Arc d'apunt rotat segons l'angle real
+        cx.strokeStyle=`rgba(${col},${wA*0.5})`;cx.lineWidth=1;
+        cx.beginPath();cx.arc(0,0,18,aimAngle-0.35,aimAngle+0.35);cx.stroke();
+        // Fletxa indicant la direcció d'apunt
+        const arrowAngle=aimAngle;
+        cx.beginPath();cx.moveTo(Math.cos(arrowAngle)*18,Math.sin(arrowAngle)*18);
+        cx.lineTo(Math.cos(arrowAngle-0.4)*12,Math.sin(arrowAngle-0.4)*12);
+        cx.moveTo(Math.cos(arrowAngle)*18,Math.sin(arrowAngle)*18);
+        cx.lineTo(Math.cos(arrowAngle+0.4)*12,Math.sin(arrowAngle+0.4)*12);
+        cx.stroke();
+        cx.restore();
+        cx.fillStyle=`rgba(${col},${wA*0.55})`;cx.font='9px sans-serif';cx.textAlign='center';
+        cx.fillText(si===0?'S₁ '+S.f1.toFixed(2)+'Hz':'S₂ '+S.f2.toFixed(2)+'Hz',ox+(si===0?-28:28),oy-10);
+        // Línia puntejada mostrant direcció d'apunt (segueix l'anell)
+        cx.strokeStyle=`rgba(${col},${wA*0.18})`;cx.lineWidth=0.6;cx.setLineDash([3,3]);
+        cx.beginPath();cx.moveTo(ox,oy);cx.lineTo(destX,destY);cx.stroke();cx.setLineDash([]);
+      }
+      cx.strokeStyle=`rgba(${col},${wA*0.82})`;cx.lineWidth=1.2+wA*0.9;cx.beginPath();cx.moveTo(ox,oy);cx.bezierCurveTo(c1x,c1y,c2x,c2y,destX,destY);cx.stroke();
+      for(let fw=1;fw<=3;fw++){const fa=Math.atan((S.so/2)/Math.max(hn1,0.001))*(fw*0.26)*(si===0?1:-1);const fX=destX+Math.sin(fa)*(gy-destY)*0.52;const fc1x=lerp(ox,fX,0.35)+(si===0?-13*fw*0.25:13*fw*0.25);cx.strokeStyle=`rgba(${col},${wA*(0.28-fw*0.07)})`;cx.lineWidth=0.5+wA*0.15;cx.beginPath();cx.moveTo(ox,oy);cx.bezierCurveTo(fc1x,c1y,lerp(fX,destX,0.5),c2y,fX,destY);cx.stroke();}
+      const nW=Math.floor(3+wA*5);
+      for(let w=0;w<nW;w++){const prog=((sT*ws+phOff/(2*Math.PI)+w/nW)%1),t=eO(Math.max(0,Math.min(1,prog)));const pt=bzPt(ox,oy,c1x,c1y,c2x,c2y,destX,destY,t);const wr=Math.max(0.4,(1.2+6*(1-prog))*wA),wo=wA*(1-prog)*0.5;cx.beginPath();cx.arc(pt.x,pt.y,wr,0,Math.PI*2);cx.strokeStyle=`rgba(${col},${wo})`;cx.lineWidth=0.7;cx.stroke();if(SIG==='sqr'&&prog<0.95){cx.fillStyle=`rgba(${col},${wo*0.22})`;cx.fillRect(pt.x-wr*0.4,pt.y-wr*0.4,wr*0.8,wr*0.8);}else if(SIG==='tri'&&prog<0.95){cx.beginPath();cx.moveTo(pt.x,pt.y-wr*0.6);cx.lineTo(pt.x+wr*0.5,pt.y+wr*0.4);cx.lineTo(pt.x-wr*0.5,pt.y+wr*0.4);cx.closePath();cx.fillStyle=`rgba(${col},${wo*0.22})`;cx.fill();}}
+      if(VIS.lb){cx.fillStyle=`rgba(${col},${wA*0.7})`;cx.beginPath();cx.arc(ox,gy,5,0,Math.PI*2);cx.fill();}
+    });
+    if(VIS.lb&&dbCombined()>20){const etaColor=et>0.8?'rgba(64,192,128,0.7)':et>0.4?'rgba(220,160,30,0.7)':'rgba(220,80,40,0.7)';cx.fillStyle=etaColor;cx.font='9px sans-serif';cx.textAlign='center';cx.fillText('η='+et.toFixed(3)+' · η_so='+etaSo().toFixed(3)+' · η_f='+etaF().toFixed(3),CX,Math.min(n1Y,n2Y)-18);}
+  }
+
+  // Vectors ∇×v
+  if(VIS.v&&sigOn&&vortexSmooth>0.05&&linesOk()){
+    const vA=norm(dbCombined(),20,250)*vortexSmooth*et,rF=Math.min(hLP*1.5,55)*vortexSmooth*et;
+    if(rF>3){for(let i=0;i<12;i++){const theta=i/12*Math.PI*2+sT*fRotVortex()*0.5,px=convX+Math.cos(theta)*rF,py=convY+Math.sin(theta)*rF*0.7,vx=-Math.sin(theta)*sg,vy=Math.cos(theta)*0.7*sg,len=9*vA;const col=sg>0?`rgba(64,192,128,${vA*0.65})`:`rgba(220,128,64,${vA*0.65})`;cx.strokeStyle=col;cx.lineWidth=1.4;cx.beginPath();cx.moveTo(px,py);cx.lineTo(px+vx*len,py+vy*len);cx.stroke();const ax=px+vx*len,ay=py+vy*len;cx.beginPath();cx.moveTo(ax,ay);cx.lineTo(ax-vx*3.5+(-vy*0.4)*3,ay-vy*3.5+(vx*0.4)*3);cx.moveTo(ax,ay);cx.lineTo(ax-vx*3.5+(vy*0.4)*3,ay-vy*3.5+(-vx*0.4)*3);cx.stroke();}if(VIS.lb){cx.fillStyle=sg>0?'rgba(64,192,128,0.6)':'rgba(220,128,64,0.6)';cx.font='bold 9px sans-serif';cx.textAlign='center';cx.fillText(sg>0?'∇×v·η>0 ↺':'∇×v·η<0 ↻',convX,convY-rF-10);}}
+  }
+
+  // Circulació plasma
+  if(VIS.c&&ionSmooth>0.05&&linesOk()&&temHaEm()){
+    const pA=ionSmooth*vortexSmooth*et*clamp(M,0,1);if(pA>0.02){const rO=hLP*1.7*Math.min(pA*2,1),rI=hLP*0.4,batP=1+0.25*Math.sin(2*Math.PI*fBat()*simT),nP=Math.floor(pA*35)+6;for(let i=0;i<nP;i++){const theta=i/nP*Math.PI*2+orbAngle*0.18,rr=lerp(rI,rO,0.5+0.5*Math.sin(theta*2+sT*S.f1*2)),tx=M<1?turb_dx*0.3*(1-M):0,ty=M<1?turb_dy*0.3*(1-M):0,px=convX+Math.cos(theta)*rr+tx,py=convY+Math.sin(theta)*rr*0.7+ty,br=clamp((0.3+0.7*Math.abs(Math.sin(theta)))*batP,0,1.5),pr=1+pA*3*Math.min(br,1.3);cx.beginPath();cx.arc(px,py,pr,0,Math.PI*2);cx.fillStyle=`rgba(${Math.floor(clamp(200+55*br,0,255))},${Math.floor(clamp(60+toroideSmooth*150*br,0,255))},${Math.floor(clamp(5+toroideSmooth*30*br,0,255))},${pA*Math.min(br,1)*0.8})`;cx.fill();}}
+  }
+
+  // Anell toroïdal — color canvia amb T_plasma_K
+  if(toroideSmooth>0.08&&temHaEmCtrl()){
+    const rA=toroideSmooth,rRx=Math.min(hLP*2.2,90)*Math.min(rA*1.4,1),rRy=rRx*1.06;
+    const curX=torCX+turb_dx*rA,curY=n1Y+turb_dy*rA*0.4;
+    const puls=0.82+0.18*Math.sin(sT*0.38*Math.PI*2),batP=1+0.12*Math.sin(2*Math.PI*fBat()*simT);
+    const stabAlpha=plasmaAutonom?1:clamp(M*0.5+0.5,0.1,1);
+    // Color depèn de T_plasma_K real (sense cap artificial)
+    const T_disp=T_plasma_K>S.T+273+50?T_plasma_K:S.T+273+50;
+    const t_ratio=clamp((T_disp-300)/T_RUNAWAY,0,1);
+    // Taronja (fred) → groc → blanc (runaway)
+    const r_col=Math.floor(255);
+    const g_col=Math.floor(145+110*t_ratio);
+    const b_col=Math.floor(35+220*t_ratio);
+    const col_anell=`${r_col},${g_col},${b_col}`;
+    if(rRx>5){
+      for(let g=3;g>=1;g--){cx.beginPath();cx.ellipse(curX,curY,rRx+g*10,rRy+g*10,0,0,Math.PI*2);cx.strokeStyle=`rgba(${col_anell},${rA*0.05/g*stabAlpha})`;cx.lineWidth=g*4;cx.stroke();}
+      cx.beginPath();cx.ellipse(curX,curY,rRx,rRy,0,0,Math.PI*2);cx.strokeStyle=`rgba(${col_anell},${rA*puls*batP*0.9*stabAlpha})`;cx.lineWidth=9+2*Math.sin(animT*0.5);cx.stroke();
+      cx.beginPath();cx.ellipse(curX,curY,rRx,rRy,0,0,Math.PI*2);cx.strokeStyle=`rgba(${col_anell},${rA*puls*0.82*stabAlpha})`;cx.lineWidth=3.5;cx.stroke();
+      const fhG=cx.createRadialGradient(curX,curY,0,curX,curY,rRx*0.46);fhG.addColorStop(0,`rgba(10,22,52,${rA*0.95*stabAlpha})`);fhG.addColorStop(0.7,`rgba(15,52,115,${rA*0.85*stabAlpha})`);fhG.addColorStop(1,`rgba(22,68,148,${rA*0.5*stabAlpha})`);
+      cx.beginPath();cx.ellipse(curX,curY,rRx*0.46,rRy*0.46,0,0,Math.PI*2);cx.fillStyle=fhG;cx.fill();cx.strokeStyle=`rgba(33,78,158,${rA*0.28*stabAlpha})`;cx.lineWidth=1.5;cx.stroke();
+      // ── NOMBRE DE NUSOS: KH amb r_plasma de Bennett (Z-pinch autoinduït) ──
+      // m_KH = (R_tor/r_plasma)^(1/3) [Chandrasekhar 1961]
+      // r_plasma ve de l'equilibri de pressió (Bennett): a = I/(2π·√(2neκT/μ₀))
+      // Nota honesta: per a baix I (N₂ excitat), r_plasma→R_tor → m_KH→1
+      // Els 4 nusos del Segre emergeixen quan la ionització és suficient
+      const R_tor=hNode1();
+      const r_plasma=rPlasmaFromBennett(ionSmooth);
+      const nm_target=Math.max(1,Math.round(Math.pow(Math.max(R_tor/Math.max(r_plasma,0.01),1),1/3)));
+      // nmSmooth asimètric: puja ràpid cap a nm_target, baixa molt lent
+      // → nm=4 apareix a ~1.5s reals (×0.2), desapareix lentament si les condicions empitjoren
+      const nmRate=nm_target>nmSmooth?0.06:0.003;
+      nmSmooth+=(nm_target-nmSmooth)*nmRate;
+      const nm=Math.round(nmSmooth);
+      for(let i=0;i<nm;i++){
+        const instP=plasmaAutonom?0:(M<1?(1-M)*rRx*0.12*Math.sin(noisePhase*3+i*2.1):0);
+        const ang=orbAngle+i*(2*Math.PI/nm);const ex=curX+Math.cos(ang)*(rRx+instP),ey=curY+Math.sin(ang)*(rRy+instP*0.5);
+        const nodP=(0.7+0.3*Math.sin(2*Math.PI*fBat()*simT+i*Math.PI/nm))*stabAlpha;
+        const sGl=cx.createRadialGradient(ex,ey,0,ex,ey,11);sGl.addColorStop(0,`rgba(${col_anell},${rA*nodP*0.5})`);sGl.addColorStop(1,`rgba(${col_anell},0)`);cx.fillStyle=sGl;cx.beginPath();cx.arc(ex,ey,11,0,Math.PI*2);cx.fill();
+        const nG=cx.createRadialGradient(ex-1.5,ey-1.5,0.5,ex,ey,6);nG.addColorStop(0,`rgba(${col_anell},${rA*nodP*0.95})`);nG.addColorStop(0.5,`rgba(${col_anell},${rA*0.8})`);nG.addColorStop(1,`rgba(75,38,5,${rA*0.4})`);
+        cx.beginPath();cx.arc(ex,ey,6,0,Math.PI*2);cx.fillStyle=nG;cx.fill();cx.strokeStyle=`rgba(${col_anell},${rA*0.85*stabAlpha})`;cx.lineWidth=1.4;cx.stroke();
+      }
+      if(VIS.lb&&rA>0.3){
+        const T_disp2=T_plasma_K>S.T+273+50?T_plasma_K:Tplasma(ionSmooth);
+        const rw_pct=Math.min(100,Math.round(T_disp2/T_RUNAWAY*100));
+        const stabCol=plasmaAutonom?'#ff5520':M>1?'#40c080':M>0.5?'#e0a030':'#e05050';
+        cx.fillStyle=`rgba(${col_anell},${rA*0.92})`;cx.font='bold 10px sans-serif';cx.textAlign='center';
+        const titol=plasmaAutonom?'🔥 AUTÒNOM · T='+Math.round(T_disp2).toLocaleString()+'K · I='+I_plasma_A.toFixed(0)+'A':'ANELL · T='+Math.round(T_disp2).toLocaleString()+'K · runaway='+rw_pct+'%';
+        cx.fillText(titol,curX,curY-rRy-17);
+        cx.fillStyle=stabCol;cx.font='9px sans-serif';
+        const subtitol=plasmaAutonom?'⚡ SO ATURAT — Z-pinch toroïdal actiu — EM sustenta sol':(M>1?'ESTABLE':M>0.5?'MARGINAL':'INESTABLE')+' · M='+M.toFixed(2)+' · Ω='+fRotVortex().toFixed(3)+'Hz';
+        cx.fillText(subtitol,curX,curY-rRy-5);
+        if(windDrift>0.01){cx.fillStyle='rgba(148,148,128,0.4)';cx.fillText('↔ deriva '+windDrift.toFixed(1)+'m',curX,curY+rRy+13);}
+        // Barra de progrés runaway
+        if(!plasmaAutonom&&T_disp2>S.T+273+100){
+          const bw=rRx*2,bx=curX-rRx,by=curY+rRy+20;
+          cx.fillStyle='rgba(20,10,5,0.6)';cx.fillRect(bx,by,bw,6);
+          const col_rw=rw_pct>80?'#ff3000':rw_pct>50?'#ff7020':'#e0a030';
+          cx.fillStyle=col_rw;cx.fillRect(bx,by,bw*rw_pct/100,6);
+          cx.fillStyle='rgba(200,150,100,0.7)';cx.font='8px sans-serif';cx.textAlign='center';
+          cx.fillText('runaway '+rw_pct+'%  I='+I_plasma_A.toFixed(0)+'A',curX,by+14);
+        }
+      }
+    }
+  }
+
+  // Cotes
+  if(VIS.lb){
+    cx.strokeStyle='rgba(148,148,128,0.13)';cx.lineWidth=0.5;cx.setLineDash([2,3]);cx.beginPath();cx.moveTo(W-15,gy);cx.lineTo(W-15,n1Y);cx.stroke();cx.setLineDash([]);
+    cx.fillStyle='rgba(148,148,128,0.42)';cx.font='9px sans-serif';cx.textAlign='right';cx.fillText(hn1.toFixed(2)+'m',W-18,n1Y+4);cx.fillText(S.hmt.toFixed(2)+'m MT',W-18,lmtY+4);cx.fillText(S.hcat.toFixed(2)+'m Cat',W-18,lcatY+4);cx.fillText('0m',W-18,gy+4);
+    cx.fillStyle='rgba(100,80,200,0.3)';cx.beginPath();cx.arc(sx1,gy,4,0,Math.PI*2);cx.fill();cx.beginPath();cx.arc(sx2,gy,4,0,Math.PI*2);cx.fill();
+    const spd=Math.pow(10,S.spd);cx.fillStyle='rgba(100,80,200,0.52)';cx.textAlign='left';cx.font='9px sans-serif';
+    cx.fillText('×'+(spd<0.01?spd.toFixed(3):spd.toFixed(2))+'  f₁='+S.f1.toFixed(2)+'  f₂='+S.f2.toFixed(2)+'  τ='+S.tau+'µs  sync='+Math.round(qs*100)+'%  η='+et.toFixed(3)+'  M='+M.toFixed(2),7,13);
+    if(toroideSmooth>0.15&&windDrift>0.01){cx.fillStyle='rgba(148,148,128,0.35)';cx.textAlign='center';cx.fillText('↔ ones seguint el toroide',CX,gy+14);}
+  }
+}
+
+let lastW=null;
+function loop(now){
+  // requestAnimationFrame garantit primer — el loop mai s'atura per errors interns
+  requestAnimationFrame(loop);
+  if(!lastW)lastW=now;
+  const wdt=Math.min((now-lastW)/1000,0.05);lastW=now;
+  if(PAUSED)return;
+  try{
+    const spd=Math.pow(10,S.spd),sdt=wdt*spd;
+    simT+=sdt;animT+=wdt*28;
+    updatePhysics(sdt);
+    draw(animT,simT);
+  }catch(e){console.warn('loop:',e);}
+}
+initControls();initFreqControls();initAdvControls();initObjControls();refreshUI();
+setTimeout(()=>{rc();draw(0,0);requestAnimationFrame(loop);},80);
+// Oscil·loscopi i audio en interval separat (100ms) — no afecta el loop principal
+setInterval(()=>{
+  try{
+    updateOscilloscopes();
+    // Actualitzar freqüències dels oscil·ladors d'audio en temps real
+    const fm=S.f_mt||50;
+    if(_audioNodes.s1)_audioNodes.s1.osc.frequency.setTargetAtTime(S.f1<20?S.f1*100:S.f1,_audioCtx.currentTime,0.05);
+    if(_audioNodes.s2)_audioNodes.s2.osc.frequency.setTargetAtTime(S.f2<20?S.f2*100:S.f2,_audioCtx.currentTime,0.05);
+    if(_audioNodes.mt)_audioNodes.mt.osc.frequency.setTargetAtTime(fm,_audioCtx.currentTime,0.05);
+    if(_audioNodes.cat)_audioNodes.cat.osc.frequency.setTargetAtTime(fm,_audioCtx.currentTime,0.05);
+  }catch(e){}
+},100);
+
+// ═══════════════════════════════════════════════════════
+// OSCIL·LOSCOPI: formes d'ona en temps real
+// ═══════════════════════════════════════════════════════
+function drawOsc(cvId,freq,ampDb,phDeg,color,t,waveSig,isMtCat){
+  const cv=document.getElementById(cvId);if(!cv)return;
+  const cx2=cv.getContext('2d');if(!cx2||!cv.width||!cv.height)return;
+  const W=cv.width,H=cv.height;
+  cx2.fillStyle='#02040a';cx2.fillRect(0,0,W,H);
+  // Graella
+  cx2.strokeStyle='rgba(20,40,60,0.6)';cx2.lineWidth=0.5;
+  [W/4,W/2,3*W/4].forEach(x=>{cx2.beginPath();cx2.moveTo(x,0);cx2.lineTo(x,H);cx2.stroke();});
+  cx2.beginPath();cx2.moveTo(0,H/2);cx2.lineTo(W,H/2);cx2.stroke();
+  if(ampDb<=0.5){
+    cx2.fillStyle='rgba(30,50,70,0.6)';cx2.font='7px monospace';cx2.textAlign='center';
+    cx2.fillText('off',W/2,H/2+3);return;
+  }
+  // Escala d'amplitud: arrel quadrada del ratio de potència → visual proporc. a √P
+  // 60dB→0.63, 80dB→0.73, 100dB→0.82, 120dB→0.89, 140dB→0.97
+  const amp=Math.min(1,Math.pow(ampDb/150,0.5));
+  const f_eff=Math.max(freq,0.01);
+  const t_win=Math.max(3/f_eff,0.04); // 3 cicles o mínim 40ms
+  const ph_r=phDeg*Math.PI/180;
+  cx2.strokeStyle=color;cx2.lineWidth=1.5;cx2.beginPath();
+  for(let px=0;px<W;px++){
+    const t_px=t+(px/W)*t_win-t_win;
+    // Forma d'ona: S1/S2 usen SIG; MT/Cat sempre sinusoïdal
+    const raw_phase=2*Math.PI*f_eff*t_px+ph_r;
+    let y;
+    if(isMtCat){
+      y=Math.sin(raw_phase); // MT/Cat sempre sinusoïdal
+    }else if(waveSig==='sqr'){
+      y=(Math.sin(raw_phase)>=0?1:-1); // quadrada
+    }else if(waveSig==='tri'){
+      y=(2/Math.PI)*Math.asin(Math.max(-1,Math.min(1,Math.sin(raw_phase)))); // triangular
+    }else{
+      y=Math.sin(raw_phase); // sinusoïdal per defecte
+    }
+    y*=amp;
+    const py=H/2*(1-y*0.85);
+    px===0?cx2.moveTo(px,py):cx2.lineTo(px,py);
+  }
+  cx2.stroke();
+  // Etiquetes i valors ara es mostren SOBRE el canvas (en HTML, no dins del canvas)
+}
+function updateOscilloscopes(){try{
+  if(document.getElementById('osc-panel')?.style.display==='none')return;
+  const t=simT,fm=S.f_mt||50;
+  drawOsc('osc-s1',S.f1,sigOn?S.db1:0,0,'#28b040',t,SIG,false);
+  drawOsc('osc-s2',S.f2,sigOn?S.db2:0,S.phi,'#c06010',t,SIG,false);
+  drawOsc('osc-mt',fm,emOn?S.vmt*2:0,0,'#b08020',t,'sin',true);
+  drawOsc('osc-cat',fm,emOn?S.vcat*2:0,S.ph,'#1888b0',t,'sin',true);
+  const sl=document.getElementById('osc-f-s1');if(sl)sl.textContent=S.f1.toFixed(2)+'Hz';
+  const sl2=document.getElementById('osc-f-s2');if(sl2)sl2.textContent=S.f2.toFixed(2)+'Hz';
+  const slm=document.getElementById('osc-f-mt');if(slm)slm.textContent=fm.toFixed(1)+'Hz';
+  const slc=document.getElementById('osc-f-cat');if(slc)slc.textContent=fm.toFixed(1)+'Hz φ+'+S.ph+'°';
+  // Valors dB + potència/tensió SOBRE cada gràfica
+  function fmtAcPow(db){
+    if(!sigOn||db<=0)return'off';
+    const p=20e-6*Math.pow(10,db/20),I=p*p/830;
+    return db.toFixed(0)+'dB · '+(I>=1?I.toFixed(1)+'W/m²':I>=0.001?(I*1000).toFixed(1)+'mW/m²':(I*1e6).toFixed(0)+'µW/m²');
+  }
+  const vs1=document.getElementById('osc-val-s1');if(vs1)vs1.textContent=fmtAcPow(S.db1);
+  const vs2=document.getElementById('osc-val-s2');if(vs2)vs2.textContent=fmtAcPow(S.db2);
+  const vmt=document.getElementById('osc-val-mt');if(vmt)vmt.textContent=emOn?S.vmt.toFixed(0)+' kV':'off';
+  const vcat=document.getElementById('osc-val-cat');if(vcat)vcat.textContent=emOn?S.vcat.toFixed(0)+' kV':'off';
+}catch(e){console.warn('osc:',e);}}
+
+// ═══ AUDIO Web Audio API ═══
+let _audioCtx=null;
+const _audioNodes={};
+function _initAudio(){if(!_audioCtx)_audioCtx=new(window.AudioContext||window.webkitAudioContext)();if(_audioCtx.state==='suspended')_audioCtx.resume();}
+function _startOscNode(id){
+  const btn=document.getElementById('spk-'+id);
+  const f_raw=id==='s1'?S.f1:id==='s2'?S.f2:(S.f_mt||50);
+  const db_raw=id==='s1'?S.db1:id==='s2'?S.db2:id==='mt'?S.vmt*2:S.vcat*2;
+  // Pitch: si <20Hz (infrasònic) → ×100 per fer-lo audible
+  const f_audio=f_raw<20?f_raw*100:f_raw;
+  // Guany lineal des de dB, limitat a 0.25
+  const gain_v=Math.max(0.01,Math.min(0.25,Math.pow(10,(Math.min(db_raw,90)-70)/20)));
+  const osc=_audioCtx.createOscillator(),g=_audioCtx.createGain();
+  osc.type='sine';
+  osc.frequency.value=f_audio; // freqüència actual en el moment del click
+  g.gain.value=gain_v;
+  osc.connect(g);g.connect(_audioCtx.destination);
+  osc.start(0); // start immediatament (AudioContext ja en 'running' gràcies a resume)
+  _audioNodes[id]={osc,gain:g};
+  const lbl=f_raw<20?'♦×100':'■';
+  if(btn){btn.textContent=lbl;btn.style.color='#40e080';btn.style.borderColor='#20a040';}
+}
+function toggleAudio(id){
+  _initAudio(); // crea i resume el context
+  const btn=document.getElementById('spk-'+id);
+  if(_audioNodes[id]){
+    // ATURAR
+    try{_audioNodes[id].osc.stop(0);}catch(e){}
+    try{_audioNodes[id].gain.disconnect();}catch(e){}
+    delete _audioNodes[id];
+    if(btn){btn.textContent='🔊';btn.style.color='';btn.style.borderColor='';}
+    return;
+  }
+  // ENGEGAR: esperar que el context estigui 'running' (màx 200ms)
+  if(_audioCtx.state!=='running'){
+    _audioCtx.resume().then(()=>_startOscNode(id)).catch(()=>{});
+  } else {
+    _startOscNode(id);
+  }
+}
+function toggleOscPanel(){
+  const p=document.getElementById('osc-panel');
+  if(p)p.style.display=p.style.display==='none'?'block':'none';
+}
+
+// ══ SAVE/LOAD CONFIG ══════════════════════════════════
+const CFG_KEY='toroide_cfgs';
+function cfgAll(){try{return JSON.parse(localStorage.getItem(CFG_KEY)||'{}');}catch(e){return {};}}
+function cfgSave(){
+  const name=prompt('Nom de la configuració:','exp_'+new Date().toLocaleTimeString().replace(/:/g,''));if(!name)return;
+  const all=cfgAll();
+  all[name]={S:JSON.parse(JSON.stringify(S)),model:PLASMA_MODEL,sig:SIG,nf:NODE_FORMULA,sm:SRC_MODE,ts:new Date().toLocaleTimeString()};
+  localStorage.setItem(CFG_KEY,JSON.stringify(all));cfgRefreshList();alert('✓ Desat: '+name);
+}
+function cfgLoad(){
+  const sel=document.getElementById('cfg-list');if(!sel||!sel.value)return;
+  const all=cfgAll();const c=all[sel.value];if(!c){alert('No trobat');return;}
+  Object.assign(S,c.S);
+  if(c.model)setPlasmaModel(c.model);if(c.sig)SIG=c.sig;if(c.nf)setNodeFormula(c.nf);if(c.sm)setSrcMode(c.sm);
+  Object.keys(DEF).forEach(k=>{const sl=document.getElementById('sl-'+k);if(sl&&S[k]!==undefined)sl.value=S[k];});
+  refreshUI();resetPhysics();document.getElementById('savecfg-panel').style.display='none';
+}
+function cfgDelete(){
+  const sel=document.getElementById('cfg-list');if(!sel||!sel.value)return;
+  const all=cfgAll();if(!all[sel.value])return;
+  if(!confirm('Eliminar "'+sel.value+'"?'))return;
+  delete all[sel.value];localStorage.setItem(CFG_KEY,JSON.stringify(all));cfgRefreshList();
+}
+function cfgRefreshList(){
+  const sel=document.getElementById('cfg-list');if(!sel)return;sel.innerHTML='';
+  const all=cfgAll();
+  Object.entries(all).forEach(([name,c])=>{const opt=document.createElement('option');opt.value=name;opt.textContent=name+(c.ts?' ['+c.ts+']':'');sel.appendChild(opt);});
+  if(!Object.keys(all).length){const opt=document.createElement('option');opt.value='';opt.textContent='(cap config desada)';sel.appendChild(opt);}
+}
+function toggleSavePanel(){
+  const p=document.getElementById('savecfg-panel');p.style.display=p.style.display==='none'?'block':'none';
+  if(p.style.display==='block')cfgRefreshList();
+}
+
+</script>
+
+<!-- SAVE/LOAD CONFIG -->
+<div id="savecfg-panel" style="display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);
+     background:#0a0e1a;border:1px solid #2a4060;border-radius:6px;padding:12px 16px;z-index:100;min-width:260px">
+  <div style="font-size:10px;color:#6090b0;margin-bottom:8px;font-weight:700">💾 CONFIGURATIONS DESADES</div>
+  <select id="cfg-list" style="width:100%;background:#050810;color:#a0b8d0;border:1px solid #2a4060;
+          border-radius:3px;padding:3px;font-size:9px;margin-bottom:6px"></select>
+  <div style="display:flex;gap:4px;flex-wrap:wrap">
+    <button onclick="cfgSave()" style="flex:1;background:#0a1e10;border:1px solid #204030;color:#60a080;
+            border-radius:3px;padding:3px 6px;font-size:8.5px;cursor:pointer">💾 Desa actual</button>
+    <button onclick="cfgLoad()" style="flex:1;background:#0a1020;border:1px solid #202040;color:#6080c0;
+            border-radius:3px;padding:3px 6px;font-size:8.5px;cursor:pointer">📂 Carrega</button>
+    <button onclick="cfgDelete()" style="flex:1;background:#180a0a;border:1px solid #401020;color:#a04040;
+            border-radius:3px;padding:3px 6px;font-size:8.5px;cursor:pointer">🗑 Elimina</button>
+    <button onclick="document.getElementById('savecfg-panel').style.display='none'"
+            style="flex:1;background:#0a0e1a;border:1px solid #2a4060;color:#406080;
+            border-radius:3px;padding:3px 6px;font-size:8.5px;cursor:pointer">✕ Tanca</button>
+  </div>
+</div>
+
+</body>
+</html>
