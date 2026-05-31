@@ -6,7 +6,7 @@
 
 ## Project: Observation and Analysis of the Segre River Phenomenon (2022)
 
-**🌐 [Simulació web en viu](https://bioquad.github.io/Velo-Toroide/)**
+**🌐 [Simulation web](https://bioquad.github.io/Velo-Toroide/)**
 
 ### Description
 
