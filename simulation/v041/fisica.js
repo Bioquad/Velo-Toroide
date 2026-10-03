@@ -16,7 +16,7 @@
      hmt,hcat,sl,h_pont,h_src,so,sx_off,a_riu,D_ap,d_obs [m] · rc [cm]
      vmt,vcat [kV eficaços] · ph,phi,elev,az_eix,az_vis [°] · f1,f2,f_mt [Hz]
      db1,db2 [dB SPL a 1 m sobre l'eix] · tau [µs] · aR, swirl [adimensional]
-     npols [0 = continu] · n_inj [0 = nodes espontanis] · kdir [±1] · dT0 [K]
+     npols [empentes d'aire de l'emissor; 0 = continu] · n_inj [0 = nodes espontanis] · kdir [±1] · dT0 [K]
      mes, dia, hora [local], tz [h], lat, lon [°]
    ═══════════════════════════════════════════════════════════════════════════ */
 (function (root) {
@@ -413,6 +413,24 @@ function rotacioNodes(s, an, ev) {
   return { omK, omS, om, T: Math.abs(om) > 1e-9 ? 2 * Math.PI / Math.abs(om) : Infinity, sentit: Math.sign(om), LK };
 }
 
+/* ── Forma de cometa dels nodes ─────────────────────────────────────────────
+   Observació: darrere de cada node l'anell té el gruix del node i es va
+   aprimant fins al node següent. Model: cada node concentra traçador i, en
+   avançar, deixa enrere matèria que es dispersa. L'edat de la matèria a una
+   distància s darrere el cap és s/(Ω·R); el gruix visible decau com
+   exp(−edat/τ), amb τ = a/σ_w (temps de remolí a l'escala del tub).
+   Entre dos nodes passa un temps Δt = T_volta/n.
+   ─────────────────────────────────────────────────────────────────────────── */
+function cuaNodes(s, an, ev, rot) {
+  const e = ev || { a: an.a };
+  const r = rot || rotacioNodes(s, an, ev);
+  const n = Math.max(1, an.nodes);
+  const dtNodes = isFinite(r.T) ? r.T / n : Infinity;            // temps entre caps
+  const tau = e.a / Math.max(s.turb, 1e-3);                      // dispersió del rastre
+  const fFinal = isFinite(dtNodes) ? Math.exp(-dtNodes / tau) : 1; // gruix relatiu al node següent
+  return { n, dtNodes, tau, fFinal, factor: u => isFinite(dtNodes) ? Math.exp(-u * dtNodes / tau) : 1 };
+}
+
 /* ── Sol, cel i aparença òptica ─────────────────────────────────────────────
    Posició del sol: algorisme de la NOAA (precisió ~0.5°).
    Transmissió: Rayleigh + aerosols (β d'Ångström, exponent 1.3) amb la massa
@@ -564,7 +582,7 @@ function avaluaObservacio(s, objectiu) {
   const files = [];
   const fila = (nom, valor, ok) => files.push({ nom, valor, ok: !!ok });
   fila('anell format', an.es_forma ? 'sí' : 'no', an.es_forma);
-  if (!an.es_forma) return { files, n: files.filter(f => f.ok).length, total: 16, an };
+  if (!an.es_forma) return { files, n: files.filter(f => f.ok).length, total: 17, an };
   const vida = vidaAnell2(s, an);
   const tObs = Math.min(o.durada, Math.max(vida.tCoh, 1));
   const tr = trajectoria(s, an, src, tObs, Math.max(tObs / 60, 0.05));
@@ -611,8 +629,11 @@ function avaluaObservacio(s, objectiu) {
   fila('forat amb un to diferent', (dh * 100).toFixed(1) + ' %', dh >= 0.01 && dh <= 0.3);
   const audible = [[s.f1, s.db1], [s.f2, s.db2]].some(([f, L]) => L > 0 && f >= 20);
   fila('sense so audible', audible ? 'audible' : 'infrasò', !audible);
-  fila('un sol anell', s.npols === 1 ? '1 pols' : s.npols === 0 ? 'continu' : s.npols + ' polsos', s.npols === 1);
-  return { files, n: files.filter(f => f.ok).length, total: files.length, an, vida, rot, ap, tr, corba, tVis, tExt };
+  const cua = cuaNodes(s, an, mig.ev, rot);
+  fila('cua de cometa fins al node següent', isFinite(cua.dtNodes) ? Math.round(cua.fFinal * 100) + ' % del gruix' : 'sense cua',
+    cua.fFinal >= 0.05 && cua.fFinal <= 0.4);
+  fila('un sol anell', s.npols === 1 ? '1 empenta' : s.npols === 0 ? 'continu' : s.npols + ' empentes', s.npols === 1);
+  return { files, n: files.filter(f => f.ok).length, total: files.length, an, vida, rot, cua, ap, tr, corba, tVis, tExt };
 }
 
 /* ── Disseny invers: configuració física que reprodueix l'observació ──────────
@@ -712,7 +733,7 @@ const API = {
   distanciaXoc, fBat, sentitBat, velocitatObertura, dbPerVelocitat, anellFont, nuEfectiva,
   vidaAnell, nucliTermo, tracador, profOptica, levitacio, conductors, campEPic, corona, campRuptura,
   sincronisme, ratiRuptura, plasma, dTdt, colorCosNegre,
-  evolucio, vidaAnell2, rotacioNodes, posicioSol, massaAire, transSol, iluminanciaSol,
+  evolucio, vidaAnell2, rotacioNodes, cuaNodes, posicioSol, massaAire, transSol, iluminanciaSol,
   luminanciaCel, faseHG, aparenca, geometriaVisio, anellPrincipalFont, velocitatAnell,
   trajectoria, estatAnell, tauPunt, corbaContrast, OBS, avaluaObservacio, dissenya,
 };

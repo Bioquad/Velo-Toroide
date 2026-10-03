@@ -71,6 +71,12 @@ t('nodes: n injectors sembren el mode n; sense injectors, Widnall', () => {
   const a = F.anellFont(amb({ aR: 0.2 }), 3, 120);
   assert.strictEqual(a.nodes, a.nWidnall);
 });
+t('cua de cometa: el gruix decau com exp(−Δt/τ) entre nodes', () => {
+  const s = amb({ D_ap: 2, n_inj: 4, f1: 1, swirl: 0.5 }), an = F.anellFont(s, 1, 140);
+  const cu = F.cuaNodes(s, an);
+  prop(cu.fFinal, Math.exp(-cu.dtNodes / (an.a / s.turb)), 1e-9, 'f');
+  assert.ok(cu.factor(0) === 1 && cu.factor(0.5) > cu.factor(1));
+});
 t('gir: el swirl canvia el sentit i el període', () => {
   const s = amb({ D_ap: 2, n_inj: 4, f1: 1 }), an = F.anellFont(s, 1, 140);
   const a = F.rotacioNodes(amb({ D_ap: 2, n_inj: 4, swirl: 0.5 }), an), b = F.rotacioNodes(amb({ D_ap: 2, n_inj: 4, swirl: -0.5, kdir: -1 }), an);
@@ -109,7 +115,7 @@ t('fum gruixut de costat al sol: el blanc és més clar que el cel, el taronja �
 const sol = F.posicioSol(SEGRE);
 const BASE = amb({ dirW: 180, aot: 0.1, d_obs: 40, az_vis: sol.az - 3 });
 const OBJ = { D: 25, tub: 3, n: 4, Trot: 7, sentit: 1, h: 25, Umax: 1, vida: 180, contrast: 2 };
-t('disseny (prioritat deriva): 15/16 i només falla el gir de 7 s', () => {
+t('disseny (prioritat deriva): 16/17 i només falla el gir de 7 s', () => {
   const d = F.dissenya(BASE, Object.assign({ prioritat: 'deriva' }, OBJ));
   const ev = F.avaluaObservacio(d.cfg);
   const falla = ev.files.filter(f => !f.ok).map(f => f.nom);
@@ -117,7 +123,7 @@ t('disseny (prioritat deriva): 15/16 i només falla el gir de 7 s', () => {
   assert.ok(d.viable && d.conflicte > 1);
   prop(2 * ev.tr[Math.floor(ev.tr.length / 2)].ev.R, 25, 0.01, 'diàmetre al mig');
 });
-t('hipòtesi: arrossegat per una brisa de 0.5 km/h → 15/16, però amb aire gairebé quiet', () => {
+t('hipòtesi: arrossegat per una brisa de 0.5 km/h → 16/17, però amb aire gairebé quiet', () => {
   const b = amb({ W: 0.5, dirW: 45, aot: 0.1, d_obs: 40, az_vis: sol.az - 5 });
   const d = F.dissenya(b, Object.assign({ prioritat: 'deriva', passiu: true }, OBJ));
   const ev = F.avaluaObservacio(d.cfg, { passiu: true });
@@ -130,7 +136,7 @@ t('disseny (prioritat gir): aconsegueix 7 s però perd la deriva lenta', () => {
   const f = nom => ev.files.find(x => x.nom === nom).ok;
   assert.ok(f('1 volta ≈ 7 s') && !f('deriva lenta (U < 1.67 m/s)'));
 });
-t('assaig real 1:10 amb fum blanc: 15/16 (només falla el color)', () => {
+t('assaig real 1:10 amb fum blanc: només falla el color', () => {
   const s = amb({ W: 1, dirW: 180, aot: 0.05, d_obs: 15, trac: 1, h_pont: 1, a_riu: 10, vmt: 0, vcat: 0, az_vis: (sol.az - 100 + 360) % 360 });
   const o = { D: 2.5, tub: 0.3, n: 4, Trot: 7, sentit: 1, h: 3, Umax: 0.5, vida: 30, contrast: 0.3, prioritat: 'deriva' };
   const d = F.dissenya(s, o);

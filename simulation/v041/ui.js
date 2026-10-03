@@ -36,7 +36,7 @@ const DEF = {
   aR:    [0.02, 0.8, 0.01, 0.12, 'gruix del nucli a/R', '', 2],
   elev:  [-90, 90, 1, 0, 'elevació de l\'eix d\'emissió', '°', 0],
   az_eix:[-180, 180, 1, 0, 'eix respecte a la mirada (0 = s\'allunya)', '°', 0],
-  npols: [0, 20, 1, 0, 'nombre de polsos (0 = continu)', '', 0],
+  npols: [0, 20, 1, 0, 'empentes d\'aire de l\'emissor (1 empenta = 1 anell)', '', 0],
   n_inj: [0, 12, 1, 0, 'injectors de traçador (0 = nodes espontanis)', '', 0],
   swirl: [-1, 1, 0.01, 0, 'swirl a l\'obertura w/u (+ = ↺)', '', 2],
   kdir:  [-1, 1, 2, 1, 'sentit de l\'ona de Kelvin', '', 0],
@@ -335,6 +335,8 @@ function refreshInfo() {
       `U (Saffman) = ${c('v', an.Uself.toFixed(2) + ' m/s')} · velocitat induïda Γ/4πR = ${c(vInd > S.turb ? 'g' : 'r', vInd.toFixed(3) + ' m/s')} ${vInd > S.turb ? '> σ_w ✓' : '< σ_w: la turbulència el desfà'}<br>` +
       `fase coherent ${c('v', fmtT(v.tCoh))} + dispersió ${c('v', fmtT(v.tFade))}<br>` +
       `nodes ${c('o', an.nodes)} ${S.n_inj > 0 ? '(injectors)' : '(Widnall espontani)'} · gir: Kelvin ${c('v', rot.omK.toFixed(3))} + swirl ${c('v', rot.omS.toFixed(3))} rad/s → ${c('o', isFinite(rot.T) ? fmtT(rot.T) : '—')} per volta<br>` +
+      (() => { const cu = F.cuaNodes(S, an, null, rot); return isFinite(cu.dtNodes)
+        ? `cua de cometa: entre nodes ${c('v', fmtT(cu.dtNodes))} · dispersió del rastre τ = a/σ_w = ${c('v', fmtT(cu.tau))} → gruix al node següent ${c(cu.fFinal >= 0.05 && cu.fFinal <= 0.4 ? 'g' : 'w', Math.round(cu.fFinal * 100) + ' %')}<br>` : ''; })() +
       `${Math.abs(S.swirl) > 0.6 ? c('w', '⚠ swirl > 0.6: risc de trencament del vòrtex<br>') : ''}${an.F > 4 ? c('w', 'L₀/D > 4: part del flux queda com a jet de cua<br>') : ''}${an.lineal ? '' : c('w', '⚠ Mach > 0.1: acústica no lineal')}`;
   }
   setH('fc-anell', ha);
@@ -553,7 +555,26 @@ function draw() {
     const lw = Math.max(2 * ev.a * sc.pxM, 1.5 * f);
     if (rx < 1) continue;
     cx.save(); cx.translate(x, y); cx.rotate(rotEl);
-    if (v.visible) {
+    const n = Math.min(r.an.nodes, 24);
+    const rot = F.rotacioNodes(S, r.an, ev), cua = F.cuaNodes(S, r.an, ev, rot);
+    if (v.visible && !ev.disp && n > 1 && isFinite(cua.dtNodes)) {
+      // Forma de cometa: darrere de cada node el tub té el gruix del node i
+      // s'aprima (matèria més vella, més dispersa) fins al node següent.
+      const gap = 2 * Math.PI / n, sg = rot.om >= 0 ? 1 : -1, NS = 40, k_ = ry / rx;
+      cx.fillStyle = `rgba(${v.col},${0.85 * v.alpha})`;
+      for (let k = 0; k < n; k++) {
+        const cap = -(r.ang + k * gap), ext = [], int = [];
+        for (let j = 0; j <= NS; j++) {
+          const u = j / NS, th = cap + sg * u * gap, h = Math.max(lw * cua.factor(u), 1 * f) / 2;
+          ext.push([(rx + h) * Math.cos(th), (ry + h * k_) * Math.sin(th)]);
+          int.push([(rx - h) * Math.cos(th), (ry - h * k_) * Math.sin(th)]);
+        }
+        cx.beginPath(); cx.moveTo(ext[0][0], ext[0][1]);
+        for (const [px_, py_] of ext) cx.lineTo(px_, py_);
+        for (let j = int.length - 1; j >= 0; j--) cx.lineTo(int[j][0], int[j][1]);
+        cx.closePath(); cx.fill();
+      }
+    } else if (v.visible) {
       cx.strokeStyle = `rgba(${v.col},${0.18 * v.alpha})`; cx.lineWidth = lw * (ev.disp ? 2.5 : 1.8);
       cx.beginPath(); cx.ellipse(0, 0, rx, ry, 0, 0, 2 * Math.PI); cx.stroke();
       cx.strokeStyle = `rgba(${v.col},${0.8 * v.alpha})`; cx.lineWidth = lw;
@@ -563,7 +584,6 @@ function draw() {
       cx.beginPath(); cx.ellipse(0, 0, rx, ry, 0, 0, 2 * Math.PI); cx.stroke(); cx.setLineDash([]);
     }
     // Nodes: el patró gira amb Ω = Ω_Kelvin + Ω_swirl (positiu = antihorari a la pantalla)
-    const n = Math.min(r.an.nodes, 24);
     if (!ev.disp) for (let k = 0; k < n; k++) {
       const ang = -(r.ang + k * 2 * Math.PI / n);
       const nx = Math.cos(ang) * rx, ny = Math.sin(ang) * ry;
