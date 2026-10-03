@@ -499,7 +499,7 @@ function toHue(cLin) {
  * Retorna color RGB lineal (cd/m² per canal), lluminància, contrast amb el cel
  * (C = L/L_cel − 1) i to.
  */
-function aparenca(s, tau, az, el) {
+function aparenca(s, tau, az, el, dist) {
   const sol = posicioSol(s), tr = tracador(s);
   const Lsky = luminanciaCel(s, sol, az, el);
   const psi = angleEntre(az, el, sol.az, sol.alt);
@@ -520,6 +520,10 @@ function aparenca(s, tau, az, el) {
   const Rdf = xs / (1 + xs), Tdf = Math.max(1 - Rdf - e, 0);
   const ms = ((1 - wB) * Tdf + wB * Rdf) * 0.5 / Math.PI;
   const rgb = [0, 1, 2].map(i => Lsky * CEL_RGB[i] * e + En * (T[i] / lT) * tr.alb[i] * Math.max(P / (4 * Math.PI) * capa, ms));
+  // Camí fins al testimoni (Koschmieder): l'objecte s'atenua i s'hi afegeix la
+  // llum de l'aire interposat; el contrast aparent és C·exp(−3.912·d/V).
+  const Tp = Math.exp(-3.912 * Math.max(dist || 0, 0) / (Math.max(s.vis || 40, 0.1) * 1000));
+  for (let i = 0; i < 3; i++) rgb[i] = rgb[i] * Tp + Lsky * CEL_RGB[i] * (1 - Tp);
   const Y = lum(rgb), hs = toHue(rgb);
   const C = Y / Math.max(Lsky, 1e-6) - 1;
   return { rgb, Y, Lsky, C, psi: psi * R2D, P, En, sol, hue: hs.h, sat: hs.sat,
@@ -581,7 +585,7 @@ function corbaContrast(s, an, src) {
   const v = vidaAnell2(s, an);
   const tEnd = v.tCoh + 4 * v.tFade;
   const tr = trajectoria(s, an, src, tEnd, Math.max(tEnd / 400, 0.05));
-  return tr.map(p => { const g = geometriaVisio(s, p.x, p.y, p.z); return { t: p.t, C: aparenca(s, tauPunt(s, p), g.az, g.el).C }; });
+  return tr.map(p => { const g = geometriaVisio(s, p.x, p.y, p.z); return { t: p.t, C: aparenca(s, tauPunt(s, p), g.az, g.el, g.dist).C }; });
 }
 
 /* ── Comparació amb l'observació (18-09-2022) ──────────────────────────────── */
@@ -634,10 +638,10 @@ function avaluaObservacio(s, objectiu) {
   fila(`extinció gradual ${nf(20 * fd, 0)}–${nf(30 * fd, 0)} s`, tExt.toFixed(0) + ' s', tExt >= 10 * fd && tExt <= 45 * fd);
   const gm = geometriaVisio(s, mig.x, mig.y, mig.z);
   const tau = tauPunt(s, mig);
-  const ap = aparenca(s, tau, gm.az, gm.el);
+  const ap = aparenca(s, tau, gm.az, gm.el, gm.dist);
   fila('lluminós de dia (C > 0.3)', 'C = ' + ap.C.toFixed(2), ap.C > 0.3);
   fila('color taronja', Math.round(ap.hue) + '°', ap.taronja);
-  const apF = aparenca(s, 0.1 * tau, gm.az, gm.el);          // vel de traçador dins la bombolla
+  const apF = aparenca(s, 0.1 * tau, gm.az, gm.el, gm.dist);          // vel de traçador dins la bombolla
   const dh = Math.abs(apF.C);
   fila('forat amb un to diferent', (dh * 100).toFixed(1) + ' %', dh >= 0.01 && dh <= 0.3);
   const audible = [[s.f1, s.db1], [s.f2, s.db2]].some(([f, L]) => L > 0 && f >= 20);
@@ -731,13 +735,14 @@ function dissenya(s, obj) {
   // per això primer es busca el τ òptim en una graella logarítmica.
   const gm = geometriaVisio(cfg, mig.x, mig.y, mig.z);
   const tauU = profOptica(Object.assign({}, cfg, { aer: 1 }), mig.ev.a, mig.ev.dil);   // τ per 1 mg/m³
-  const contrastTau = t => aparenca(cfg, t, gm.az, gm.el).C;
+  const contrastTau = t => aparenca(cfg, t, gm.az, gm.el, gm.dist).C;
   let tauBest = 0.01, cMax = -Infinity;
   for (let lt = -2; lt <= 1.5; lt += 0.05) { const cc = contrastTau(Math.pow(10, lt)); if (cc > cMax) { cMax = cc; tauBest = Math.pow(10, lt); } }
-  const tauReq = cMax > obj.contrast ? bisecta(t => contrastTau(t) - obj.contrast, 1e-4, tauBest) : tauBest;
+  const cObj = obj.contrast * 1.02;   // petit marge: el criteri és estricte (C > objectiu)
+  const tauReq = cMax > cObj ? bisecta(t => contrastTau(t) - cObj, 1e-4, tauBest) : tauBest;
   cfg.aer = Math.min(tauReq / Math.max(tauU, 1e-30), 20000);
   return {
-    cfg, Gamma, GamDeriva, GamRot, f, u, mach: u / cSo(s), L: cfg.db1, cMax, psi: aparenca(cfg, 0, gm.az, gm.el).psi,
+    cfg, Gamma, GamDeriva, GamRot, f, u, mach: u / cSo(s), L: cfg.db1, cMax, psi: aparenca(cfg, 0, gm.az, gm.el, gm.dist).psi,
     vInd: c.an.Gamma / (4 * Math.PI * c.an.R),   // la turbulència real ha de ser inferior a això
     conflicte: GamRot / GamDeriva, Umax,          // > 1: no es pot complir gir i deriva alhora
     viable: cfg.db1 <= dbMax(s) && u / cSo(s) < 0.3,
@@ -808,7 +813,9 @@ function avaluaEmissors(s) {
   fila('deriva lenta amb el vent', (vent(s) * 3.6).toFixed(1) + ' km/h', vent(s) < 2);
   // Brillantor respecte al cel, a la meitat de l'observació
   const pm = posicioEmissors(s, s.e_vida / 2), gm = geometriaVisio(s, pm.x, pm.y, pm.z);
-  const sol = posicioSol(s), Lsky = luminanciaCel(s, sol, gm.az, gm.el), C = e.L0 / Math.max(Lsky, 1e-6);
+  const sol = posicioSol(s), Lsky = luminanciaCel(s, sol, gm.az, gm.el);
+  const Tp = Math.exp(-3.912 * gm.dist / (Math.max(s.vis || 40, 0.1) * 1000));   // atenuació pel camí
+  const C = e.L0 * Tp / Math.max(Lsky, 1e-6);
   fila('lluminós de dia (C > 0.3)', 'C = ' + C.toFixed(2), C > 0.3);
   fila('color taronja', Math.round(e.hue) + '°', e.taronja);
   fila('forat amb un to diferent', 'cel net', false);
@@ -817,7 +824,7 @@ function avaluaEmissors(s) {
   fila('sense so audible', 'depèn del mecanisme', null);
   fila('un sol anell', 'sí', null);
   const aval = files.filter(f => f.ok !== null);
-  return { files, n: aval.filter(f => f.ok).length, total: aval.length, e, C, Lsky, emissors: true };
+  return { files, n: aval.filter(f => f.ok).length, total: aval.length, e, C, Lsky, Tp, dist: gm.dist, emissors: true };
 }
 
 /* ═══ MODEL C: PATRÓ ACÚSTIC ROTATIU ════════════════════════════════════════
@@ -877,7 +884,7 @@ function avaluaPatro(s) {
   fila('nodes visibles (boira acústica)', p.condensa ? 'sí · T = ' + p.Tmin.toFixed(1) + ' °C' : 'no · cal ' + p.Lcond.toFixed(0) + ' dB al node', p.condensa);
   fila('cua de cometa fins al node següent', p.condensa ? Math.round(p.fFinal * 100) + ' % (gotes de ' + s.c_r + ' µm)' : '—', p.condensa && p.fFinal >= 0.05 && p.fFinal <= 0.4);
   const sol = posicioSol(s), g = geometriaVisio(s, s.sx_off, s.c_h, 0);
-  const ap = aparenca(Object.assign({}, s, { trac: 2 }), p.condensa ? p.tau : 0, g.az, g.el);
+  const ap = aparenca(Object.assign({}, s, { trac: 2 }), p.condensa ? p.tau : 0, g.az, g.el, g.dist);
   fila('lluminós de dia (C > 0.3)', 'C = ' + ap.C.toFixed(2), ap.C > 0.3);
   fila('color taronja', p.condensa ? Math.round(ap.hue) + '°' : '—', p.condensa && ap.taronja);
   fila('deriva amb la brisa', 'patró fix a l\'emissor', false);

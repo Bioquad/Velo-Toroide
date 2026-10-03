@@ -25,6 +25,15 @@
   <div class="cvw">
     <canvas id="cv"></canvas>
 
+    <!-- Vistes de càmera: arrossega per girar, roda/pessic per apropar, doble clic per tornar -->
+    <div class="vistes" title="Arrossega per girar · roda o pessic per apropar · doble clic per tornar a la vista">
+      <button class="bn vt" data-vista="testimoni">👁 testimoni</button>
+      <button class="bn vt" data-vista="frontal">frontal</button>
+      <button class="bn vt" data-vista="lateral">lateral</button>
+      <button class="bn vt" data-vista="zenital">zenital</button>
+      <button class="bn vt on" data-vista="persp">3D</button>
+    </div>
+
     <!-- Oscil·loscopi -->
     <div class="ov" id="osc-panel">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px">
