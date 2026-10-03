@@ -165,6 +165,32 @@ t('assaig real 1:10 amb fum blanc (a 90 m): només fallen el color i la implosi�
   assert.deepStrictEqual(ev.files.filter(x => !x.ok).map(x => x.nom), ["s'encongeix 5 s i desapareix", 'color taronja']);
   assert.ok(d.L < 120 && d.f < 20);   // infrasò i nivell assolible amb un pistó
 });
+/* Formació al punt mig entre S₁ i S₂ (l'anell no surt de cap font) */
+const MIG = amb(Object.assign({ dirW: 0, aot: 0.1, az_vis: sol.az - 3, form: 1, h_src: 5, h_form: 25, so: 27.5, sx_off: 0,
+  f1: 0.07, f2: 0.07, db1: 178, db2: 178, phi: 0, D_ap: 20 }, ESC));
+t('punt mig: dues ones en fase es sumen (p_M = p₁ + p₂) i en antifase s\'anul·len', () => {
+  const m = F.puntMig(MIG);
+  prop(m.r[0], Math.hypot(13.75, 20), 1e-12, 'r');
+  prop(m.pM, m.p[0] + m.p[1], 1e-9, 'en fase');
+  assert.ok(F.puntMig(Object.assign({}, MIG, { phi: 180 })).pM < 1e-6 * m.pM);
+  assert.ok(!F.anellPrincipalFont(Object.assign({}, MIG, { phi: 180 })).an.es_forma);
+});
+t('punt mig amb freqüències diferents: es forma als màxims del batec, un anell per batec', () => {
+  const m = F.puntMig(Object.assign({}, MIG, { f2: 0.08 }));
+  prop(m.fBat, 0.01, 1e-9, 'batec'); prop(m.ritme, 0.01, 1e-9, 'ritme');
+  prop(m.pM, m.p[0] + m.p[1], 1e-12, 'màxim');
+});
+t('disseny al punt mig: l\'anell neix a x = 0 i a 25 m, amb ~178 dB a cada font; el gir de 7 s és impossible', () => {
+  const d = F.dissenya(MIG, Object.assign({ prioritat: 'deriva' }, OBJ));
+  const pr = F.anellPrincipalFont(d.cfg);
+  assert.ok(pr.src.mig && pr.src.x === 0 && pr.src.y === 25 && pr.an.es_forma);
+  assert.strictEqual(d.cfg.db1, d.cfg.db2);
+  assert.ok(Math.abs(d.L - 178.3) < 0.5 && d.viable, String(d.L));
+  const ev = F.avaluaObservacio(d.cfg);
+  assert.ok(ok(ev, 'anell format') && ok(ev, 'creix una mica (0–1.5 min)') && ok(ev, 'deriva lenta (U < 1.67 m/s)'));
+  const r = F.dissenya(MIG, Object.assign({ prioritat: 'rotacio' }, OBJ));
+  assert.ok(r.L > F.dbMax(MIG) && !r.viable, String(r.L));
+});
 /* Model B: nodes emissors */
 const EMIS = amb(Object.assign({ W: 0.5, dirW: 0, az_vis: (sol.az - 90 + 360) % 360,
   e_n: 4, e_D: 25, e_cap: 3, e_T: 7, e_sent: 1, e_tau: 1.3, e_P: 1.5, e_tipus: 1, e_Temp: 2000, e_h: 25, e_vida: 150, e_ext: 30, e_impl: 1 }, ESC));

@@ -184,8 +184,14 @@ function dbPerVelocitat(s, f, u) {
  * Model de "slug": carrera L₀ = 2u/ω, circulació Γ = ½∫u²dt = πu²/(4ω).
  */
 function anellFont(s, f, L) {
-  const w = 2 * Math.PI * f, D = s.D_ap, c = cSo(s);
-  const u = velocitatObertura(s, f, L);
+  const an = anellVelocitat(s, f, velocitatObertura(s, f, L));
+  an.viable = pAmpDeDb(L) < pAtm(s);           // rarefacció per sobre del buit
+  return an;
+}
+/** Formació (model de «slug» + criteri de Holman) amb una velocitat oscil·lant u
+ *  sobre una zona de diàmetre D = D_ap (l'obertura, o la zona del punt mig) */
+function anellVelocitat(s, f, u) {
+  const w = 2 * Math.PI * Math.max(f, 1e-9), D = s.D_ap, c = cSo(s);
   const L0 = 2 * u / w;
   const F = L0 / D;                          // nombre de formació
   const holman = (u / Math.PI) / (w * D);    // Re/S² de Holman
@@ -205,8 +211,42 @@ function anellFont(s, f, L) {
     // mode n queda sembrat; si no, apareix el mode inestable de Widnall.
     nodes: s.n_inj > 0 ? Math.round(s.n_inj) : nWidnall,
     lineal: u / c < 0.1,                     // acústica lineal raonable
-    viable: pAmpDeDb(L) < pAtm(s),           // rarefacció per sobre del buit
+    viable: true,
   };
+}
+
+/**
+ * Formació al PUNT MIG (s.form = 1): l'anell no surt de cap font. Les ones de
+ * S₁ i S₂ (esfèriques, p ∝ 1/r) es troben al pla mitjà, al punt M = (x_mig,
+ * h_form), on cadascuna arriba amb la seva fase φᵢ − kᵢ·rᵢ:
+ *   · freqüències iguals: p_M = |p₁ + p₂·e^{iΔφ}| (interferència estacionària);
+ *   · freqüències diferents: l'amplitud bat a |f₁ − f₂| i la formació es dona
+ *     als màxims del batec (moment de sincronisme), amb p_M = p₁ + p₂.
+ * La velocitat de l'aire és u_M = p_M/(ρc) (ona llunyana). Hipòtesi: aquesta
+ * oscil·lació, sobre una zona de diàmetre D_ap, es comporta com l'ejecció d'una
+ * obertura (mateix criteri de Holman). En aire lliure, sense cap vora, la
+ * vorticitat hauria de néixer per un efecte no lineal (corrent acústic); el
+ * model no el calcula: és la part oberta d'aquesta hipòtesi.
+ */
+function puntMig(s) {
+  const fs = fonts(s), x = s.sx_off, y = s.h_form == null ? s.h_src : s.h_form, c = cSo(s);
+  const r = fs.map(q => Math.max(Math.hypot(q.x - x, q.y - y), 0.5));
+  const p = fs.map((q, i) => q.L > 0 ? pAmpDeDb(q.L) / r[i] : 0);
+  const fase = fs.map((q, i) => q.ph - 2 * Math.PI * q.f / c * r[i]);
+  const iguals = Math.abs(fs[0].f - fs[1].f) < 1e-9;
+  const dphi = fase[1] - fase[0];
+  const pM = iguals ? Math.sqrt(Math.max(p[0] * p[0] + p[1] * p[1] + 2 * p[0] * p[1] * Math.cos(dphi), 0)) : p[0] + p[1];
+  const f = p[0] + p[1] > 0 ? (p[0] * fs[0].f + p[1] * fs[1].f) / (p[0] + p[1]) : fs[0].f;
+  const fBat = iguals ? 0 : Math.abs(fs[0].f - fs[1].f);
+  return { x, y, r, p, dphi, iguals, pM, uM: pM / (rho(s) * c), f, fBat,
+    Lm: pM > 0 ? 20 * Math.log10(pM / (Math.SQRT2 * K.P_REF)) : 0,
+    ritme: fBat > 0 ? fBat : f };             // anells per segon: un per cicle, o un per batec
+}
+/** Nivell (dB a 1 m) de cada font perquè, juntes i en fase, donin u al punt mig */
+function dbPerMig(s, u) {
+  const fs = fonts(s), x = s.sx_off, y = s.h_form;
+  const r = Math.max(Math.hypot(fs[0].x - x, fs[0].y - y), 0.5);
+  return 20 * Math.log10(u * rho(s) * cSo(s) / 2 * r / (Math.SQRT2 * K.P_REF));
 }
 
 /** Viscositat turbulenta efectiva a l'escala de l'anell [m²/s] */
@@ -546,9 +586,15 @@ function geometriaVisio(s, x, y, z, t) {
 
 /* ── Trajectòria (integració a pas fix, també per a l'avaluació) ──────────── */
 function anellPrincipalFont(s) {
-  const fs = fonts(s), ans = fs.map(f => anellFont(s, f.f, f.L));
+  const fs = fonts(s);
+  if (s.form === 1) {
+    const m = puntMig(s), an = anellVelocitat(s, m.f, m.uM);
+    an.viable = fs.every(q => pAmpDeDb(q.L) < pAtm(s));
+    return { an, src: { x: m.x, y: m.y, f: m.f, L: m.Lm, mig: true }, i: 0, ans: [an], fs, mig: m };
+  }
+  const ans = fs.map(f => anellFont(s, f.f, f.L));
   const i = ans[0].Gamma >= ans[1].Gamma ? 0 : 1;
-  return { an: ans[i], src: fs[i], i, ans, fs };
+  return { an: ans[i], src: fs[i], i, ans, fs, mig: null };
 }
 function velocitatAnell(s, an, ev, dTexces) {
   const el = s.elev * D2R, az = s.az_eix * D2R, Ta = Tk(s);
@@ -713,21 +759,25 @@ function dissenya(s, obj) {
     // no arriba al criteri de Holman i no en forma cap altre.
     kdir: obj.sentit, h_src: obj.h, elev: 0, az_eix: 0, dT0: 0, so: SEP_S2 * obj.D, sx_off: SEP_S2 * obj.D / 2,
   });
+  // Formació al punt mig: S₁ i S₂ iguals i en fase, simètriques respecte a x = 0,
+  // per sota del punt de formació; l'anell neix a x = 0 i a l'alçada observada.
+  const alMig = s.form === 1;
+  if (alMig) Object.assign(base, { h_src: Math.min(s.h_src, 0.2 * obj.h), h_form: obj.h, sx_off: 0, so: SEP_S2 * obj.D });
   // Construeix la configuració per a una Γ donada (amb la terbolesa que dona la durada)
   function construeix(Gamma) {
     const D_ap = base.D_ap;
     const w = 4 * Gamma / (Math.pow(Math.PI, 3) * h * h * D_ap * D_ap);
     const f = w / (2 * Math.PI), u = h * Math.PI * w * D_ap;
     const cfg = Object.assign({}, base, { f1: f, f2: f });
-    cfg.db1 = dbPerVelocitat(cfg, f, u);
-    cfg.db2 = cfg.db1 - DB_S2;
-    const an0 = anellFont(cfg, f, cfg.db1);
+    if (alMig) cfg.db1 = cfg.db2 = dbPerMig(cfg, u);
+    else { cfg.db1 = dbPerVelocitat(cfg, f, u); cfg.db2 = cfg.db1 - DB_S2; }
+    const an0 = anellPrincipalFont(cfg).an;
     // Es busca σ_w dins la branca coherent (σ_w < Γ/4πR): l'anell ha d'existir com a anell
     const vInd = an0.Gamma / (4 * Math.PI * an0.R);
     cfg.turb = bisecta(sig => vidaAnell2(Object.assign({}, cfg, { turb: sig }), an0).total - obj.vida, 1e-4, Math.max(vInd * 0.999, 2e-4));
-    const an = anellFont(cfg, f, cfg.db1);
+    const pr = anellPrincipalFont(cfg), an = pr.an;
     const tObs = Math.min(obj.vida, Math.max(vidaAnell2(cfg, an).tCoh, 1));
-    const tr = trajectoria(cfg, an, fonts(cfg)[0], tObs, Math.max(tObs / 60, 0.05));
+    const tr = trajectoria(cfg, an, pr.src, tObs, Math.max(tObs / 60, 0.05));
     return { cfg, f, u, an, mig: tr[Math.floor(tr.length / 2)] };
   }
   let Gamma = obj.prioritat === 'rotacio' ? GamRot0 : GamDeriva, c = construeix(Gamma);
@@ -931,7 +981,7 @@ const API = {
   vidaAnell, nucliTermo, tracador, profOptica, levitacio, conductors, campEPic, corona, campRuptura,
   sincronisme, ratiRuptura, plasma, dTdt, colorCosNegre,
   evolucio, vidaAnell2, rotacioNodes, cuaNodes, posicioSol, massaAire, transSol, iluminanciaSol,
-  luminanciaCel, faseHG, aparenca, geometriaVisio, posicioTestimoni, factorRadiEmissors, anellPrincipalFont, velocitatAnell,
+  luminanciaCel, faseHG, aparenca, geometriaVisio, posicioTestimoni, factorRadiEmissors, anellPrincipalFont, puntMig, dbPerMig, anellVelocitat, velocitatAnell,
   rhoSat, llindarPercepcio, patroAcustic, avaluaPatro,
   gammaSRGB, eficaciaEmissio, colorEmissio, emissors, posicioEmissors, envolupantEmissors, avaluaEmissors, esTaronja, toHue,
   trajectoria, estatAnell, tauPunt, corbaContrast, OBS, avaluaObservacio, dissenya,
