@@ -1,5 +1,5 @@
 /* ═══════════════════════════════════════════════════════════════════════════
-   Velo Toroide · interfície, simulació temporal i dibuix · V041
+   Velo Toroide · interfície, simulació temporal i dibuix · V042
    La física és a fisica.js (objecte global FIS). Aquí només hi ha estat,
    controls, integració temporal dels anells i representació.
    ═══════════════════════════════════════════════════════════════════════════ */
@@ -9,13 +9,49 @@ const F = window.FIS;
 /* ── Paràmetres: [mín, màx, pas, defecte, etiqueta, unitat, decimals] ────── */
 const DEF = {
   spd:   [-2, 2, 0.05, 0, 'escala temporal (log₁₀)', '', 2],
+  // Lloc, data i hora (posició del sol)
+  mes:   [1, 12, 1, 9, 'mes', '', 0],
+  dia:   [1, 31, 1, 18, 'dia', '', 0],
+  hora:  [0, 24, 0.05, 18, 'hora local', 'h', 2],
+  tz:    [-12, 14, 1, 2, 'fus horari (CEST = +2)', 'h', 0],
+  lat:   [-90, 90, 0.0001, 41.6142, 'latitud', '°', 4],
+  lon:   [-180, 180, 0.0001, 0.6222, 'longitud', '°', 4],
+  aot:   [0, 0.5, 0.01, 0.1, 'terbolesa β d\'Ångström (aerosols)', '', 2],
+  // Testimoni
+  az_vis:[0, 360, 0.5, 232, 'direcció de la mirada (azimut)', '°', 1],
+  d_obs: [5, 1000, 1, 60, 'distància testimoni → origen de l\'anell', 'm', 0],
+  // Atmosfera
   T:     [0, 50, 0.1, 35, 'temperatura', '°C', 1],
   P:     [950, 1050, 1, 1013, 'pressió', 'hPa', 0],
   H:     [5, 100, 1, 30, 'humitat relativa', '%', 0],
-  W:     [-40, 40, 0.1, 3, 'vent (+ cap a la dreta)', 'km/h', 1],
-  turb:  [0, 2, 0.01, 0.2, 'turbulència ambient σ_w', 'm/s', 2],
-  aer:   [0, 20000, 10, 0, 'traçador a l\'aire de l\'obertura', 'mg/m³', 0],
-  trac:  [0, 1, 1, 0, 'tipus de traçador', '', 0],
+  W:     [0, 40, 0.1, 3, 'vent', 'km/h', 1],
+  dirW:  [0, 360, 1, 90, 'direcció del vent (0 = s\'allunya, 90 = →)', '°', 0],
+  turb:  [0.001, 2, 0.001, 0.2, 'turbulència ambient σ_w', 'm/s', 3],
+  // Traçador
+  aer:   [0, 20000, 1, 0, 'traçador a l\'aire de l\'obertura', 'mg/m³', 0],
+  trac:  [0, 3, 1, 0, 'tipus de traçador', '', 0],
+  // Emissor i anell
+  h_src: [0.5, 150, 0.1, 5, 'alçada de l\'emissor sobre el riu', 'm', 1],
+  D_ap:  [0.02, 30, 0.01, 0.5, 'diàmetre de l\'obertura D', 'm', 2],
+  aR:    [0.02, 0.8, 0.01, 0.12, 'gruix del nucli a/R', '', 2],
+  elev:  [-90, 90, 1, 0, 'elevació de l\'eix d\'emissió', '°', 0],
+  az_eix:[-180, 180, 1, 0, 'eix respecte a la mirada (0 = s\'allunya)', '°', 0],
+  npols: [0, 20, 1, 0, 'nombre de polsos (0 = continu)', '', 0],
+  n_inj: [0, 12, 1, 0, 'injectors de traçador (0 = nodes espontanis)', '', 0],
+  swirl: [-1, 1, 0.01, 0, 'swirl a l\'obertura w/u (+ = ↺)', '', 2],
+  kdir:  [-1, 1, 2, 1, 'sentit de l\'ona de Kelvin', '', 0],
+  dT0:   [-10, 300, 0.5, 0, 'excés de temperatura de l\'aire emès', 'K', 1],
+  // Fonts
+  f1:    [0.005, 400, 0.001, 3.5714, 'freqüència S₁', 'Hz', 4],
+  f2:    [0.005, 400, 0.001, 3.0, 'freqüència S₂', 'Hz', 4],
+  db1:   [0, 191, 0.5, 100, 'nivell S₁ (a 1 m)', 'dB', 1],
+  db2:   [0, 191, 0.5, 100, 'nivell S₂ (a 1 m)', 'dB', 1],
+  phi:   [-180, 180, 1, 0, 'desfasament S₁→S₂', '°', 0],
+  // Riu, pont i línies
+  a_riu: [5, 500, 1, 30, 'amplada del riu', 'm', 0],
+  h_pont:[0.5, 50, 0.1, 5, 'alçada del pont (testimoni a +1.6 m)', 'm', 1],
+  so:    [0, 50, 0.1, 10, 'separació S₁↔S₂', 'm', 1],
+  sx_off:[-30, 30, 0.1, 0, 'posició lateral de l\'emissor', 'm', 1],
   hmt:   [0.5, 80, 0.1, 18, 'alçada MT sobre el riu', 'm', 1],
   hcat:  [0.5, 80, 0.1, 11, 'alçada catenària sobre el riu', 'm', 1],
   sl:    [0, 60, 0.1, 24, 'separació horitzontal MT↔Cat', 'm', 1],
@@ -24,87 +60,93 @@ const DEF = {
   ph:    [0, 180, 1, 90, 'desfasament MT↔Cat', '°', 0],
   f_mt:  [40, 70, 0.1, 50, 'freqüència de xarxa', 'Hz', 1],
   rc:    [0.2, 3, 0.05, 0.9, 'radi del conductor', 'cm', 2],
-  a_riu: [5, 500, 1, 30, 'amplada del riu', 'm', 0],
-  h_pont:[0.5, 50, 0.1, 5, 'alçada del pont (fonts) sobre el riu', 'm', 1],
-  so:    [0, 50, 0.1, 10, 'separació S₁↔S₂', 'm', 1],
-  sx_off:[-30, 30, 0.1, 0, 'posició lateral de S₁S₂', 'm', 1],
-  D_ap:  [0.02, 30, 0.01, 0.5, 'diàmetre de l\'obertura D', 'm', 2],
-  aR:    [0.05, 0.8, 0.01, 0.2, 'gruix del nucli a/R', '', 2],
-  elev:  [0, 90, 1, 0, 'elevació de l\'eix d\'emissió', '°', 0],
-  f1:    [0.05, 400, 0.01, 3.5714, 'freqüència S₁', 'Hz', 4],
-  f2:    [0.05, 400, 0.01, 3.0, 'freqüència S₂', 'Hz', 4],
-  db1:   [0, 191, 0.5, 100, 'nivell S₁ (a 1 m)', 'dB', 1],
-  db2:   [0, 191, 0.5, 100, 'nivell S₂ (a 1 m)', 'dB', 1],
-  phi:   [-180, 180, 1, 0, 'desfasament S₁→S₂', '°', 0],
   tau:   [-10000, 10000, 1, 0, 'retard τ (so respecte a EM)', 'µs', 0],
-  // objectius (problema invers)
-  oD:    [1, 100, 0.5, 25, 'diàmetre de l\'anell', 'm', 1],
-  on:    [1, 24, 1, 4, 'nodes lluminosos', '', 0],
-  oT:    [0.5, 60, 0.1, 7, 'període d\'una volta', 's', 1],
-  oh:    [1, 150, 0.5, 25, 'alçada (trampa λ/2)', 'm', 1],
+  // Objectiu (problema invers)
+  oD:    [0.1, 100, 0.1, 25, 'diàmetre', 'm', 1],
+  otub:  [0.01, 20, 0.01, 3, 'gruix del tub', 'm', 2],
+  on:    [1, 12, 1, 4, 'nodes', '', 0],
+  oT:    [0.5, 120, 0.1, 7, 'període d\'una volta', 's', 1],
+  oh:    [0.5, 150, 0.5, 25, 'alçada', 'm', 1],
+  oU:    [0.01, 10, 0.01, 1, 'velocitat pròpia màxima', 'm/s', 2],
+  ovida: [5, 900, 1, 180, 'durada', 's', 0],
+  oC:    [0.05, 5, 0.05, 2, 'contrast amb el cel', '', 2],
 };
 const S = {};
 Object.keys(DEF).forEach(k => { S[k] = DEF[k][3]; });
-const OPC = { dir: 1, usaH: false };            // sentit objectiu i ús de l'alçada
-const VIS = { w: true, e: true, n: true, lb: true };
+const OPC = { dir: 1, prioritat: 'deriva' };
+const VIS = { w: true, e: true, n: false, lb: true, sol: true };
 
-/* ── Presets (valors complets: cap paràmetre queda d'un preset anterior) ── */
-const BASE_SEGRE = { T: 35, P: 1013, H: 30, W: 3, turb: 0.2, aer: 0, hmt: 18, hcat: 11, sl: 24,
-  vmt: 25, vcat: 25, ph: 90, f_mt: 50, rc: 0.9, a_riu: 30, h_pont: 5, so: 10, sx_off: 0,
-  D_ap: 0.5, aR: 0.12, elev: 0, trac: 0, f1: 3.5714, f2: 3.0, db1: 100, db2: 100, phi: 0, tau: 0, spd: 0 };
-const BASE_LAB = Object.assign({}, BASE_SEGRE, { T: 20, H: 50, W: 0, turb: 0.02,
-  vmt: 0, vcat: 0, a_riu: 5, h_pont: 1, so: 1, elev: 45, D_ap: 0.1, aR: 0.2, f1: 15, f2: 15, db1: 100, db2: 0, aer: 5000, trac: 1 });
+/* ── Configuracions ─────────────────────────────────────────────────────────
+   Les configuracions de l'observació es construeixen amb el disseny invers
+   (FIS.dissenya), de manera que sempre són coherents amb la física actual.
+   La geometria del testimoni (mirada i distància) i el vent no es van mesurar:
+   els valors triats són els que fan compatible el fenomen amb l'observació.
+   ─────────────────────────────────────────────────────────────────────────── */
+const AMB_SEGRE = { T: 35, P: 1013, H: 30, W: 3, dirW: 90, turb: 0.2, aer: 0, trac: 0, aot: 0.1,
+  mes: 9, dia: 18, hora: 18, tz: 2, lat: 41.6142, lon: 0.6222, az_vis: 232, d_obs: 60,
+  hmt: 18, hcat: 11, sl: 24, vmt: 25, vcat: 25, ph: 90, f_mt: 50, rc: 0.9, tau: 0,
+  a_riu: 30, h_pont: 5, h_src: 5, so: 10, sx_off: 0, D_ap: 0.5, aR: 0.12, elev: 0, az_eix: 0,
+  npols: 0, n_inj: 0, swirl: 0, kdir: 1, dT0: 0,
+  f1: 3.5714, f2: 3.0, db1: 100, db2: 100, phi: 0, spd: 0 };
+const OBJ_SEGRE = { oD: 25, otub: 3, on: 4, oT: 7, oh: 25, oU: 1, ovida: 180, oC: 2 };
+const AMB_LAB = Object.assign({}, AMB_SEGRE, { T: 20, H: 50, W: 0, turb: 0.02, aer: 5000, trac: 1,
+  vmt: 0, vcat: 0, a_riu: 5, h_pont: 1, h_src: 1, so: 0, D_ap: 0.1, aR: 0.2, elev: 45,
+  f1: 15, f2: 15, db1: 100, db2: 0, npols: 5, d_obs: 5 });
 const PRESETS = [
-  { t: '📍 Segre 2022 — dades reals', d: '3.57 Hz · 100 dB · obertura 0.5 m',
-    v: BASE_SEGRE },
-  { t: '🎯 Requisits de l\'anell observat', d: 'infrasò 0.15 Hz · obertura 21 m',
-    v: Object.assign({}, BASE_SEGRE, { D_ap: 20.83, aR: 0.62, elev: 20, f1: 0.7214, f2: 0.15,
-      db1: 125, db2: 140.5, aer: 0 }) },
-  { t: '🔬 Canó de vòrtex (laboratori)', d: '15 Hz · 100 dB · D=10 cm · fum',
-    v: BASE_LAB },
-  { t: '🌀 Batement lent', d: 'f₁−f₂ = 0.1 Hz · nodes giren',
-    v: Object.assign({}, BASE_LAB, { f1: 15.1, f2: 15, db2: 100 }) },
-  { t: '↻ Sentit invers', d: 'f₂ > f₁ → gir horari',
-    v: Object.assign({}, BASE_LAB, { f1: 15, f2: 15.1, db2: 100 }) },
+  { t: '📍 Configuració original (V040)', d: '3.57 Hz · 100 dB · obertura 0.5 m',
+    v: AMB_SEGRE },
+  { t: '🏆 Segre: millor compromís', d: 'pols al contrallum · anell contra la brisa',
+    v: Object.assign({}, AMB_SEGRE, { dirW: 180, aot: 0.1, d_obs: 40, trac: 0 }), solDv: 3,
+    obj: Object.assign({}, OBJ_SEGRE), prioritat: 'deriva' },
+  { t: '🌀 Segre: prioritat gir de 7 s', d: 'mostra el conflicte gir ↔ deriva',
+    v: Object.assign({}, AMB_SEGRE, { dirW: 180, aot: 0.1, d_obs: 40, trac: 0 }), solDv: 3,
+    obj: Object.assign({}, OBJ_SEGRE), prioritat: 'rotacio' },
+  { t: '🧪 Assaig real a escala 1:10', d: 'anell de 2.5 m · fum blanc · sol de costat',
+    v: Object.assign({}, AMB_SEGRE, { W: 1, dirW: 180, aot: 0.05, d_obs: 15, trac: 1, h_pont: 1, a_riu: 10, vmt: 0, vcat: 0 }), solDv: 100,
+    obj: { oD: 2.5, otub: 0.3, on: 4, oT: 7, oh: 3, oU: 0.5, ovida: 30, oC: 0.3 }, prioritat: 'deriva' },
+  { t: '🔬 Canó de vòrtex de taula', d: '15 Hz · 100 dB · D = 10 cm · fum',
+    v: AMB_LAB },
   { t: '⚡ Corona: línia de 400 kV', d: 'efecte corona real al conductor',
-    v: Object.assign({}, BASE_SEGRE, { vmt: 400, vcat: 0, hmt: 12, rc: 0.9 }) },
+    v: Object.assign({}, AMB_SEGRE, { vmt: 400, vcat: 0, hmt: 12 }) },
 ];
 
 /* ── Construcció dels panells ───────────────────────────────────────────── */
-function fmtNum(v, dec) { return (Math.abs(v) >= 1e4 && dec === 0) ? v.toLocaleString('ca') : v.toFixed(dec); }
 function filaSlider(k) {
-  const [mn, mx, st, , lab, un] = DEF[k];
+  const [mn, mx, st, , lab] = DEF[k];
   return `<div class="pr"><div class="pr-h"><span class="pr-l">${lab}</span><span class="pr-v" id="lv-${k}"></span></div>
   <div class="row"><div class="sp"><button class="sb" data-k="${k}" data-d="-1">−</button><button class="sb" data-k="${k}" data-d="1">+</button></div>
   <input type="range" id="sl-${k}" data-k="${k}" min="${mn}" max="${mx}" step="${st}"></div></div>`;
 }
 function seccio(titol, cos, estil) { return `<div class="sec"${estil ? ` style="${estil}"` : ''}><div class="sec-t">${titol}</div>${cos}</div>`; }
 function fm(id) { return `<div class="fm" id="${id}">—</div>`; }
+function grup(id, items) { return `<div class="sg" id="${id}">${items.map(([v, l]) => `<div class="sg-b" data-grup="${id}" data-v="${v}">${l}</div>`).join('')}</div>`; }
 
 function construeixPanell() {
   const pr = PRESETS.map((p, i) => `<button class="pb-btn" id="pb-${i}" data-preset="${i}"><span class="pb-t">${p.t}</span><span class="pb-d">${p.d}</span></button>`).join('');
   let h = '';
-  h += seccio('⚙ configuracions', `<div class="preset-grid">${pr}</div><div class="nota">Prem un preset i després ▶ so.</div>`, 'border-color:#1a3050');
-  h += seccio('🎯 objectiu: reproduir un anell',
-    ['oD', 'on', 'oT'].map(filaSlider).join('') +
-    `<div class="sg"><div class="sg-b on" id="dir-ccw" data-dir="1">↺ antihorari</div><div class="sg-b" id="dir-cw" data-dir="-1">↻ horari</div></div>
-     <div class="tr"><span class="tr-l">fixar l'alçada amb la trampa λ/2</span><div class="sw" id="sw-h" data-act="usaH"></div></div>
-     <div id="row-oh" style="display:none">${filaSlider('oh')}</div>
-     <button class="bn opt" data-act="objectiu" style="width:100%;margin-top:2px">▶ calcula i aplica</button>${fm('fc-obj')}`,
+  h += seccio('⚙ configuracions', `<div class="preset-grid">${pr}</div><div class="nota">Prem una configuració i després ▶ so.</div>`, 'border-color:#1a3050');
+  h += seccio('🎯 disseny invers: reproduir un anell',
+    ['oD', 'otub', 'on', 'oT', 'oh', 'oU', 'ovida', 'oC'].map(filaSlider).join('') +
+    `<div class="pr-l" style="margin:2px 0">sentit dels nodes</div>${grup('g-dir', [[1, '↺ antihorari'], [-1, '↻ horari']])}
+     <div class="pr-l" style="margin:2px 0">prioritat (gir i deriva lenta són incompatibles)</div>${grup('g-prio', [['deriva', 'deriva lenta'], ['rotacio', 'gir ràpid']])}
+     <button class="bn opt" data-act="objectiu" style="width:100%;margin-top:2px">▶ dissenya i aplica</button>${fm('fc-obj')}`,
     'border-color:#203848');
   h += seccio('velocitat de simulació', filaSlider('spd'));
-  h += seccio('condicions ambientals', ['T', 'P', 'H', 'W', 'turb', 'aer'].map(filaSlider).join('') + fm('fc-amb'));
-  h += seccio('🔊 generadors S₁ i S₂', ['f1', 'f2', 'db1', 'db2', 'phi'].map(filaSlider).join('') + fm('fc-ac'));
-  h += seccio('🌀 obertura i anell de vòrtex', ['D_ap', 'aR', 'elev'].map(filaSlider).join('') + fm('fc-anell') +
+  h += seccio('📍 lloc, data i hora', ['mes', 'dia', 'hora', 'tz', 'lat', 'lon', 'aot'].map(filaSlider).join('') + fm('fc-sol'));
+  h += seccio('👁 testimoni', ['az_vis', 'd_obs'].map(filaSlider).join('') +
+    `<button class="bn opt" data-act="miraSol" style="width:100%">☀ mirar 3° al costat del sol</button>` + fm('fc-obs'));
+  h += seccio('🌬 atmosfera', ['T', 'P', 'H', 'W', 'dirW', 'turb'].map(filaSlider).join('') + fm('fc-amb'));
+  h += seccio('🌀 emissor i anell de vòrtex', ['h_src', 'D_ap', 'aR', 'elev', 'az_eix', 'npols', 'n_inj', 'swirl', 'dT0'].map(filaSlider).join('') +
+    `<div class="pr-l" style="margin:2px 0">sentit de l'ona de Kelvin sembrada</div>${grup('g-kdir', [[1, '↺'], [-1, '↻']])}` + fm('fc-anell') +
     `<div class="nota">Un camp acústic lineal és irrotacional (∇×v = 0): la vorticitat només neix a la vora d'una obertura on el flux oscil·lant se separa (jet sintètic / canó de vòrtex).</div>`);
+  h += seccio('🔊 generadors S₁ i S₂', ['f1', 'f2', 'db1', 'db2', 'phi'].map(filaSlider).join('') + fm('fc-ac'));
+  h += seccio('👁 traçador i visibilitat', grup('g-trac', [[0, 'pols'], [1, 'fum'], [2, 'boira'], [3, 'fum taronja']]) + filaSlider('aer') + fm('fc-vis'));
   h += seccio('🌊 riu i pont', ['a_riu', 'h_pont', 'so', 'sx_off'].map(filaSlider).join(''));
-  h += seccio('⚡ línies elèctriques', ['hmt', 'hcat', 'sl', 'vmt', 'vcat', 'ph', 'f_mt', 'rc'].map(filaSlider).join('') + fm('fc-em'));
-  h += seccio('sincronisme so ↔ camp elèctric', filaSlider('tau') +
-    `<button class="bn opt" data-act="tauopt" style="width:100%">🎯 τ òptim</button>` + fm('fc-sync'));
-  h += seccio('👁 visibilitat', `<div class="sg"><div class="sg-b on" id="trac-0" data-trac="0">pols mineral</div><div class="sg-b" id="trac-1" data-trac="1">fum / boira</div></div>` + fm('fc-vis'));
+  h += seccio('⚡ línies elèctriques', ['hmt', 'hcat', 'sl', 'vmt', 'vcat', 'ph', 'f_mt', 'rc', 'tau'].map(filaSlider).join('') +
+    `<button class="bn opt" data-act="tauopt" style="width:100%">🎯 τ òptim</button>` + fm('fc-em'));
   h += seccio('visualització',
-    [['w', 'fronts d\'ona S₁ i S₂'], ['e', 'mapa del camp elèctric'], ['n', 'nodes λ/4 i λ/2'], ['lb', 'etiquetes']]
-      .map(([k, l]) => `<div class="tr"><span class="tr-l">${l}</span><div class="sw on" id="tg-${k}" data-vis="${k}"></div></div>`).join(''));
+    [['w', 'fronts d\'ona S₁ i S₂'], ['e', 'mapa del camp elèctric'], ['n', 'nodes acústics λ/4 i λ/2'], ['sol', 'direcció del sol'], ['lb', 'etiquetes']]
+      .map(([k, l]) => `<div class="tr"><span class="tr-l">${l}</span><div class="sw${VIS[k] ? ' on' : ''}" id="tg-${k}" data-vis="${k}"></div></div>`).join(''));
   document.getElementById('pnl').innerHTML = h;
 
   document.getElementById('osc-rows').innerHTML = [['s1', 'S₁', '#30c050'], ['s2', 'S₂', '#d07020'], ['mt', 'MT', '#c09030'], ['cat', 'Cat', '#2090c0']]
@@ -113,67 +155,76 @@ function construeixPanell() {
 }
 
 /* ── Paràmetres: lectura/escriptura coherent (slider + etiqueta + estat) ── */
-function decimals(st) { const s = String(st); return s.includes('.') ? s.split('.')[1].length : 0; }
 function setParam(k, v, silenciós) {
-  const [mn, mx, st] = DEF[k];
+  const [mn, mx] = DEF[k];
   if (!Number.isFinite(v)) return;
-  S[k] = Math.round(Math.min(mx, Math.max(mn, v)) * 1e6) / 1e6;  // sense arrodonir al pas
+  S[k] = Math.round(Math.min(mx, Math.max(mn, v)) * 1e6) / 1e6;   // sense arrodonir al pas
   const sl = document.getElementById('sl-' + k); if (sl) sl.value = S[k];
   etiqueta(k);
   if (!silenciós) canviParams();
 }
+function marcaGrup(id, v) { document.querySelectorAll(`[data-grup="${id}"]`).forEach(b => b.classList.toggle('on', String(b.dataset.v) === String(v))); }
 function etiqueta(k) {
-  if (k === 'trac') { [0, 1].forEach(i => { const b = document.getElementById('trac-' + i); if (b) b.classList.toggle('on', S.trac === i); }); return; }
+  if (k === 'trac') { marcaGrup('g-trac', S.trac); return; }
+  if (k === 'kdir') { marcaGrup('g-kdir', S.kdir); return; }
   const el = document.getElementById('lv-' + k); if (!el) return;
   const [, , , , , un, dec] = DEF[k];
-  let txt = fmtNum(S[k], dec) + (un ? ' ' + un : '');
+  let txt = S[k].toFixed(dec) + (un ? ' ' + un : '');
   if (k === 'spd') txt = '×' + Math.pow(10, S.spd).toFixed(Math.pow(10, S.spd) < 0.1 ? 3 : 2);
-  if (k === 'db1' || k === 'db2') txt += S[k] > F.dbMax(S) ? ' ⚠' : '';
+  if (k === 'npols' && S.npols === 0) txt = 'continu';
+  if (k === 'n_inj' && S.n_inj === 0) txt = 'espontanis';
+  if ((k === 'db1' || k === 'db2') && S[k] > F.dbMax(S)) txt += ' ⚠';
+  if (k === 'swirl' && Math.abs(S.swirl) > 0.6) txt += ' ⚠';
   el.textContent = txt;
 }
-function totesEtiquetes() { Object.keys(DEF).forEach(k => { const sl = document.getElementById('sl-' + k); if (sl) sl.value = S[k]; etiqueta(k); }); }
+function totesEtiquetes() {
+  Object.keys(DEF).forEach(k => { const sl = document.getElementById('sl-' + k); if (sl) sl.value = S[k]; etiqueta(k); });
+  marcaGrup('g-dir', OPC.dir); marcaGrup('g-prio', OPC.prioritat);
+}
 
+function objectiuActual() { return { D: S.oD, tub: S.otub, h: S.oh, nodes: S.on, Trot: S.oT, sentit: OPC.dir, durada: S.ovida, Umax: S.oU }; }
 let derivat = null;   // magnituds derivades (es recalculen quan canvien els paràmetres)
+let avaluacio = null; // comparació amb l'observació
 let campCache = null; // mapa del camp elèctric
 function canviParams() {
   derivat = calcDerivat();
+  try { avaluacio = F.avaluaObservacio(S, objectiuActual()); } catch (e) { console.warn('avaluació:', e); avaluacio = null; }
   campCache = null;
-  refreshInfo();
+  refreshInfo(); comparacio();
 }
 
 /* ── Magnituds derivades estàtiques ─────────────────────────────────────── */
 function calcDerivat() {
-  const fs = F.fonts(S);
-  const anells = fs.map(src => F.anellFont(S, src.f, src.L));
-  const iMain = anells[0].Gamma >= anells[1].Gamma ? 0 : 1;
-  const an = anells[iMain], fMain = fs[iMain].f;
-  const hN = F.hNodePressio(S, S.f1);
-  const vida = an.es_forma ? F.vidaAnell(S, an.R, an.a) : 0;
-  return { fs, anells, iMain, an, fMain, hN, vida, corona: F.corona(S) };
+  const p = F.anellPrincipalFont(S);
+  return { fs: p.fs, anells: p.ans, iMain: p.i, an: p.an, fMain: p.src.f, hN: F.hNodePressio(S, S.f1),
+    vida: F.vidaAnell2(S, p.an), corona: F.corona(S), sol: F.posicioSol(S) };
 }
 
 /* ── Simulació temporal ─────────────────────────────────────────────────── */
 let simT = 0, PAUSED = false, sigOn = false, emOn = true;
-let rings = [];                 // anells vius
-const emissio = [0, 0];         // fase acumulada d'emissió de cada font (cicles)
+let rings = [];
+const emissio = [0.5, 0.5];     // fase d'emissió (l'anell es forma al final de l'ejecció: mig cicle)
+const emesos = [0, 0];          // anells emesos per cada font
 const MAX_RINGS = 40;
 
 function fesAnell(i) {
   const src = derivat.fs[i], an = derivat.anells[i];
-  return { src: i, f: src.f, x: src.x, y: src.y, z: 0, R: an.R, a0: an.a, a: an.a, Gamma: an.Gamma,
-    T: F.Tk(S), ne: 0, X: 0, age: 0, C0: 1, trapped: false };
+  const vida = F.vidaAnell2(S, an);
+  return { src: i, an, vida, x: src.x, y: src.y, z: 0, age: 0, ang: 0,
+    T: F.Tk(S) + S.dT0, ne: 0, X: 0, ev: F.estatAnell(S, an, 0, vida) };
 }
 
 function updatePhysics(dt) {
   if (!derivat) derivat = calcDerivat();
-  const Ta = F.Tk(S), el = S.elev * Math.PI / 180, wind = F.vent(S);
+  const Ta = F.Tk(S);
   // Emissió: un anell per cicle i per font, si el criteri de formació es compleix
   if (sigOn) {
     derivat.fs.forEach((src, i) => {
       if (!derivat.anells[i].es_forma) return;
+      if (S.npols > 0 && emesos[i] >= S.npols) return;
       emissio[i] += src.f * dt;
-      while (emissio[i] >= 1) {
-        emissio[i] -= 1;
+      while (emissio[i] >= 1 && (S.npols === 0 || emesos[i] < S.npols)) {
+        emissio[i] -= 1; emesos[i]++;
         rings.push(fesAnell(i));
         if (rings.length > MAX_RINGS) rings.shift();
       }
@@ -181,208 +232,176 @@ function updatePhysics(dt) {
   }
   for (const r of rings) {
     r.age += dt;
-    const nuE = F.nuEfectiva(S, r.R);
-    r.a = Math.sqrt(r.a0 * r.a0 + 4 * nuE * r.age);       // difusió del nucli
-    const lg = Math.log(8 * r.R / r.a) - 0.25;
-    const U = lg > 0 ? r.Gamma / (4 * Math.PI * r.R) * lg : 0;
-    // Física del plasma (només rellevant si E ≥ E_ruptura)
+    r.ev = F.estatAnell(S, r.an, r.age, r.vida);
+    // Ruptura elèctrica (només si hi ha línies en tensió)
     let X = 0, best = null;
-    if (emOn) {
-      for (const [dx, dy] of [[0, r.R], [0, -r.R], [r.R, 0], [-r.R, 0]]) {
-        const rr = F.ratiRuptura(S, r.x + dx, r.y + dy * Math.cos(el));
+    if (emOn && (S.vmt > 0 || S.vcat > 0)) {
+      for (const [dx, dy] of [[0, r.ev.R], [0, -r.ev.R], [r.ev.R, 0], [-r.ev.R, 0]]) {
+        const rr = F.ratiRuptura(S, r.x + dx, r.y + dy);
         if (!best || rr.X > best.X) best = rr;
       }
       X = best.X;
     }
     r.X = X;
-    if (best) {
+    // Excés de temperatura inicial diluït per l'entrainment, més l'escalfament Joule si n'hi ha
+    const Tbase = Ta + S.dT0 * r.ev.dil;
+    if (best && X >= 1) {
       const pl = F.plasma(S, X, best.N, best.E * best.q / Math.SQRT2);
       r.ne = pl.ne;
-      const tauC = (r.a * r.a) / (4 * (F.K.KAPPA_TH + nuE - F.nuAir(S)));
-      const Teq = Ta + pl.pJoule / (F.rho(S) * F.K.CP) * tauC;
+      const tauC = (r.ev.a * r.ev.a) / (4 * (F.K.KAPPA_TH + F.nuEfectiva(S, r.ev.R) - F.nuAir(S)));
+      const Teq = Tbase + pl.pJoule / (F.rho(S) * F.K.CP) * tauC;
       r.T += (Math.min(Teq, 3e4) - r.T) * (1 - Math.exp(-dt / Math.max(tauC, 1e-3)));
     } else {
-      r.ne = 0; r.T += (Ta - r.T) * (1 - Math.exp(-dt / 2));
+      r.ne = 0; r.T = Tbase;
     }
-    // Moviment vertical: autoinducció + flotació (si és calent) o trampa acústica
-    let vy = U * Math.sin(el);
-    const dT = r.T - Ta;
-    r.trapped = false;
-    if (dT > 1) {
-      const lev = F.levitacio(S, r.f, r.y);
-      if (lev.Lambda > 1) { r.trapped = true; vy = (lev.hTrampa - r.y) * 0.5; }
-      else vy += Math.sqrt(F.K.G * r.R * dT / r.T) * 0.5; // flotació d'un anell calent
-    }
-    r.y = Math.max(r.R * Math.cos(el) * 0.2, r.y + vy * dt);
-    r.x += wind * dt;
-    r.z += U * Math.cos(el) * dt;                           // allunyament (eix del riu)
-    r.U = U;
+    const v = F.velocitatAnell(S, r.an, r.ev, r.T - Ta);
+    r.x += v.vx * dt; r.y = Math.max(r.y + v.vy * dt, r.ev.R * 0.1); r.z += v.vz * dt;
+    if (!r.ev.disp) r.ang += F.rotacioNodes(S, r.an, r.ev).om * dt;
   }
-  rings = rings.filter(r => r.a < r.R && r.age < 3600);
+  rings = rings.filter(r => r.age < r.vida.tCoh + 4 * r.vida.tFade && r.age < 3600);
 }
 
-/** Visibilitat d'un anell segons tres mecanismes físics */
+/** Aparença d'un anell vist pel testimoni */
 function visibilitat(r) {
-  const dil = (r.a0 * r.a0) / (r.a * r.a);
-  const tau = F.profOptica(S, r.a, dil);
-  const nucli = F.nucliTermo(S, r.Gamma, r.a);   // Γ es conserva; el nucli s'eixampla
-  const glowT = r.T > 1500;                    // emissió tèrmica visible
-  const glowP = r.ne > 1e16;                   // descàrrega luminescent (N₂)
-  const contrast = 1 - Math.exp(-tau);
-  const a = Math.max(Math.min(contrast / 0.1, 1), nucli.condensa ? 0.8 : 0, glowT ? Math.min((r.T - 1500) / 1500, 1) : 0, glowP ? 0.7 : 0);
-  let mec = 'invisible', col = '150,150,150';
-  if (glowT) { mec = 'incandescent'; col = F.colorCosNegre(r.T); }
-  else if (glowP) { mec = 'descàrrega'; col = '170,140,255'; }
-  else if (nucli.condensa) { mec = 'condensació'; col = '235,240,245'; }
-  else if (contrast >= F.K.CONTRAST_MIN) { mec = S.trac ? 'fum' : 'pols'; col = S.trac ? '215,215,220' : '205,160,105'; }
-  return { tau, contrast, condensa: nucli.condensa, glowT, glowP, alpha: a, visible: mec !== 'invisible', mec, col };
+  const tau = F.tauPunt(S, r);
+  const g = F.geometriaVisio(S, r.x, r.y, r.z);
+  const ap = F.aparenca(S, tau, g.az, g.el);
+  const nucli = F.nucliTermo(S, r.ev.Gamma, r.ev.a);
+  const glowT = r.T > 1500, glowP = r.ne > 1e16;
+  let mec = 'invisible', alpha = Math.min(Math.abs(ap.C) / 0.3, 1);
+  if (glowT) mec = 'incandescent';
+  else if (glowP) mec = 'descàrrega';
+  else if (nucli.condensa) mec = 'condensació';
+  else if (ap.C >= 0.1) mec = 'brillant';
+  else if (Math.abs(ap.C) >= F.K.CONTRAST_MIN) mec = ap.C > 0 ? 'tènue' : 'silueta fosca';
+  // Color de visualització: el RGB físic normalitzat
+  const mx = Math.max(...ap.rgb, 1e-9);
+  let col = ap.rgb.map(v => Math.round(255 * v / mx)).join(',');
+  if (glowT) col = F.colorCosNegre(r.T); else if (glowP) col = '170,140,255'; else if (nucli.condensa) col = '235,240,245';
+  if (glowT || glowP || nucli.condensa) alpha = 0.9;
+  return { tau, ap, g, condensa: nucli.condensa, glowT, glowP, alpha, visible: mec !== 'invisible', mec, col };
 }
 
 /* ── Panells d'informació ───────────────────────────────────────────────── */
 function c(cls, txt) { return `<span class="${cls}">${txt}</span>`; }
 function fmtT(s) { if (!isFinite(s)) return '∞'; if (s >= 3600) return (s / 3600).toFixed(1) + ' h'; if (s >= 60) return (s / 60).toFixed(1) + ' min'; if (s >= 1) return s.toFixed(1) + ' s'; return (s * 1000).toFixed(0) + ' ms'; }
 function fmtE(v) { return v >= 1e6 ? (v / 1e6).toFixed(2) + ' MV/m' : v >= 1e3 ? (v / 1e3).toFixed(2) + ' kV/m' : v.toFixed(1) + ' V/m'; }
-function fmtPa(p) { return p >= 1e3 ? (p / 1e3).toFixed(2) + ' kPa' : p >= 1 ? p.toFixed(1) + ' Pa' : (p * 1e3).toFixed(1) + ' mPa'; }
 function set(id, txt) { const e = document.getElementById(id); if (e) e.textContent = txt; }
 function setH(id, html) { const e = document.getElementById(id); if (e) e.innerHTML = html; }
 function col(id, color) { const e = document.getElementById(id); if (e) e.style.color = color; }
-
-function anellPrincipal() {
-  if (!rings.length) return null;
-  return rings.reduce((m, r) => (r.age > m.age ? r : m), rings[0]);
-}
+function anellPrincipal() { return rings.length ? rings.reduce((m, r) => (r.age > m.age ? r : m), rings[0]) : null; }
+const NOMS_TRAC = ['pols de riu', 'fum blanc', 'boira', 'fum taronja'];
 
 function refreshInfo() {
   if (!derivat) derivat = calcDerivat();
-  const d = derivat, an = d.an, cs = F.cSo(S);
-  // Ambient
+  const d = derivat, an = d.an, cs = F.cSo(S), sol = d.sol;
+  // Sol
+  const En = F.iluminanciaSol(S, sol.alt), T = F.transSol(S, sol.alt), m = F.massaAire(sol.alt);
+  setH('fc-sol', `sol: altura ${c('o', sol.alt.toFixed(1) + '°')} · azimut ${c('o', sol.az.toFixed(1) + '°')}<br>` +
+    `il·luminància directa ${c('v', (En / 1000).toFixed(1) + ' klux')} · massa d'aire ${c('v', isFinite(m) ? m.toFixed(2) : '—')}<br>` +
+    `color del sol (R:G:B) = ${c('v', T.map(t => (t / Math.max(...T)).toFixed(2)).join(' : '))}`);
+  // Testimoni
+  const src = d.fs[d.iMain];
+  const g0 = F.geometriaVisio(S, src.x, src.y, 0);
+  const psi0 = F.aparenca(S, 0, g0.az, g0.el).psi;
+  setH('fc-obs', `testimoni a ${c('v', (S.h_pont + 1.6).toFixed(1) + ' m')} sobre el riu<br>` +
+    `l'emissor es veu a ${c('v', g0.el.toFixed(1) + '°')} d'elevació, a ${c('v', g0.dist.toFixed(0) + ' m')}<br>` +
+    `angle emissor–sol ψ = ${c(psi0 < 10 ? 'g' : 'w', psi0.toFixed(1) + '°')} ${psi0 < 10 ? '(contrallum: dispersió cap endavant)' : ''}`);
+  // Atmosfera
   setH('fc-amb', `c = ${c('v', cs.toFixed(1) + ' m/s')} · ρ = ${c('v', F.rho(S).toFixed(3) + ' kg/m³')}<br>` +
     `punt de rosada = ${c('v', F.puntRosada(S).toFixed(1) + ' °C')} · ν = ${c('v', (F.nuAir(S) * 1e5).toFixed(2) + '·10⁻⁵ m²/s')}<br>` +
-    `nivell màxim físic = ${c('o', F.dbMax(S).toFixed(1) + ' dB')} (p = P_atm)`);
+    `σ_w típica a 25 m: ${c('v', '0.1–0.3 m/s')} (vespre tranquil) · ${c('v', '0.5–1 m/s')} (tarda convectiva)`);
   // Acústica
-  const fb = F.fBat(S), sb = F.sentitBat(S);
   const xs1 = F.distanciaXoc(S, S.f1, S.db1);
   const audible = (S.f1 >= 20 && S.db1 > 0) || (S.f2 >= 20 && S.db2 > 0);
-  setH('fc-ac', `λ₁ = ${c('v', F.lambda(S, S.f1).toFixed(1) + ' m')} · λ₂ = ${c('v', F.lambda(S, S.f2).toFixed(1) + ' m')}<br>` +
-    `node de pressió λ₁/4 = ${c('o', F.hNodePressio(S, S.f1).toFixed(2) + ' m')} · trampa λ₁/2 = ${c('o', F.hNodeVelocitat(S, S.f1).toFixed(2) + ' m')}<br>` +
-    `f_bat = ${c('v', fb.toFixed(3) + ' Hz')} · franges ${sb > 0 ? c('g', '↺') : sb < 0 ? c('w', '↻') : c('r', 'quietes')}<br>` +
-    `p al node = ${c('v', fmtPa(F.pAcPunt(S, S.sx_off, d.hN)))} · xoc S₁ a ${c(xs1 > d.hN ? 'g' : 'r', isFinite(xs1) ? xs1.toFixed(0) + ' m' : '∞')}<br>` +
+  setH('fc-ac', `λ₁ = ${c('v', F.lambda(S, S.f1).toFixed(1) + ' m')} · període ${c('v', fmtT(1 / S.f1))}<br>` +
+    `node de pressió λ₁/4 = ${c('v', F.hNodePressio(S, S.f1).toFixed(1) + ' m')} · trampa λ₁/2 = ${c('v', F.hNodeVelocitat(S, S.f1).toFixed(1) + ' m')}<br>` +
+    `xoc de S₁ a ${c(xs1 > 50 ? 'g' : 'r', isFinite(xs1) ? xs1.toFixed(0) + ' m' : '∞')} · nivell màxim físic ${F.dbMax(S).toFixed(0)} dB<br>` +
     `${audible ? c('w', '⚠ audible (≥ 20 Hz): el testimoni no va sentir res') : c('g', '✓ infrasò: inaudible')}`);
   // Anell
-  const fonts = ['S₁', 'S₂'];
   let ha = '';
   d.anells.forEach((a, i) => {
-    if (d.fs[i].L <= 0) { ha += `${fonts[i]}: ${c('r', 'apagada')}<br>`; return; }
-    ha += `${fonts[i]}: u = ${c('v', a.u.toFixed(2) + ' m/s')} (Mach ${a.mach.toFixed(3)}) · L₀/D = ${c('v', a.F.toFixed(2))}<br>` +
-      `&nbsp;Holman ${c(a.es_forma ? 'g' : 'r', a.holman.toFixed(3) + (a.es_forma ? ' > 0.16 ✓ anell' : ' < 0.16 ✗ no s\'enrotlla'))}<br>`;
+    if (d.fs[i].L <= 0) { ha += `${i ? 'S₂' : 'S₁'}: ${c('r', 'apagada')}<br>`; return; }
+    ha += `${i ? 'S₂' : 'S₁'}: u = ${c('v', a.u.toFixed(2) + ' m/s')} (Mach ${a.mach.toFixed(3)}) · L₀/D = ${c('v', a.F.toFixed(2))} · ` +
+      `Holman ${c(a.es_forma ? 'g' : 'r', a.holman.toFixed(3) + (a.es_forma ? ' ✓' : ' < 0.16 ✗'))}<br>`;
   });
   if (an.es_forma) {
-    ha += `Γ = ${c('o', an.Gamma.toFixed(2) + ' m²/s')} · R = ${c('v', an.R.toFixed(2) + ' m')} · a = ${c('v', an.a.toFixed(2) + ' m')}<br>` +
-      `U (Saffman) = ${c('v', an.Uself.toFixed(2) + ' m/s')} · Re_Γ = ${c('v', an.ReG.toExponential(1))}<br>` +
-      `nodes de Widnall n ≈ 2.5·R/a = ${c('o', an.nWidnall)} · vida = ${c('v', fmtT(d.vida))}<br>` +
-      `${an.F > 4 ? c('w', 'L₀/D > 4: part del flux queda com a jet de cua') : ''}${an.lineal ? '' : c('w', ' ⚠ Mach > 0.1: acústica no lineal')}`;
-    const lev = F.levitacio(S, d.fMain, Math.max(d.hN, S.h_pont + 1));
-    ha += `<br>trampa acústica d'un anell calent Λ = v²k/2g = ${c(lev.Lambda > 1 ? 'g' : 'r', lev.Lambda.toExponential(1))} ${lev.Lambda > 1 ? '✓' : '(cal > 1)'}`;
+    const v = d.vida, rot = F.rotacioNodes(S, an, null), vInd = an.Gamma / (4 * Math.PI * an.R);
+    ha += `Γ = ${c('o', an.Gamma.toFixed(2) + ' m²/s')} · R = ${c('v', an.R.toFixed(2) + ' m')} · a = ${c('v', an.a.toFixed(2) + ' m')} · Re_Γ = ${c('v', an.ReG.toExponential(1))}<br>` +
+      `U (Saffman) = ${c('v', an.Uself.toFixed(2) + ' m/s')} · velocitat induïda Γ/4πR = ${c(vInd > S.turb ? 'g' : 'r', vInd.toFixed(3) + ' m/s')} ${vInd > S.turb ? '> σ_w ✓' : '< σ_w: la turbulència el desfà'}<br>` +
+      `fase coherent ${c('v', fmtT(v.tCoh))} + dispersió ${c('v', fmtT(v.tFade))}<br>` +
+      `nodes ${c('o', an.nodes)} ${S.n_inj > 0 ? '(injectors)' : '(Widnall espontani)'} · gir: Kelvin ${c('v', rot.omK.toFixed(3))} + swirl ${c('v', rot.omS.toFixed(3))} rad/s → ${c('o', isFinite(rot.T) ? fmtT(rot.T) : '—')} per volta<br>` +
+      `${Math.abs(S.swirl) > 0.6 ? c('w', '⚠ swirl > 0.6: risc de trencament del vòrtex<br>') : ''}${an.F > 4 ? c('w', 'L₀/D > 4: part del flux queda com a jet de cua<br>') : ''}${an.lineal ? '' : c('w', '⚠ Mach > 0.1: acústica no lineal')}`;
   }
   setH('fc-anell', ha);
-  // Camp elèctric al node λ/4 (o a l'anell principal)
+  // Camp elèctric
   const r0 = anellPrincipal();
-  const px = r0 ? r0.x : S.sx_off, py = r0 ? r0.y : d.hN;
+  const px = r0 ? r0.x : src.x, py = r0 ? r0.y : src.y;
   const rr = F.ratiRuptura(S, px, py);
-  const cor = d.corona;
-  setH('fc-em', `${r0 ? 'a l\'anell' : 'al node λ/4'} (x=${px.toFixed(1)}, y=${py.toFixed(1)} m):<br>` +
+  const vMax = Math.max(S.vmt, S.vcat);
+  setH('fc-em', `${r0 ? 'a l\'anell' : 'a l\'emissor'} (x=${px.toFixed(1)}, y=${py.toFixed(1)} m):<br>` +
     `E_pic = ${c('v', fmtE(rr.E))} · E_ruptura = ${c('v', fmtE(rr.Ebd))}<br>` +
-    `E/E_rup = ${c(rr.X >= 1 ? 'g' : 'r', rr.X.toExponential(2))} → ${rr.X >= 1 ? c('g', 'allau electrònica') : 'falta un factor ' + c('r', '×' + (1 / Math.max(rr.X, 1e-12)).toExponential(1))}<br>` +
-    `rarefacció acústica: N baixa un ${c('v', ((1 - rr.Ebd / rr.Ebd0) * 100).toFixed(3) + ' %')}<br>` +
-    cor.map(k => `${k.nom}: superfície ${c('v', fmtE(k.Es))} / Peek ${fmtE(k.Ec)} ${k.actiu ? c('o', '⚡ CORONA') : c('g', 'sense corona')}`).join('<br>') +
-    `<div class="nota">MT modelada com un sol conductor a tensió de fase: és una cota superior (en una línia trifàsica els camps es compensen).</div>`);
-  // Sincronisme
-  const sy = F.sincronisme(S, py);
-  setH('fc-sync', `temps de viatge = ${c('v', (sy.tv * 1e3).toFixed(1) + ' ms')}<br>` +
-    (sy.comensurable ? `f_xarxa/f₁ = ${c('g', sy.n)} (sincronisme estable)<br>fase EM a la rarefacció = ${c('v', sy.fase.toFixed(0) + '°')} · factor = ${c('v', sy.q.toFixed(3))}`
-      : `f₁ no és submúltiple de f_xarxa: la coincidència rarefacció–pic EM es repeteix sola · factor = 1`) +
-    `<div class="nota">El sincronisme només modula el camp efectiu (≤ ×1). No hi ha cap amplificació ressonant entre so i camp elèctric en aire neutre.</div>`);
+    `E/E_rup = ${c(rr.X >= 1 ? 'g' : 'r', rr.X.toExponential(2))}` + (rr.X < 1 && rr.X > 0 ? ` → caldrien ~${c('r', (vMax / rr.X / 1000).toFixed(0) + ' MV')} a les línies` : '') + `<br>` +
+    d.corona.map(k => `${k.nom}: superfície ${c('v', fmtE(k.Es))} / Peek ${fmtE(k.Ec)} ${k.actiu ? c('o', '⚡ CORONA') : c('g', 'sense corona')}`).join('<br>') +
+    `<div class="nota">MT modelada com un sol conductor a tensió de fase: és una cota superior.</div>`);
   refreshVis();
 }
 
 function refreshVis() {
-  const r0 = anellPrincipal(), d = derivat;
-  let h = '';
-  if (r0) {
-    const v = visibilitat(r0);
-    h += `anell principal: ${c(v.visible ? 'g' : 'r', v.mec)}<br>` +
-      `pols: τ_òptica = ${c('v', v.tau.toExponential(1))} → contrast ${c(v.contrast >= 0.02 ? 'g' : 'r', (v.contrast * 100).toFixed(2) + ' %')} (cal ≥ 2 %)<br>` +
-      `condensació al nucli: ${v.condensa ? c('g', 'sí') : c('r', 'no')} · T plasma = ${c('v', Math.round(r0.T) + ' K')}<br>` +
-      `n_e = ${c('v', r0.ne.toExponential(1) + ' m⁻³')}`;
-  } else if (d.an.es_forma) {
-    const nuc = F.nucliTermo(S, d.an.Gamma, d.an.a), tau = F.profOptica(S, d.an.a, 1);
-    h += `predicció (prem ▶ so):<br>pols τ = ${c('v', tau.toExponential(1))} · contrast ${c(1 - Math.exp(-tau) >= 0.02 ? 'g' : 'r', ((1 - Math.exp(-tau)) * 100).toFixed(2) + ' %')}<br>` +
-      `nucli: Δp = ${c('v', fmtPa(nuc.dp))} · T = ${c('v', nuc.Tnucli.toFixed(2) + ' °C')} (rosada ${F.puntRosada(S).toFixed(1)} °C) ${nuc.condensa ? c('g', '→ condensa') : c('r', '→ no condensa')}`;
+  const r0 = anellPrincipal(), a = avaluacio;
+  const tr = F.tracador(S);
+  let h = `traçador: ${c('v', NOMS_TRAC[S.trac])} (r = ${(tr.r * 1e6).toFixed(1)} µm) · ${c('v', S.aer.toFixed(0) + ' mg/m³')}<br>`;
+  const ap = r0 ? visibilitat(r0).ap : a && a.ap;
+  if (ap) {
+    const mx = Math.max(...ap.rgb, 1e-9), sw = ap.rgb.map(v => Math.round(255 * Math.pow(v / mx, 0.8))).join(',');
+    h += `${r0 ? 'anell principal' : 'predicció (meitat de l\'observació)'}:<br>` +
+      `ψ (anell–sol) = ${c('v', ap.psi.toFixed(1) + '°')} · fase P = ${c('v', ap.P.toFixed(1))}<br>` +
+      `L_cel = ${c('v', (ap.Lsky / 1000).toFixed(1) + ' kcd/m²')} · L_anell = ${c('v', (ap.Y / 1000).toFixed(1) + ' kcd/m²')}<br>` +
+      `contrast C = ${c(ap.C >= 0.3 ? 'g' : Math.abs(ap.C) >= 0.02 ? 'w' : 'r', ap.C.toFixed(2))} · to ${c('v', Math.round(ap.hue) + '°')} ` +
+      `<span style="display:inline-block;width:22px;height:9px;border-radius:2px;vertical-align:middle;background:rgb(${sw})"></span> ${ap.taronja ? c('g', 'taronja') : ''}`;
   } else h += c('r', 'no es forma cap anell');
-  h += `<div class="nota">Mecanismes reals: (1) pols o fum arrossegat, (2) condensació per la caiguda de pressió al nucli, (3) emissió de plasma si E ≥ E_ruptura.</div>`;
+  h += `<div class="nota">Mecanismes reals: (1) llum solar dispersada pel traçador (molt intensa a contrallum), (2) condensació al nucli, (3) emissió de plasma si E ≥ E_ruptura.</div>`;
   setH('fc-vis', h);
 }
 
 /* ── Comparació amb l'observació ────────────────────────────────────────── */
 function comparacio() {
-  const d = derivat, r0 = anellPrincipal(), an = d.an;
-  const fb = F.fBat(S);
-  const rows = [];
-  const ok = (b) => b ? '✓' : '✗';
-  const forma = an.es_forma;
-  rows.push(['anell format', forma ? '✓' : '✗', forma]);
-  const D = forma ? 2 * an.R : 0;
-  rows.push(['diàmetre ≈ 25 m', forma ? D.toFixed(1) + ' m ' + ok(Math.abs(D - 25) < 7.5) : '—', forma && Math.abs(D - 25) < 7.5]);
-  const tub = forma ? 2 * (r0 ? r0.a : an.a) : 0;
-  rows.push(['tub ≈ 3 m', forma ? tub.toFixed(1) + ' m ' + ok(Math.abs(tub - 3) < 1.5) : '—', forma && Math.abs(tub - 3) < 1.5]);
-  const y = r0 ? r0.y : NaN;
-  rows.push(['alçada 20–30 m', r0 ? y.toFixed(1) + ' m ' + ok(y >= 20 && y <= 30) : '—', r0 && y >= 20 && y <= 30]);
-  rows.push(['4 nodes', forma ? an.nWidnall + ' ' + ok(an.nWidnall === 4) : '—', forma && an.nWidnall === 4]);
-  const Trot = fb > 0 && forma ? an.nWidnall / fb : Infinity;
-  rows.push(['1 volta ≈ 7 s', isFinite(Trot) ? Trot.toFixed(1) + ' s ' + ok(Math.abs(Trot - 7) < 2) : '—', Math.abs(Trot - 7) < 2]);
-  const Uv = forma ? an.Uself : NaN;
-  rows.push(['deriva lenta amb el vent', forma ? Uv.toFixed(2) + ' m/s ' + ok(Uv < 1.5) : '—', forma && Uv < 1.5]);
-  rows.push(['durada ≈ 3 min', forma ? fmtT(d.vida) + ' ' + ok(d.vida > 120 && d.vida < 300) : '—', forma && d.vida > 120 && d.vida < 300]);
-  let vis = null;
-  if (r0) vis = visibilitat(r0);
-  rows.push(['visible de dia', vis ? vis.mec + ' ' + ok(vis.visible) : '—', vis && vis.visible]);
-  rows.push(['color taronja', vis ? (vis.glowT ? '✓' : vis.mec === 'pols' ? '≈ ocre' : '✗') : '—', vis && vis.glowT]);
-  const silenci = !((S.f1 >= 20 && S.db1 > 0) || (S.f2 >= 20 && S.db2 > 0));
-  rows.push(['sense so audible', ok(silenci), silenci]);
-  document.getElementById('cmp-rows').innerHTML = rows.map(([l, v, b]) =>
-    `<div class="cr"><span>${l}</span><b style="color:${b ? '#40c080' : v === '—' ? '#4a5468' : '#e05050'}">${v}</b></div>`).join('');
-  const n = rows.filter(r => r[2]).length;
-  set('cmp-score', `${n}/${rows.length} condicions complertes amb física establerta`);
+  const a = avaluacio;
+  if (!a) { setH('cmp-rows', ''); set('cmp-score', ''); return; }
+  document.getElementById('cmp-rows').innerHTML = a.files.map(f =>
+    `<div class="cr"><span>${f.nom}</span><b style="color:${f.ok ? '#40c080' : '#e05050'}">${f.valor} ${f.ok ? '✓' : '✗'}</b></div>`).join('');
+  set('cmp-score', `${a.n}/${a.total} condicions complertes (predicció del model; objectius = observació si no els canvies)`);
 }
 
 /* ── Capçalera i estat ──────────────────────────────────────────────────── */
 function refreshHeader() {
   const d = derivat, an = d.an, r0 = anellPrincipal();
-  set('hv-hn', d.hN.toFixed(1) + ' m');
-  set('hv-gam', an.es_forma ? an.Gamma.toFixed(2) + ' m²/s' : '—');
-  set('hv-u', an.es_forma ? an.Uself.toFixed(2) + ' m/s' : '—');
-  const X = r0 ? r0.X : F.ratiRuptura(S, S.sx_off, d.hN).X;
-  set('hv-x', emOn ? X.toExponential(1) : 'EM off'); col('hv-x', X >= 1 ? '#40c080' : '#e05050');
+  const ev = r0 ? r0.ev : (an.es_forma ? F.estatAnell(S, an, 0, d.vida) : null);
+  set('hv-gam', ev ? ev.Gamma.toFixed(2) + ' m²/s' : '—');
+  set('hv-u', ev ? ev.U.toFixed(2) + ' m/s' : '—');
+  const rot = an.es_forma ? F.rotacioNodes(S, an, ev) : null;
+  set('hv-rot', rot && isFinite(rot.T) ? fmtT(rot.T) + (rot.sentit > 0 ? ' ↺' : ' ↻') : '—');
   const vis = r0 ? visibilitat(r0) : null;
-  set('hv-vis', vis ? vis.mec : '—'); col('hv-vis', vis && vis.visible ? '#40c080' : '#8892aa');
-  set('hv-n', an.es_forma ? String(an.nWidnall) : '—');
-  set('hv-vida', an.es_forma ? fmtT(d.vida) : '—');
+  const C = vis ? vis.ap.C : avaluacio && avaluacio.ap ? avaluacio.ap.C : null;
+  set('hv-c', C == null ? '—' : C.toFixed(2)); col('hv-c', C != null && C >= 0.3 ? '#40c080' : '#8892aa');
+  const X = r0 ? r0.X : F.ratiRuptura(S, d.fs[d.iMain].x, d.fs[d.iMain].y).X;
+  set('hv-x', emOn ? X.toExponential(1) : 'EM off'); col('hv-x', X >= 1 ? '#40c080' : '#e05050');
+  set('hv-n', an.es_forma ? String(an.nodes) : '—');
+  set('hv-vida', avaluacio && avaluacio.tVis != null ? fmtT(avaluacio.tVis) : '—');
   const es = estat();
   set('hv-es', es.n); col('hv-es', es.c);
   set('ph-n', es.n); col('ph-n', es.c); set('ph-d', es.d);
 }
 function estat() {
   const d = derivat, an = d.an, r0 = anellPrincipal();
-  if (!sigOn && !rings.length) return { n: 'aturat', d: 'Prem ▶ so per emetre', c: '#4a5468' };
+  if (!sigOn && !rings.length) return { n: 'aturat', d: 'Prem ▶ so per emetre (la comparació és la predicció del model)', c: '#4a5468' };
   if (sigOn && !an.es_forma) {
     const a = d.anells[d.iMain];
     return { n: 'ones sense anell', d: `L₀/D = ${a.F.toFixed(3)}, Holman = ${a.holman.toFixed(3)} < 0.16: el flux no se separa de l'obertura. Puja el nivell, baixa la freqüència o redueix D.`, c: '#e0a030' };
   }
-  if (!r0) return { n: 'emetent', d: 'formant el primer anell…', c: '#7f77dd' };
+  if (!r0) return { n: 'emetent', d: `formant l'anell (cal mig cicle: ${fmtT(0.5 / d.fMain)})…`, c: '#7f77dd' };
   const v = visibilitat(r0);
-  const extra = r0.trapped ? ' · atrapat a λ/2' : '';
-  if (!v.visible) return { n: 'anell invisible', d: `Γ = ${r0.Gamma.toFixed(2)} m²/s · U = ${(r0.U || 0).toFixed(2)} m/s · existeix però sense traçador ni emissió de llum${extra}`, c: '#8860e0' };
-  return { n: 'anell visible (' + v.mec + ')', d: `y = ${r0.y.toFixed(1)} m · edat ${fmtT(r0.age)} · nucli a = ${r0.a.toFixed(2)} m${extra}`, c: '#40c080' };
+  return { n: 'anell ' + v.mec, d: `edat ${fmtT(r0.age)} · ${r0.ev.disp ? 'dispersant-se' : 'coherent'} · Ø ${(2 * r0.ev.R).toFixed(1)} m · y = ${r0.y.toFixed(1)} m · C = ${v.ap.C.toFixed(2)}`, c: v.visible ? '#40c080' : '#8860e0' };
 }
 
 /* ── Dibuix ─────────────────────────────────────────────────────────────── */
@@ -394,11 +413,12 @@ window.addEventListener('resize', rc);
 function escena(W, H) {
   const d = derivat;
   const linies = S.vmt > 0 || S.vcat > 0;
-  const xspan = Math.max(S.a_riu / 2 + 2, linies ? S.sl / 2 + 8 : 0, S.so / 2 + Math.abs(S.sx_off) + 2, d.an.R * 3, 3);
-  let ymax = Math.max(linies ? Math.max(S.hmt, S.hcat) + 6 : 0, S.h_pont + 2, d.an.R * 4 + S.h_pont, 4);
+  const R = d.an.es_forma ? d.an.R : 0;
+  const xspan = Math.max(S.a_riu / 2 + 2, linies ? S.sl / 2 + 8 : 0, S.so / 2 + Math.abs(S.sx_off) + 2, R * 2.2, 3);
+  let ymax = Math.max(linies ? Math.max(S.hmt, S.hcat) + 6 : 0, S.h_pont + 4, S.h_src + R * 1.8, 4);
   const r0 = anellPrincipal();
-  if (r0 && r0.R > 1) ymax = Math.max(ymax, Math.min(r0.y, 150) + r0.R + 4);
-  if (d.hN < 150) ymax = Math.max(ymax, d.hN + 5);
+  if (r0 && r0.ev.R > 1) ymax = Math.max(ymax, Math.min(r0.y, 150) + r0.ev.R + 4);
+  if (VIS.n && d.hN < 150) ymax = Math.max(ymax, d.hN + 5);
   ymax = Math.min(ymax * 1.08, 400);
   const pxM = Math.min(W / (2 * xspan), (H - 34 * DPR) / ymax);
   const ox = W / 2, oy = H - 24 * DPR;
@@ -413,8 +433,7 @@ function dibuixaCamp(W, H, sc) {
     const Ebd0 = F.K.ETD_CRIT * F.nDens(F.pAtm(S), F.Tk(S));
     for (let py = 0; py < sc.oy; py += step) for (let px = 0; px < W; px += step) {
       const x = (px + step / 2 - sc.ox) / sc.pxM, y = (sc.oy - py - step / 2) / sc.pxM;
-      const E = F.campEPic(S, x, y);
-      const l = Math.log10(Math.max(E / Ebd0, 1e-7));      // -7 … 0
+      const l = Math.log10(Math.max(F.campEPic(S, x, y) / Ebd0, 1e-7));
       const t = Math.max(0, Math.min(1, (l + 6) / 6));
       if (t <= 0) continue;
       o.fillStyle = `rgba(${Math.round(80 + 175 * t)},${Math.round(60 + 60 * t)},${Math.round(160 - 140 * t)},${0.06 + 0.32 * t})`;
@@ -427,23 +446,40 @@ function dibuixaCamp(W, H, sc) {
 
 function draw() {
   const W = cv.width, H = cv.height; if (!W || !H) return;
-  const sc = escena(W, H), d = derivat, f = DPR;
+  const sc = escena(W, H), d = derivat, f = DPR, sol = d.sol;
   cx.clearRect(0, 0, W, H);
+  // Cel: més clar de dia
+  const dia = Math.max(0, Math.min(1, sol.alt / 25));
   const g = cx.createLinearGradient(0, 0, 0, sc.oy);
-  g.addColorStop(0, '#07101f'); g.addColorStop(1, '#0d1a2c');
+  g.addColorStop(0, `rgb(${Math.round(7 + 30 * dia)},${Math.round(16 + 60 * dia)},${Math.round(31 + 100 * dia)})`);
+  g.addColorStop(1, `rgb(${Math.round(13 + 60 * dia)},${Math.round(26 + 90 * dia)},${Math.round(44 + 120 * dia)})`);
   cx.fillStyle = g; cx.fillRect(0, 0, W, H);
+  // Sol (direcció relativa a la mirada, projectada al pla de l'anell)
+  if (VIS.sol && sol.alt > -2) {
+    const dAz = ((sol.az - S.az_vis + 540) % 360) - 180;
+    const dist = S.d_obs, hO = S.h_pont + 1.6;
+    if (Math.abs(dAz) < 80) {
+      const sx = sc.X(dist * Math.tan(dAz * Math.PI / 180)), sy = sc.Y(hO + dist * Math.tan(sol.alt * Math.PI / 180) / Math.cos(dAz * Math.PI / 180));
+      const gg = cx.createRadialGradient(sx, sy, 0, sx, sy, 60 * f);
+      gg.addColorStop(0, 'rgba(255,245,210,.95)'); gg.addColorStop(0.15, 'rgba(255,230,170,.5)'); gg.addColorStop(1, 'rgba(255,220,150,0)');
+      cx.fillStyle = gg; cx.beginPath(); cx.arc(sx, sy, 60 * f, 0, 2 * Math.PI); cx.fill();
+      if (VIS.lb) { cx.fillStyle = 'rgba(255,230,170,.85)'; cx.font = `${9 * f}px sans-serif`; cx.textAlign = 'center'; cx.fillText(`☀ ${sol.alt.toFixed(1)}° · ${sol.az.toFixed(0)}°`, sx, sy + 70 * f); }
+    } else if (VIS.lb) {
+      cx.fillStyle = 'rgba(255,230,170,.7)'; cx.font = `${9 * f}px sans-serif`; cx.textAlign = dAz > 0 ? 'right' : 'left';
+      cx.fillText(`☀ fora de vista (${dAz > 0 ? '→' : '←'} ${Math.abs(dAz).toFixed(0)}°)`, dAz > 0 ? W - 8 * f : 8 * f, 40 * f);
+    }
+  }
   if (VIS.e && (S.vmt > 0 || S.vcat > 0)) dibuixaCamp(W, H, sc);
-  // Riu i ribes
+  // Riu i pont
   const rh = (S.a_riu / 2) * sc.pxM;
   cx.fillStyle = '#16120c'; cx.fillRect(0, sc.oy, W, H - sc.oy);
   cx.fillStyle = 'rgba(25,70,140,.6)'; cx.fillRect(sc.ox - rh, sc.oy, 2 * rh, H - sc.oy);
   cx.strokeStyle = 'rgba(60,150,240,.8)'; cx.lineWidth = 1.5 * f;
   cx.beginPath(); cx.moveTo(sc.ox - rh, sc.oy); cx.lineTo(sc.ox + rh, sc.oy); cx.stroke();
-  // Pont
   const yb = sc.Y(S.h_pont);
   cx.fillStyle = 'rgba(120,120,110,.35)'; cx.fillRect(sc.ox - rh - 20 * f, yb, 2 * rh + 40 * f, 4 * f);
   cx.font = `${9 * f}px sans-serif`; cx.textAlign = 'left';
-  if (VIS.lb) { cx.fillStyle = 'rgba(160,160,140,.6)'; cx.fillText('pont ' + S.h_pont.toFixed(1) + ' m', sc.ox - rh - 18 * f, yb - 4 * f); cx.fillStyle = 'rgba(100,170,230,.8)'; cx.fillText('riu ' + S.a_riu.toFixed(0) + ' m', sc.ox - rh + 3 * f, sc.oy + 12 * f); }
+  if (VIS.lb) { cx.fillStyle = 'rgba(160,160,140,.7)'; cx.fillText('pont ' + S.h_pont.toFixed(1) + ' m · testimoni a ' + S.d_obs.toFixed(0) + ' m', Math.max(4 * f, sc.ox - rh - 18 * f), yb - 4 * f); }
   // Nodes acústics
   if (VIS.n) {
     [[d.hN, 'node de pressió λ/4', 'rgba(130,110,230,.55)'], [F.hNodeVelocitat(S, S.f1), 'trampa d\'aire calent λ/2', 'rgba(80,200,140,.45)']].forEach(([h, l, cc]) => {
@@ -459,29 +495,30 @@ function draw() {
     d.fs.forEach((src, i) => {
       if (src.L <= 0) return;
       const lam = F.lambda(S, src.f), cs = F.cSo(S);
-      const a = Math.min(0.5, 0.08 + src.L / 400);
-      const cc = i === 0 ? '90,200,110' : '230,140,40';
-      const maxR = Math.hypot(sc.xspan, sc.ymax) * 1.2;
-      const off = (cs * simT) % lam;
+      if (lam * sc.pxM < 3) return;
+      const a = Math.min(0.5, 0.08 + src.L / 400), cc = i === 0 ? '90,200,110' : '230,140,40';
+      const maxR = Math.hypot(sc.xspan, sc.ymax) * 1.2, off = (cs * simT) % lam;
       for (let rr = off; rr < maxR; rr += lam) {
         if (rr * sc.pxM < 2) continue;
         cx.strokeStyle = `rgba(${cc},${a * (1 - rr / maxR)})`; cx.lineWidth = f;
         cx.beginPath(); cx.arc(sc.X(src.x), sc.Y(src.y), rr * sc.pxM, Math.PI, 2 * Math.PI); cx.stroke();
-        if (lam * sc.pxM < 3) break;
       }
     });
   }
-  // Fonts amb obertura
+  // Emissors amb obertura
   d.fs.forEach((src, i) => {
+    if (src.L <= 0 && i === 1) return;
     const w = Math.max(S.D_ap * sc.pxM, 5 * f), x = sc.X(src.x), y = sc.Y(src.y);
+    cx.strokeStyle = 'rgba(140,140,118,.3)'; cx.lineWidth = f;
+    if (src.y > S.h_pont + 0.5) { cx.beginPath(); cx.moveTo(x, sc.Y(S.h_pont)); cx.lineTo(x, y); cx.stroke(); }
     cx.fillStyle = src.L > 0 ? (i === 0 ? '#3aa050' : '#c07020') : '#333';
-    cx.fillRect(x - w / 2, y - 4 * f, w, 4 * f);
-    if (VIS.lb) { cx.fillStyle = 'rgba(200,200,200,.7)'; cx.textAlign = 'center'; cx.fillText((i ? 'S₂ ' : 'S₁ ') + src.f.toFixed(2) + ' Hz · ' + src.L.toFixed(0) + ' dB', x, y + (14 + 11 * i) * f); }
+    cx.fillRect(x - w / 2, y - 3 * f, w, 6 * f);
+    if (VIS.lb) { cx.fillStyle = 'rgba(200,200,200,.75)'; cx.textAlign = 'center'; cx.fillText((i ? 'S₂ ' : 'S₁ ') + (src.f < 1 ? src.f.toFixed(3) : src.f.toFixed(2)) + ' Hz · ' + src.L.toFixed(0) + ' dB · D ' + S.D_ap.toFixed(1) + ' m', x, y + (16 + 11 * i) * f); }
   });
-  // Conductors (secció transversal: les línies van al llarg del riu)
+  // Conductors (secció transversal)
   F.conductors(S).forEach((cd, i) => {
-    const x = sc.X(cd.x), y = sc.Y(cd.y), on = emOn && cd.V > 0;
-    const cr = d.corona[i];
+    if (cd.V <= 0) return;
+    const x = sc.X(cd.x), y = sc.Y(cd.y), on = emOn, cr = d.corona[i];
     cx.strokeStyle = 'rgba(140,140,118,.25)'; cx.lineWidth = f;
     cx.beginPath(); cx.moveTo(x, sc.oy); cx.lineTo(x, y); cx.stroke();
     if (on && cr.actiu) {
@@ -491,49 +528,63 @@ function draw() {
     }
     cx.fillStyle = on ? (i === 0 ? '#d85a30' : '#378add') : '#444';
     cx.beginPath(); cx.arc(x, y, 4 * f, 0, 2 * Math.PI); cx.fill();
-    if (VIS.lb) { cx.fillStyle = on ? 'rgba(220,200,180,.8)' : 'rgba(120,120,120,.6)'; cx.textAlign = 'center'; cx.fillText(cd.nom + ' ' + (i ? S.vcat : S.vmt).toFixed(0) + ' kV · ' + cd.y.toFixed(1) + ' m' + (on && cr.actiu ? ' ⚡corona' : ''), x, y - 8 * f); }
+    if (VIS.lb) { cx.fillStyle = 'rgba(220,200,180,.8)'; cx.textAlign = 'center'; cx.fillText(cd.nom + ' ' + (i ? S.vcat : S.vmt).toFixed(0) + ' kV · ' + cd.y.toFixed(1) + ' m' + (on && cr.actiu ? ' ⚡corona' : ''), x, y - 8 * f); }
   });
-  // Anells
-  const el = S.elev * Math.PI / 180, fb = F.fBat(S), sb = F.sentitBat(S);
+  // Vent (component lateral)
+  if (VIS.lb && S.W > 0) {
+    const w = F.ventXZ(S), len = Math.min(40, 10 + S.W * 4) * f, x0 = W - 70 * f, y0 = 40 * f;
+    const ax = w.x / Math.max(F.vent(S), 1e-9);
+    cx.strokeStyle = 'rgba(180,200,220,.7)'; cx.lineWidth = 1.5 * f;
+    cx.beginPath(); cx.moveTo(x0 - ax * len / 2, y0); cx.lineTo(x0 + ax * len / 2, y0); cx.stroke();
+    cx.fillStyle = 'rgba(180,200,220,.8)'; cx.textAlign = 'center';
+    cx.fillText(`vent ${S.W.toFixed(1)} km/h · ${S.dirW.toFixed(0)}°`, x0, y0 + 14 * f);
+  }
+  // Anells: el·lipse segons l'orientació de l'eix respecte a la mirada
+  const el = S.elev * Math.PI / 180, az = S.az_eix * Math.PI / 180;
+  const pX = Math.sin(az) * Math.cos(el), pY = Math.sin(el), menor = Math.abs(Math.cos(az) * Math.cos(el));
+  const rotEl = Math.hypot(pX, pY) > 1e-6 ? Math.atan2(-pX, -pY) : 0;
   for (const r of rings) {
-    const v = visibilitat(r);
-    const x = sc.X(r.x), y = sc.Y(r.y), rx = r.R * sc.pxM, ry = Math.max(r.R * Math.cos(el), r.R * 0.06) * sc.pxM;
-    const lw = Math.max(2 * r.a * sc.pxM, 1.5 * f);
+    const v = visibilitat(r), ev = r.ev;
+    const x = sc.X(r.x), y = sc.Y(r.y), rx = ev.R * sc.pxM, ry = Math.max(ev.R * menor, ev.R * 0.05) * sc.pxM;
+    const lw = Math.max(2 * ev.a * sc.pxM, 1.5 * f);
     if (rx < 1) continue;
+    cx.save(); cx.translate(x, y); cx.rotate(rotEl);
     if (v.visible) {
-      cx.strokeStyle = `rgba(${v.col},${0.15 * v.alpha})`; cx.lineWidth = lw * 1.8;
-      cx.beginPath(); cx.ellipse(x, y, rx, ry, 0, 0, 2 * Math.PI); cx.stroke();
-      cx.strokeStyle = `rgba(${v.col},${0.75 * v.alpha})`; cx.lineWidth = lw;
-      cx.beginPath(); cx.ellipse(x, y, rx, ry, 0, 0, 2 * Math.PI); cx.stroke();
+      cx.strokeStyle = `rgba(${v.col},${0.18 * v.alpha})`; cx.lineWidth = lw * (ev.disp ? 2.5 : 1.8);
+      cx.beginPath(); cx.ellipse(0, 0, rx, ry, 0, 0, 2 * Math.PI); cx.stroke();
+      cx.strokeStyle = `rgba(${v.col},${0.8 * v.alpha})`; cx.lineWidth = lw;
+      cx.beginPath(); cx.ellipse(0, 0, rx, ry, 0, 0, 2 * Math.PI); cx.stroke();
     } else {
       cx.strokeStyle = 'rgba(160,150,220,.35)'; cx.lineWidth = f; cx.setLineDash([3 * f, 4 * f]);
-      cx.beginPath(); cx.ellipse(x, y, rx, ry, 0, 0, 2 * Math.PI); cx.stroke(); cx.setLineDash([]);
+      cx.beginPath(); cx.ellipse(0, 0, rx, ry, 0, 0, 2 * Math.PI); cx.stroke(); cx.setLineDash([]);
     }
-    // Nodes: modes de Widnall; el patró gira amb les franges del batement (hipòtesi)
-    const n = Math.min(Math.max(1, Math.round(2.5 * r.R / r.a)), 24);
-    const ang0 = fb > 0 ? sb * 2 * Math.PI * fb * simT / n : 0;
-    for (let k = 0; k < n; k++) {
-      const ang = -(ang0 + k * 2 * Math.PI / n);
-      const nx = x + Math.cos(ang) * rx, ny = y + Math.sin(ang) * ry;
-      const al = v.visible ? v.alpha : 0.25;
-      cx.fillStyle = v.visible ? `rgba(${v.col},${al})` : 'rgba(170,160,230,.35)';
-      cx.beginPath(); cx.arc(nx, ny, v.visible ? Math.max(lw * 0.45, 2 * f) : 2.5 * f, 0, 2 * Math.PI); cx.fill();
+    // Nodes: el patró gira amb Ω = Ω_Kelvin + Ω_swirl (positiu = antihorari a la pantalla)
+    const n = Math.min(r.an.nodes, 24);
+    if (!ev.disp) for (let k = 0; k < n; k++) {
+      const ang = -(r.ang + k * 2 * Math.PI / n);
+      const nx = Math.cos(ang) * rx, ny = Math.sin(ang) * ry;
+      const gl = Math.max(lw * 0.7, 3 * f);
+      if (v.visible) {
+        const gg = cx.createRadialGradient(nx, ny, 0, nx, ny, gl);
+        gg.addColorStop(0, `rgba(255,240,200,${Math.min(1, v.alpha * 1.1)})`); gg.addColorStop(1, `rgba(${v.col},0)`);
+        cx.fillStyle = gg; cx.beginPath(); cx.arc(nx, ny, gl, 0, 2 * Math.PI); cx.fill();
+      } else { cx.fillStyle = 'rgba(170,160,230,.35)'; cx.beginPath(); cx.arc(nx, ny, 2.5 * f, 0, 2 * Math.PI); cx.fill(); }
     }
+    cx.restore();
   }
   const r0 = anellPrincipal();
   if (r0 && VIS.lb) {
     const v = visibilitat(r0);
-    cx.fillStyle = v.visible ? `rgba(${v.col},.9)` : 'rgba(170,160,230,.7)';
+    cx.fillStyle = v.visible ? `rgba(${v.col},.95)` : 'rgba(170,160,230,.75)';
     cx.textAlign = 'center'; cx.font = `bold ${10 * f}px sans-serif`;
-    cx.fillText(`anell Ø ${(2 * r0.R).toFixed(1)} m · ${v.visible ? v.mec : 'invisible'}${r0.trapped ? ' · atrapat' : ''}`,
-      sc.X(r0.x), sc.Y(r0.y + r0.R * Math.max(Math.cos(el), 0.06)) - 8 * f);
+    cx.fillText(`Ø ${(2 * r0.ev.R).toFixed(1)} m · ${v.mec} · C = ${v.ap.C.toFixed(2)} · ${(2 * r0.ev.R / v.g.dist * 180 / Math.PI).toFixed(1)}° aparents`,
+      sc.X(r0.x), sc.Y(r0.y + r0.ev.R * Math.max(menor, 0.05)) - 8 * f);
     cx.font = `${9 * f}px sans-serif`;
   }
-  // Barra inferior d'informació
   if (VIS.lb) {
-    cx.fillStyle = 'rgba(140,130,210,.7)'; cx.textAlign = 'left'; cx.font = `${9 * f}px sans-serif`;
-    cx.fillText(`t = ${simT.toFixed(1)} s · anells vius ${rings.length} · escala ${(1 / sc.pxM * 50 * f).toFixed(1)} m / 50 px`, 8 * f, H - 6 * f);
-    if (VIS.e && (S.vmt > 0 || S.vcat > 0)) { cx.textAlign = 'right'; cx.fillText('color de fons: log₁₀(E/E_ruptura) de −6 (fosc) a 0 (vermell)', W - 8 * f, H - 6 * f); }
+    cx.fillStyle = 'rgba(160,150,220,.75)'; cx.textAlign = 'left'; cx.font = `${9 * f}px sans-serif`;
+    cx.fillText(`t = ${fmtT(simT)} · anells vius ${rings.length} · escala ${(50 * f / sc.pxM).toFixed(1)} m / 50 px · vista frontal des del pont`, 8 * f, H - 6 * f);
+    if (VIS.e && (S.vmt > 0 || S.vcat > 0)) { cx.textAlign = 'right'; cx.fillText('fons: log₁₀(E/E_ruptura) de −6 a 0', W - 8 * f, H - 6 * f); }
   }
 }
 
@@ -546,12 +597,11 @@ function loop(now) {
   try {
     if (!PAUSED) {
       const sdt = wdt * Math.pow(10, S.spd);
-      // Subpassos: amb escala ×100 l'emissió i la difusió segueixen sent estables
       const nSub = Math.min(50, Math.ceil(sdt / 0.02));
       for (let i = 0; i < nSub; i++) { simT += sdt / nSub; updatePhysics(sdt / nSub); }
     }
     draw();
-    if (now - lastInfo > 250) { lastInfo = now; refreshHeader(); refreshVis(); comparacio(); }
+    if (now - lastInfo > 250) { lastInfo = now; refreshHeader(); refreshVis(); }
   } catch (e) { console.warn('loop:', e); }
 }
 
@@ -559,6 +609,7 @@ function loop(now) {
 function toggleSo() {
   sigOn = !sigOn;
   const b = document.getElementById('b-go'); b.textContent = sigOn ? '⏹ so' : '▶ so'; b.classList.toggle('on', sigOn);
+  if (sigOn) { emissio[0] = emissio[1] = 0.5; emesos[0] = emesos[1] = 0; }
 }
 function toggleEM() {
   emOn = !emOn;
@@ -573,54 +624,58 @@ function reinicia() {
   if (sigOn) toggleSo();
   if (!emOn) toggleEM();
   if (PAUSED) togglePausa();
-  simT = 0; rings = []; emissio[0] = emissio[1] = 0;
+  simT = 0; rings = []; emissio[0] = emissio[1] = 0.5; emesos[0] = emesos[1] = 0;
   refreshInfo();
 }
-let activePreset = -1;
+function aplicaValors(v) { Object.keys(DEF).forEach(k => { if (k in v) setParam(k, v[k], true); }); }
 function loadPreset(i) {
   reinicia();
   const p = PRESETS[i];
-  Object.keys(DEF).forEach(k => { if (k in p.v) setParam(k, p.v[k], true); });
-  activePreset = i;
+  aplicaValors(p.v);
+  if (p.solDv != null) setParam('az_vis', (F.posicioSol(S).az - p.solDv + 360) % 360, true);
+  aplicaValors(p.obj || OBJ_SEGRE); OPC.dir = 1; OPC.prioritat = p.prioritat || 'deriva'; totesEtiquetes();
+  if (p.obj) dissenyaIAplica(true);
   document.querySelectorAll('.pb-btn').forEach((b, j) => b.classList.toggle('active', j === i));
+  // Un anell lent s'ha de poder veure sencer en pocs minuts
+  const fm = F.anellPrincipalFont(S).src.f;
+  setParam('spd', fm < 0.2 ? 1 : 0, true);
   canviParams();
 }
 function tauOptim() {
-  // τ que posa el pic del camp EM a la mateixa fase que la rarefacció al node
-  const sy = F.sincronisme(Object.assign({}, S, { tau: 0 }), derivat.hN);
+  const src = derivat.fs[derivat.iMain];
+  const sy = F.sincronisme(Object.assign({}, S, { tau: 0 }), src.y);
   const T = 1e6 / S.f_mt;
   let tau = -(sy.tv * 1e6) % T;
   if (tau > T / 2) tau -= T; if (tau < -T / 2) tau += T;
   setParam('tau', Math.round(tau));
 }
-function aplicaObjectiu() {
-  const obj = { D: S.oD, n: S.on, Trot: S.oT, sentit: OPC.dir, h: OPC.usaH ? S.oh : null };
-  let r = F.requisits(S, obj);
-  let fAuto = false;
-  if (!OPC.usaH && r.mach > 0.1) { r = F.requisits(Object.assign({}, S, { f1: 0.8 * r.fMaxLineal }), obj); fAuto = true; }
-  // La font que forma l'anell treballa a la freqüència base; l'altra a base+f_bat
-  const fBase = r.f1, fAlt = fBase + r.fb;
-  setParam('D_ap', r.D_ap, true); setParam('aR', r.aR, true);
-  if (OPC.dir > 0) { setParam('f1', fAlt, true); setParam('f2', fBase, true); setParam('db2', Math.min(r.L, DEF.db2[1]), true); setParam('db1', Math.min(r.L, DEF.db1[1]) - 15, true); }
-  else { setParam('f1', fBase, true); setParam('f2', fAlt, true); setParam('db1', Math.min(r.L, DEF.db1[1]), true); setParam('db2', Math.min(r.L, DEF.db2[1]) - 15, true); }
-  canviParams();
-  setH('fc-obj', `obertura D = ${c('v', r.D_ap.toFixed(2) + ' m')} · a/R = ${c('v', r.aR.toFixed(2))}<br>` +
-    `f base = ${c('v', fBase.toFixed(3) + ' Hz')}${fAuto ? ' (rebaixada per mantenir Mach < 0.1)' : ''} · f_bat = ${c('v', r.fb.toFixed(3) + ' Hz')}<br>` +
-    `u a l'obertura = ${c('v', r.u.toFixed(1) + ' m/s')} (Mach ${r.mach.toFixed(2)})<br>` +
-    `nivell necessari = ${c(r.L <= F.dbMax(S) ? 'g' : 'r', r.L.toFixed(1) + ' dB a 1 m')} ${r.L > F.dbMax(S) ? '— impossible (> ' + F.dbMax(S).toFixed(0) + ' dB)' : ''}<br>` +
-    `${r.viable ? c('g', '✓ físicament viable') : c('r', '✗ no viable')}${r.audible ? c('w', ' · audible') : c('g', ' · infrasò')}` +
-    `<div class="nota">La segona font, ${15} dB més baixa, només aporta el batement que fa girar el patró de nodes (hipòtesi).</div>`);
+function dissenyaIAplica(silenciós) {
+  const obj = { D: S.oD, tub: S.otub, n: S.on, Trot: S.oT, sentit: OPC.dir, h: S.oh, Umax: S.oU, vida: S.ovida, contrast: S.oC, prioritat: OPC.prioritat };
+  const r = F.dissenya(S, obj);
+  const claus = ['D_ap', 'aR', 'f1', 'f2', 'db1', 'db2', 'phi', 'npols', 'n_inj', 'swirl', 'kdir', 'h_src', 'elev', 'az_eix', 'dT0', 'sx_off', 'so', 'turb', 'aer'];
+  claus.forEach(k => setParam(k, r.cfg[k], true));
+  if (!silenciós) { reinicia(); canviParams(); }
+  const conf = r.conflicte > 1.05;
+  setH('fc-obj', `obertura D = ${c('v', r.cfg.D_ap.toFixed(2) + ' m')} · a/R = ${c('v', r.cfg.aR.toFixed(2))} · emissor a ${c('v', r.cfg.h_src.toFixed(1) + ' m')}<br>` +
+    `1 pols: ejecció de ${c('v', fmtT(0.5 / r.f))} (f = ${c('v', r.f.toFixed(4) + ' Hz')}) · u = ${c('v', r.u.toFixed(2) + ' m/s')} · ${c(r.L <= F.dbMax(S) ? 'g' : 'r', r.L.toFixed(1) + ' dB a 1 m')}<br>` +
+    `Γ = ${c('o', r.Gamma.toFixed(1) + ' m²/s')} (per a la deriva → ${r.GamDeriva.toFixed(1)} · per al gir → ${r.GamRot.toFixed(1)})<br>` +
+    `${conf ? c('r', '⚠ conflicte: el gir demana ×' + r.conflicte.toFixed(1) + ' més circulació que la deriva lenta') : c('g', '✓ gir i deriva compatibles')}<br>` +
+    `turbulència necessària σ_w = ${c(r.cfg.turb < 0.1 ? 'w' : 'g', r.cfg.turb.toFixed(3) + ' m/s')} (ha de ser < ${r.vInd.toFixed(3)})<br>` +
+    `traçador necessari = ${c('v', r.cfg.aer.toFixed(0) + ' mg/m³')} de ${NOMS_TRAC[S.trac]} · ψ = ${r.psi.toFixed(1)}°` +
+    `${r.cMax < S.oC ? '<br>' + c('r', '⚠ contrast màxim possible ' + r.cMax.toFixed(2) + ': mira més a prop del sol o canvia de traçador') : ''}` +
+    `<div class="nota">El disseny no fixa: hora i lloc (sol), direcció de la mirada, distància, vent i tipus de traçador. Canvia'ls i torna a dissenyar.</div>`);
+  return r;
 }
 
 /* ── Oscil·loscopi i àudio ──────────────────────────────────────────────── */
-function drawOsc(id, freq, amp, phDeg, color, sig) {
+function drawOsc(id, freq, amp, phDeg, color) {
   const c2 = document.getElementById('osc-' + id); if (!c2) return;
   const o = c2.getContext('2d'), W = c2.width, H = c2.height;
   o.fillStyle = '#02040a'; o.fillRect(0, 0, W, H);
   o.strokeStyle = 'rgba(20,40,60,.6)'; o.lineWidth = .5;
   o.beginPath(); o.moveTo(0, H / 2); o.lineTo(W, H / 2); o.stroke();
   if (amp <= 0) { o.fillStyle = 'rgba(60,80,100,.7)'; o.font = '7px monospace'; o.textAlign = 'center'; o.fillText('off', W / 2, H / 2 + 3); return; }
-  const tw = Math.max(3 / Math.max(freq, 0.01), 0.04), ph = phDeg * Math.PI / 180;
+  const tw = Math.max(3 / Math.max(freq, 0.005), 0.04), ph = phDeg * Math.PI / 180;
   o.strokeStyle = color; o.lineWidth = 1.3; o.beginPath();
   for (let px = 0; px < W; px++) {
     const y = Math.sin(2 * Math.PI * freq * (simT - tw + px / W * tw) + ph) * amp;
@@ -635,7 +690,7 @@ function updateOsc() {
   drawOsc('s2', S.f2, sigOn ? ampDb(S.db2) : 0, S.phi, '#c06010');
   drawOsc('mt', S.f_mt, emOn ? Math.min(1, S.vmt / 50) : 0, 0, '#b08020');
   drawOsc('cat', S.f_mt, emOn ? Math.min(1, S.vcat / 50) : 0, S.ph, '#1888b0');
-  set('osc-f-s1', S.f1.toFixed(2) + ' Hz'); set('osc-f-s2', S.f2.toFixed(2) + ' Hz');
+  set('osc-f-s1', S.f1.toFixed(3) + ' Hz'); set('osc-f-s2', S.f2.toFixed(3) + ' Hz');
   set('osc-f-mt', S.f_mt.toFixed(1) + ' Hz'); set('osc-f-cat', S.f_mt.toFixed(1) + ' Hz');
   set('osc-val-s1', sigOn && S.db1 > 0 ? S.db1.toFixed(0) + ' dB' : 'off');
   set('osc-val-s2', sigOn && S.db2 > 0 ? S.db2.toFixed(0) + ' dB' : 'off');
@@ -643,10 +698,8 @@ function updateOsc() {
 }
 let audioCtx = null;
 const audioNodes = {};
-function freqAudio(id) {
-  const f = id === 's1' ? S.f1 : id === 's2' ? S.f2 : S.f_mt;
-  return f < 20 ? f * 100 : f;
-}
+function fBase(id) { return id === 's1' ? S.f1 : id === 's2' ? S.f2 : S.f_mt; }
+function freqAudio(id) { let f = Math.max(fBase(id), 0.005); while (f < 20) f *= 10; return f; }   // infrasò: ×10 fins que és audible
 function toggleAudio(id) {
   if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
   const btn = document.getElementById('spk-' + id);
@@ -659,7 +712,8 @@ function toggleAudio(id) {
     osc.frequency.value = freqAudio(id); g.gain.value = 0.08;
     osc.connect(g); g.connect(audioCtx.destination); osc.start();
     audioNodes[id] = { osc, g };
-    btn.textContent = freqAudio(id) !== (id === 's1' ? S.f1 : id === 's2' ? S.f2 : S.f_mt) ? '♦×100' : '■';
+    const k = Math.round(freqAudio(id) / fBase(id));
+    btn.textContent = k > 1 ? '♦×' + k : '■';
     btn.style.color = '#40e080';
   }).catch(() => {});
 }
@@ -681,9 +735,11 @@ function cfgLoad() {
   const sel = document.getElementById('cfg-list'); if (!sel.value) return;
   const cfg = cfgAll()[sel.value]; if (!cfg) return;
   reinicia();
-  Object.keys(DEF).forEach(k => setParam(k, k in cfg.S ? cfg.S[k] : DEF[k][3], true));   // claus noves → valor per defecte
-  if (cfg.opc) { setDir(cfg.opc.dir || 1); setUsaH(!!cfg.opc.usaH); }
-  canviParams();
+  // Claus que no existien en versions anteriors → valor per defecte
+  Object.keys(DEF).forEach(k => setParam(k, k in cfg.S ? cfg.S[k] : DEF[k][3], true));
+  if ('h_pont' in cfg.S && !('h_src' in cfg.S)) setParam('h_src', cfg.S.h_pont, true);
+  if (cfg.opc) { OPC.dir = cfg.opc.dir === -1 ? -1 : 1; OPC.prioritat = cfg.opc.prioritat === 'rotacio' ? 'rotacio' : 'deriva'; }
+  totesEtiquetes(); canviParams();
   document.getElementById('savecfg-panel').style.display = 'none';
 }
 function cfgDelete() {
@@ -697,8 +753,6 @@ function cfgRefreshList() {
   if (!noms.length) { sel.innerHTML = '<option value="">(cap configuració desada)</option>'; return; }
   noms.forEach(n => { const o = document.createElement('option'); o.value = n; o.textContent = n + ' [' + all[n].ts + ']'; sel.appendChild(o); });
 }
-function setDir(dv) { OPC.dir = dv; document.getElementById('dir-ccw').classList.toggle('on', dv === 1); document.getElementById('dir-cw').classList.toggle('on', dv === -1); }
-function setUsaH(v) { OPC.usaH = v; document.getElementById('sw-h').classList.toggle('on', v); document.getElementById('row-oh').style.display = v ? 'block' : 'none'; }
 
 /* ── Esdeveniments (delegació) ──────────────────────────────────────────── */
 function initEvents() {
@@ -707,20 +761,27 @@ function initEvents() {
     if (k && e.target.type === 'range') setParam(k, +e.target.value);
   });
   document.body.addEventListener('click', e => {
-    const t = e.target.closest('[data-k],[data-preset],[data-act],[data-vis],[data-dir],[data-audio],[data-trac]');
+    const t = e.target.closest('[data-k],[data-preset],[data-act],[data-vis],[data-grup],[data-audio]');
     if (!t) return;
     if (t.dataset.k && t.dataset.d) { const k = t.dataset.k; setParam(k, S[k] + (+t.dataset.d) * DEF[k][2]); return; }
     if (t.dataset.preset) { loadPreset(+t.dataset.preset); return; }
     if (t.dataset.vis) { const k = t.dataset.vis; VIS[k] = !VIS[k]; t.classList.toggle('on', VIS[k]); return; }
-    if (t.dataset.dir) { setDir(+t.dataset.dir); return; }
-    if (t.dataset.trac) { setParam('trac', +t.dataset.trac); return; }
     if (t.dataset.audio) { toggleAudio(t.dataset.audio); return; }
+    if (t.dataset.grup) {
+      const g = t.dataset.grup, v = t.dataset.v;
+      if (g === 'g-trac') setParam('trac', +v);
+      else if (g === 'g-kdir') setParam('kdir', +v);
+      else if (g === 'g-dir') { OPC.dir = +v; marcaGrup(g, v); canviParams(); }
+      else if (g === 'g-prio') { OPC.prioritat = v; marcaGrup(g, v); }
+      return;
+    }
     const acts = {
       so: toggleSo, em: toggleEM, pausa: togglePausa, reinicia,
       osc: () => { const p = document.getElementById('osc-panel'); p.style.display = p.style.display === 'none' ? 'block' : 'none'; },
       desa: () => { const p = document.getElementById('savecfg-panel'); const obre = p.style.display !== 'block'; p.style.display = obre ? 'block' : 'none'; if (obre) cfgRefreshList(); },
       'cfg-desa': cfgSave, 'cfg-carrega': cfgLoad, 'cfg-elimina': cfgDelete,
-      objectiu: aplicaObjectiu, tauopt: tauOptim, usaH: () => setUsaH(!OPC.usaH),
+      objectiu: () => dissenyaIAplica(false), tauopt: tauOptim,
+      miraSol: () => setParam('az_vis', (F.posicioSol(S).az - 3 + 360) % 360),
     };
     if (acts[t.dataset.act]) acts[t.dataset.act]();
   });

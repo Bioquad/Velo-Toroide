@@ -34,27 +34,34 @@ Aquest repositori conté la documentació factual i l'anàlisi teòrica basada e
 └── LICENSE.txt             GNU GPL v3 (codi)
 ```
 
-### El simulador V041: què fa i què no fa
+### El simulador V042: què fa i què no fa
 
-La versió V041 substitueix els factors ajustats a mà de la V040 (amplificació ressonant k = 25, un «sincronisme» que reduïa el llindar de ruptura, constants arbitràries d'escalfament) per **física establerta i publicada**. Si una condició no es compleix, el simulador ho mostra en lloc d'amagar-ho. El panell «comparació amb l'observació» indica, punt per punt, quines característiques del fenomen reprodueix cada configuració.
+El simulador (carpeta `simulation/v041/`, versió V042) fa servir només **física establerta i publicada**: no hi ha cap factor ajustat a mà. Si una condició no es compleix, el simulador ho mostra. El panell «comparació amb l'observació» avalua 16 característiques del fenomen. El **disseny invers** construeix, a partir d'un objectiu (diàmetre, tub, nodes, gir, alçada, deriva, durada i contrast), la configuració física que el produiria i indica quins objectius són incompatibles.
 
 | Bloc | Model físic | Referència |
 |---|---|---|
-| So | Pistó amb pantalla (fórmula exacta a l'eix), font imatge a l'aigua (reflector rígid), absorció atmosfèrica, distància de xoc | Kinsler & Frey; Blackstock |
+| So | Pistó amb pantalla (fórmula exacta a l'eix), font imatge a l'aigua, absorció atmosfèrica, distància de xoc | Kinsler & Frey; Blackstock |
 | Formació de l'anell | Jet sintètic: criteri de Holman (U₀/ωD > 0.16), model de «slug» Γ = πu²/4ω, nombre de formació ≤ 4 | Holman et al. 2005; Gharib et al. 1998 |
-| Dinàmica de l'anell | Velocitat autoinduïda de Saffman, difusió turbulenta del nucli, nodes per inestabilitat de Widnall (n ≈ 2.5·R/a) | Saffman 1970; Widnall & Tsai 1977 |
-| Camp elèctric | Línies infinites amb conductor imatge, superposició fasorial MT + catenària, valor de pic exacte | Electrostàtica clàssica |
-| Ruptura de l'aire | Camp reduït crític E/N ≈ 120 Td amb la densitat local rebaixada per la rarefacció acústica | Raizer, *Gas Discharge Physics* |
-| Efecte corona | Llei de Peek a la superfície del conductor | Peek 1929 |
-| Plasma | Balanç d'electrons (ionització natural, captura per O₂, recombinació), conductivitat de Drude, escalfament Joule | Raizer |
-| Visibilitat | Profunditat òptica del traçador (pols o fum), condensació per la caiguda de pressió al nucli, emissió tèrmica o de descàrrega | Koschmieder; Magnus |
-| Trampa acústica | Força de radiació de Gor'kov sobre aire calent: Λ = v²k/2g > 1 per quedar atrapat a λ/2 | Gor'kov 1962 |
+| Evolució de l'anell | Anell turbulent: impuls conservat, R = R₀(1+t/t₀)^¼; perd la coherència quan Γ/4πR < σ_w i es dispersa en un temps de remolí | Glezer & Coles 1990; Maxworthy 1974 |
+| Nodes i gir | Mode sembrat per n injectors (o Widnall espontani); gir per ones de Kelvin (LIA) i per swirl a l'obertura | Widnall & Tsai 1977; Kelvin 1880 |
+| Sol i cel | Posició del sol (NOAA), transmissió Rayleigh + aerosols (Ångström), cel clar CIE amb lluminància de Krochmann | NOAA; CIE S 011 |
+| Visibilitat | Dispersió de la llum solar pel traçador: fase de Henyey-Greenstein de dos termes i dispersió múltiple de dos fluxos; condensació al nucli | Kattawar 1975; Koschmieder |
+| Camp elèctric | Línies amb conductor imatge, superposició fasorial, ruptura per E/N ≈ 120 Td, efecte corona de Peek, balanç de plasma | Raizer; Peek 1929 |
+| Trampa acústica | Força de Gor'kov sobre aire calent: Λ = v²k/2g > 1 per quedar atrapat a λ/2 | Gor'kov 1962 |
 
-**Resultats principals amb les dades del Segre:**
+**Paràmetres nous respecte a la V040:** data, hora i coordenades (posició del sol), terbolesa d'aerosols, direcció de la mirada i distància del testimoni, direcció del vent, turbulència ambient, alçada de l'emissor (separada del pont), orientació de l'eix de l'anell, nombre de polsos, injectors de traçador, swirl, sentit de l'ona de Kelvin, excés de temperatura de l'aire emès i tipus de traçador (pols, fum blanc, boira o fum taronja).
 
-- **Es pot formar un toroide amb so.** Una font d'infrasò de ~0.15 Hz, a ~140 dB a 1 m i a través d'una obertura de ~21 m, genera un anell de vòrtex de 25 m de diàmetre amb 4 nodes de Widnall. És inaudible i acústicament lineal (Mach < 0.1). Amb un batement f₁−f₂ = 4/7 Hz, el patró de 4 nodes faria una volta cada 7 s (aquest acoblament entre el batement i els nodes és una hipòtesi).
-- **Les línies de 25 kV no poden ionitzar l'aire a l'altura del node.** El camp hi és ~10⁵ vegades inferior al de ruptura (~2.9 MV/m), i la rarefacció acústica només el rebaixa una fracció mínima. Tampoc no hi ha efecte corona als conductors.
-- Un anell així seria **invisible** si no arrossega pols o fum en concentracions altes, i es desplaçaria a ~10 m/s per la seva pròpia velocitat, no a la velocitat de la brisa.
+**Resultats amb les dades del Segre** (configuració «🏆 Segre: millor compromís»): **15 de 16 característiques** observades es reprodueixen amb física coneguda.
+
+- Un únic pols d'infrasò (0.07 Hz, ~118 dB a 1 m) per una obertura de ~20 m a 25 m d'alçada, amb 4 injectors de traçador, genera un anell de 25 m amb un tub de 3 m i 4 nodes antihoraris. És inaudible.
+- L'anell avança a ~1 m/s **contra la brisa** de 3 km/h. Per al testimoni gairebé no es mou i no canvia de mida aparent.
+- Amb pols de riu (~500 mg/m³) i el sol de les 18:00 (22° d'altura) **3° al costat de l'anell**, la dispersió cap endavant el fa **taronja i el doble de brillant que el cel**. Això encaixa amb la primera impressió del testimoni («un reflex del sol»).
+- Amb una turbulència ambient de ~0.2 m/s, dura ~3 min i s'extingeix gradualment.
+- **El que no es pot reproduir:** que els nodes facin una volta cada 7 s. Amb la circulació compatible amb una deriva lenta, el gir és de ~35 s. Fer-lo de 7 s demana ~24 vegades més circulació, i llavors l'anell s'allunyaria a més de 3 m/s.
+- **Les línies de 25 kV no hi intervenen:** el camp a l'altura de l'anell és ~10⁴–10⁵ vegades inferior al de ruptura.
+- Els valors de la geometria del testimoni (distància, mirada) i del vent no es van mesurar: són els que fan compatible el fenomen amb l'observació.
+
+**Reproducció real:** la configuració «🧪 Assaig real a escala 1:10» (anell de 2.5 m, fum blanc, sol de costat, emissor a 3 m) compleix 15/16 dels objectius escalats, inclòs el gir de 7 s, perquè els anells petits giren més ràpid. L'única excepció és el color: el fum blanc no és taronja, i el fum taronja de senyalització és més fosc que el cel de dia.
 
 ### Execució de les proves
 
@@ -78,9 +85,9 @@ Els models presentats són hipòtesis de treball i no s'han validat experimental
 
 This repository contains factual documentation and theoretical analysis of a toroidal luminous phenomenon observed on 18 September 2022 in Lleida (Prince of Viana Bridge).
 
-**Simulator V041** replaces the hand-tuned factors of V040 (resonant amplification k = 25, a "synchronism" factor that lowered the breakdown threshold, arbitrary heating constants) with established, published physics. This covers synthetic-jet vortex ring formation (Holman, Gharib), Saffman ring velocity, the Widnall instability, line-charge electrostatics with image conductors, the reduced-field breakdown criterion (E/N ≈ 120 Td), Peek's corona law, a Drude/Joule plasma balance, optical visibility of tracers and the Gor'kov acoustic radiation force. A built-in panel compares each configuration with the observation, point by point.
+**Simulator V042** (folder `simulation/v041/`) replaces the hand-tuned factors of V040 (resonant amplification k = 25, a "synchronism" factor that lowered the breakdown threshold, arbitrary heating constants) with established, published physics. This covers synthetic-jet vortex ring formation (Holman, Gharib), Saffman ring velocity, the Widnall instability, line-charge electrostatics with image conductors, the reduced-field breakdown criterion (E/N ≈ 120 Td), Peek's corona law, a Drude/Joule plasma balance, optical visibility of tracers and the Gor'kov acoustic radiation force. A built-in panel compares each configuration with the observation, point by point.
 
-Key results for the Segre geometry: an infrasonic source (~0.15 Hz, ~140 dB at 1 m, ~21 m aperture) can produce a 25 m vortex ring with 4 Widnall nodes, and the ring is inaudible and linear. However, the 25 kV lines produce a field ~10⁵ times below air breakdown at the ring height, and the ring would be invisible unless it carried a dense tracer.
+Key results for the Segre geometry (preset "Segre: best compromise"): 15 of the 16 observed features are reproduced with known physics. A single infrasonic pulse (0.07 Hz, ~118 dB at 1 m) through a ~20 m aperture at 25 m height, with 4 tracer injectors, produces a 25 m ring with a 3 m tube and 4 anticlockwise nodes. The ring moves at ~1 m/s against the 3 km/h breeze, so it appears almost stationary. With river dust lit by the low sun 3° from the line of sight, it looks orange and twice as bright as the sky. It lasts ~3 min and fades gradually. The 7 s node rotation cannot be reproduced together with the slow drift (it would need ~24 times more circulation). The 25 kV lines play no role: the field at the ring is 10⁴–10⁵ times below breakdown. A 1:10 field-test preset reproduces 15/16 scaled targets, including the 7 s rotation, with white smoke.
 
 Run the tests with `node tests/fisica.test.js`.
 
