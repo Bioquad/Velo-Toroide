@@ -117,6 +117,13 @@ t('disseny (prioritat deriva): 15/16 i només falla el gir de 7 s', () => {
   assert.ok(d.viable && d.conflicte > 1);
   prop(2 * ev.tr[Math.floor(ev.tr.length / 2)].ev.R, 25, 0.01, 'diàmetre al mig');
 });
+t('hipòtesi: arrossegat per una brisa de 0.5 km/h → 15/16, però amb aire gairebé quiet', () => {
+  const b = amb({ W: 0.5, dirW: 45, aot: 0.1, d_obs: 40, az_vis: sol.az - 5 });
+  const d = F.dissenya(b, Object.assign({ prioritat: 'deriva', passiu: true }, OBJ));
+  const ev = F.avaluaObservacio(d.cfg, { passiu: true });
+  assert.deepStrictEqual(ev.files.filter(f => !f.ok).map(f => f.nom), ['1 volta ≈ 7 s']);
+  assert.ok(d.cfg.turb < 0.03 && d.f < 0.01, JSON.stringify({ turb: d.cfg.turb, f: d.f }));
+});
 t('disseny (prioritat gir): aconsegueix 7 s però perd la deriva lenta', () => {
   const d = F.dissenya(BASE, Object.assign({ prioritat: 'rotacio' }, OBJ));
   const ev = F.avaluaObservacio(d.cfg);

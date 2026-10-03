@@ -57,6 +57,7 @@ El simulador (carpeta `simulation/v041/`, versió V042) fa servir només **físi
 - L'anell avança a ~1 m/s **contra la brisa** de 3 km/h. Per al testimoni gairebé no es mou i no canvia de mida aparent.
 - Amb pols de riu (~500 mg/m³) i el sol de les 18:00 (22° d'altura) **3° al costat de l'anell**, la dispersió cap endavant el fa **taronja i el doble de brillant que el cel**. Això encaixa amb la primera impressió del testimoni («un reflex del sol»).
 - Amb una turbulència ambient de ~0.2 m/s, dura ~3 min i s'extingeix gradualment.
+- **Hipòtesi alternativa (configuració «🍃 Segre: arrossegat per la brisa»):** l'anell no té velocitat pròpia i el porta una brisa molt fluixa (0.5 km/h), com un globus. També dona 15/16, però exigeix condicions extremes: aire gairebé immòbil (turbulència ≤ 0.02 m/s) i un pols d'aire extremadament lent (~0.005 Hz, uns 2 minuts d'empenta). Amb aquesta circulació tan petita, el gir dels nodes passa a ~8 min per volta.
 - **El que no es pot reproduir:** que els nodes facin una volta cada 7 s. Amb la circulació compatible amb una deriva lenta, el gir és de ~35 s. Fer-lo de 7 s demana ~24 vegades més circulació, i llavors l'anell s'allunyaria a més de 3 m/s.
 - **Les línies de 25 kV no hi intervenen:** el camp a l'altura de l'anell és ~10⁴–10⁵ vegades inferior al de ruptura.
 - Els valors de la geometria del testimoni (distància, mirada) i del vent no es van mesurar: són els que fan compatible el fenomen amb l'observació.

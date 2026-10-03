@@ -579,8 +579,14 @@ function avaluaObservacio(s, objectiu) {
   const rot = rotacioNodes(s, an, mig.ev);
   fila(`1 volta ≈ ${nf(o.Trot, 1)} s`, isFinite(rot.T) ? rot.T.toFixed(1) + ' s' : 'quiets', Math.abs(rot.T - o.Trot) <= 0.3 * o.Trot);
   fila(`sentit ${o.sentit > 0 ? 'antihorari' : 'horari'}`, rot.sentit > 0 ? '↺' : rot.sentit < 0 ? '↻' : '—', rot.sentit === o.sentit);
-  const Ulim = Math.max(1.5, 1.67 * o.Umax);
-  fila(`deriva lenta (U < ${nf(Ulim, 2)} m/s)`, mig.ev.U.toFixed(2) + ' m/s', mig.ev.U < Ulim);
+  if (o.passiu) {
+    // Hipòtesi: l'anell no té velocitat pròpia apreciable i el porta la brisa
+    const vw = vent(s);
+    fila('arrossegat per la brisa (U < ½·vent)', mig.ev.U.toFixed(3) + ' / ' + (0.5 * vw).toFixed(3) + ' m/s', vw > 0 && mig.ev.U <= 0.5 * vw * 1.001);
+  } else {
+    const Ulim = Math.max(1.5, 1.67 * o.Umax);
+    fila(`deriva lenta (U < ${nf(Ulim, 2)} m/s)`, mig.ev.U.toFixed(2) + ' m/s', mig.ev.U < Ulim);
+  }
   const g0 = geometriaVisio(s, ini.x, ini.y, ini.z), g1 = geometriaVisio(s, fi.x, fi.y, fi.z);
   const ratio = (2 * fi.ev.R / g1.dist) / (2 * ini.ev.R / g0.dist);
   fila('mida aparent constant', '×' + ratio.toFixed(2), ratio > 0.75 && ratio < 1.33);
@@ -634,7 +640,10 @@ function dissenya(s, obj) {
   const LK = Math.max(Math.log(2 / (k * a)) - 0.5772 + 0.25, 0.05);
   const cK = n > 1 ? n * LK / (4 * Math.PI * R * R) : 0;           // Ω_K = cK·Γ
   const cS = 4 / (Math.pow(Math.PI, 3) * h * R * R);              // Ω_S = swirl·cS·Γ
-  const GamDeriva = 4 * Math.PI * R * obj.Umax / lg;
+  // Moviment passiu (arrossegat per la brisa): la velocitat pròpia ha de ser
+  // com a màxim la meitat del vent.
+  const Umax = obj.passiu ? 0.5 * vent(s) : obj.Umax;
+  const GamDeriva = 4 * Math.PI * R * Math.max(Umax, 1e-4) / lg;
   const GamRot0 = (2 * Math.PI / obj.Trot) / (cK + K.SWIRL_MAX * cS);
   const base = Object.assign({}, s, {
     D_ap: D_ap0, aR, db2: 0, phi: 0, npols: 1, n_inj: n, swirl: obj.sentit * K.SWIRL_MAX,
@@ -692,7 +701,7 @@ function dissenya(s, obj) {
   return {
     cfg, Gamma, GamDeriva, GamRot, f, u, mach: u / cSo(s), L: cfg.db1, cMax, psi: aparenca(cfg, 0, gm.az, gm.el).psi,
     vInd: c.an.Gamma / (4 * Math.PI * c.an.R),   // la turbulència real ha de ser inferior a això
-    conflicte: GamRot / GamDeriva,          // > 1: no es pot complir gir i deriva alhora
+    conflicte: GamRot / GamDeriva, Umax,          // > 1: no es pot complir gir i deriva alhora
     viable: cfg.db1 <= dbMax(s) && u / cSo(s) < 0.3,
   };
 }

@@ -42,8 +42,8 @@ const DEF = {
   kdir:  [-1, 1, 2, 1, 'sentit de l\'ona de Kelvin', '', 0],
   dT0:   [-10, 300, 0.5, 0, 'excés de temperatura de l\'aire emès', 'K', 1],
   // Fonts
-  f1:    [0.005, 400, 0.001, 3.5714, 'freqüència S₁', 'Hz', 4],
-  f2:    [0.005, 400, 0.001, 3.0, 'freqüència S₂', 'Hz', 4],
+  f1:    [0.0005, 400, 0.0001, 3.5714, 'freqüència S₁', 'Hz', 4],
+  f2:    [0.0005, 400, 0.0001, 3.0, 'freqüència S₂', 'Hz', 4],
   db1:   [0, 191, 0.5, 100, 'nivell S₁ (a 1 m)', 'dB', 1],
   db2:   [0, 191, 0.5, 100, 'nivell S₂ (a 1 m)', 'dB', 1],
   phi:   [-180, 180, 1, 0, 'desfasament S₁→S₂', '°', 0],
@@ -73,7 +73,7 @@ const DEF = {
 };
 const S = {};
 Object.keys(DEF).forEach(k => { S[k] = DEF[k][3]; });
-const OPC = { dir: 1, prioritat: 'deriva' };
+const OPC = { dir: 1, prioritat: 'deriva', mov: 'contra' };
 const VIS = { w: true, e: true, n: false, lb: true, sol: true };
 
 /* ── Configuracions ─────────────────────────────────────────────────────────
@@ -98,6 +98,9 @@ const PRESETS = [
   { t: '🏆 Segre: millor compromís', d: 'pols al contrallum · anell contra la brisa',
     v: Object.assign({}, AMB_SEGRE, { dirW: 180, aot: 0.1, d_obs: 40, trac: 0 }), solDv: 3,
     obj: Object.assign({}, OBJ_SEGRE), prioritat: 'deriva' },
+  { t: '🍃 Segre: arrossegat per la brisa', d: 'brisa de 0.5 km/h · sense velocitat pròpia',
+    v: Object.assign({}, AMB_SEGRE, { W: 0.5, dirW: 45, aot: 0.1, d_obs: 40, trac: 0 }), solDv: 5,
+    obj: Object.assign({}, OBJ_SEGRE), prioritat: 'deriva', mov: 'brisa' },
   { t: '🌀 Segre: prioritat gir de 7 s', d: 'mostra el conflicte gir ↔ deriva',
     v: Object.assign({}, AMB_SEGRE, { dirW: 180, aot: 0.1, d_obs: 40, trac: 0 }), solDv: 3,
     obj: Object.assign({}, OBJ_SEGRE), prioritat: 'rotacio' },
@@ -128,6 +131,7 @@ function construeixPanell() {
   h += seccio('🎯 disseny invers: reproduir un anell',
     ['oD', 'otub', 'on', 'oT', 'oh', 'oU', 'ovida', 'oC'].map(filaSlider).join('') +
     `<div class="pr-l" style="margin:2px 0">sentit dels nodes</div>${grup('g-dir', [[1, '↺ antihorari'], [-1, '↻ horari']])}
+     <div class="pr-l" style="margin:2px 0">moviment de l'anell</div>${grup('g-mov', [['contra', 'propi (contra la brisa)'], ['brisa', 'arrossegat per la brisa']])}
      <div class="pr-l" style="margin:2px 0">prioritat (gir i deriva lenta són incompatibles)</div>${grup('g-prio', [['deriva', 'deriva lenta'], ['rotacio', 'gir ràpid']])}
      <button class="bn opt" data-act="objectiu" style="width:100%;margin-top:2px">▶ dissenya i aplica</button>${fm('fc-obj')}`,
     'border-color:#203848');
@@ -179,10 +183,10 @@ function etiqueta(k) {
 }
 function totesEtiquetes() {
   Object.keys(DEF).forEach(k => { const sl = document.getElementById('sl-' + k); if (sl) sl.value = S[k]; etiqueta(k); });
-  marcaGrup('g-dir', OPC.dir); marcaGrup('g-prio', OPC.prioritat);
+  marcaGrup('g-dir', OPC.dir); marcaGrup('g-prio', OPC.prioritat); marcaGrup('g-mov', OPC.mov);
 }
 
-function objectiuActual() { return { D: S.oD, tub: S.otub, h: S.oh, nodes: S.on, Trot: S.oT, sentit: OPC.dir, durada: S.ovida, Umax: S.oU }; }
+function objectiuActual() { return { D: S.oD, tub: S.otub, h: S.oh, nodes: S.on, Trot: S.oT, sentit: OPC.dir, durada: S.ovida, Umax: S.oU, passiu: OPC.mov === 'brisa' }; }
 let derivat = null;   // magnituds derivades (es recalculen quan canvien els paràmetres)
 let avaluacio = null; // comparació amb l'observació
 let campCache = null; // mapa del camp elèctric
@@ -633,7 +637,7 @@ function loadPreset(i) {
   const p = PRESETS[i];
   aplicaValors(p.v);
   if (p.solDv != null) setParam('az_vis', (F.posicioSol(S).az - p.solDv + 360) % 360, true);
-  aplicaValors(p.obj || OBJ_SEGRE); OPC.dir = 1; OPC.prioritat = p.prioritat || 'deriva'; totesEtiquetes();
+  aplicaValors(p.obj || OBJ_SEGRE); OPC.dir = 1; OPC.prioritat = p.prioritat || 'deriva'; OPC.mov = p.mov || 'contra'; totesEtiquetes();
   if (p.obj) dissenyaIAplica(true);
   document.querySelectorAll('.pb-btn').forEach((b, j) => b.classList.toggle('active', j === i));
   // Un anell lent s'ha de poder veure sencer en pocs minuts
@@ -650,7 +654,7 @@ function tauOptim() {
   setParam('tau', Math.round(tau));
 }
 function dissenyaIAplica(silenciós) {
-  const obj = { D: S.oD, tub: S.otub, n: S.on, Trot: S.oT, sentit: OPC.dir, h: S.oh, Umax: S.oU, vida: S.ovida, contrast: S.oC, prioritat: OPC.prioritat };
+  const obj = { D: S.oD, tub: S.otub, n: S.on, Trot: S.oT, sentit: OPC.dir, h: S.oh, Umax: S.oU, vida: S.ovida, contrast: S.oC, prioritat: OPC.prioritat, passiu: OPC.mov === 'brisa' };
   const r = F.dissenya(S, obj);
   const claus = ['D_ap', 'aR', 'f1', 'f2', 'db1', 'db2', 'phi', 'npols', 'n_inj', 'swirl', 'kdir', 'h_src', 'elev', 'az_eix', 'dT0', 'sx_off', 'so', 'turb', 'aer'];
   claus.forEach(k => setParam(k, r.cfg[k], true));
@@ -659,6 +663,7 @@ function dissenyaIAplica(silenciós) {
   setH('fc-obj', `obertura D = ${c('v', r.cfg.D_ap.toFixed(2) + ' m')} · a/R = ${c('v', r.cfg.aR.toFixed(2))} · emissor a ${c('v', r.cfg.h_src.toFixed(1) + ' m')}<br>` +
     `1 pols: ejecció de ${c('v', fmtT(0.5 / r.f))} (f = ${c('v', r.f.toFixed(4) + ' Hz')}) · u = ${c('v', r.u.toFixed(2) + ' m/s')} · ${c(r.L <= F.dbMax(S) ? 'g' : 'r', r.L.toFixed(1) + ' dB a 1 m')}<br>` +
     `Γ = ${c('o', r.Gamma.toFixed(1) + ' m²/s')} (per a la deriva → ${r.GamDeriva.toFixed(1)} · per al gir → ${r.GamRot.toFixed(1)})<br>` +
+    (OPC.mov === 'brisa' ? `arrossegat per la brisa: velocitat pròpia ≤ ${c('v', r.Umax.toFixed(3) + ' m/s')} (½ del vent)<br>` : '') +
     `${conf ? c('r', '⚠ conflicte: el gir demana ×' + r.conflicte.toFixed(1) + ' més circulació que la deriva lenta') : c('g', '✓ gir i deriva compatibles')}<br>` +
     `turbulència necessària σ_w = ${c(r.cfg.turb < 0.1 ? 'w' : 'g', r.cfg.turb.toFixed(3) + ' m/s')} (ha de ser < ${r.vInd.toFixed(3)})<br>` +
     `traçador necessari = ${c('v', r.cfg.aer.toFixed(0) + ' mg/m³')} de ${NOMS_TRAC[S.trac]} · ψ = ${r.psi.toFixed(1)}°` +
@@ -738,7 +743,7 @@ function cfgLoad() {
   // Claus que no existien en versions anteriors → valor per defecte
   Object.keys(DEF).forEach(k => setParam(k, k in cfg.S ? cfg.S[k] : DEF[k][3], true));
   if ('h_pont' in cfg.S && !('h_src' in cfg.S)) setParam('h_src', cfg.S.h_pont, true);
-  if (cfg.opc) { OPC.dir = cfg.opc.dir === -1 ? -1 : 1; OPC.prioritat = cfg.opc.prioritat === 'rotacio' ? 'rotacio' : 'deriva'; }
+  if (cfg.opc) { OPC.dir = cfg.opc.dir === -1 ? -1 : 1; OPC.prioritat = cfg.opc.prioritat === 'rotacio' ? 'rotacio' : 'deriva'; OPC.mov = cfg.opc.mov === 'brisa' ? 'brisa' : 'contra'; }
   totesEtiquetes(); canviParams();
   document.getElementById('savecfg-panel').style.display = 'none';
 }
@@ -773,6 +778,7 @@ function initEvents() {
       else if (g === 'g-kdir') setParam('kdir', +v);
       else if (g === 'g-dir') { OPC.dir = +v; marcaGrup(g, v); canviParams(); }
       else if (g === 'g-prio') { OPC.prioritat = v; marcaGrup(g, v); }
+      else if (g === 'g-mov') { OPC.mov = v; marcaGrup(g, v); canviParams(); }
       return;
     }
     const acts = {
