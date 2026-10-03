@@ -33,6 +33,7 @@ const DEF = {
   e_h:   [1, 150, 0.5, 25, 'alçada del centre', 'm', 1],
   e_vida:[5, 900, 1, 180, 'durada', 's', 0],
   e_ext: [1, 300, 1, 25, 'durada de l\'extinció', 's', 0],
+  e_impl:[0, 1, 1, 1, 'implosió: l\'òrbita es tanca durant l\'extinció (0/1)', '', 0],
   // Lloc, data i hora (posició del sol)
   mes:   [1, 12, 1, 9, 'mes', '', 0],
   dia:   [1, 31, 1, 18, 'dia', '', 0],
@@ -43,14 +44,16 @@ const DEF = {
   aot:   [0, 0.5, 0.01, 0.1, 'terbolesa β d\'Ångström (aerosols)', '', 2],
   // Testimoni
   az_vis:[0, 360, 0.5, 232, 'direcció de la mirada (azimut)', '°', 1],
-  d_obs: [5, 3000, 5, 900, 'distància testimoni → anell (observat: 800–1000 m)', 'm', 0],
+  d_obs: [5, 3000, 5, 900, 'distància inicial testimoni → anell (observat: 800–1000 m)', 'm', 0],
+  v_obs: [0, 10, 0.1, 5, 'el testimoni camina cap a l\'anell a', 'km/h', 1],
+  t_cam: [0, 600, 5, 90, 'durant (després s\'atura)', 's', 0],
   vis:   [1, 100, 1, 40, 'visibilitat meteorològica', 'km', 0],
   // Atmosfera
   T:     [0, 50, 0.1, 35, 'temperatura', '°C', 1],
   P:     [950, 1050, 1, 1013, 'pressió', 'hPa', 0],
   H:     [5, 100, 1, 30, 'humitat relativa', '%', 0],
   W:     [0, 40, 0.1, 3, 'vent', 'km/h', 1],
-  dirW:  [0, 360, 1, 90, 'direcció del vent (0 = s\'allunya, 90 = →)', '°', 0],
+  dirW:  [0, 360, 1, 90, 'direcció del vent (0 = cap al testimoni, 180 = s\'allunya, 90 = →)', '°', 0],
   turb:  [0.001, 2, 0.001, 0.2, 'turbulència ambient σ_w', 'm/s', 3],
   // Traçador
   aer:   [0, 20000, 1, 0, 'traçador a l\'aire de l\'obertura', 'mg/m³', 0],
@@ -60,7 +63,7 @@ const DEF = {
   D_ap:  [0.02, 30, 0.01, 0.5, 'diàmetre de l\'obertura D', 'm', 2],
   aR:    [0.02, 0.8, 0.01, 0.12, 'gruix del nucli a/R', '', 2],
   elev:  [-90, 90, 1, 0, 'elevació de l\'eix d\'emissió', '°', 0],
-  az_eix:[-180, 180, 1, 0, 'eix respecte a la mirada (0 = s\'allunya)', '°', 0],
+  az_eix:[-180, 180, 1, 0, 'eix de l\'anell (0 = avança cap al testimoni)', '°', 0],
   npols: [0, 20, 1, 0, 'empentes d\'aire de l\'emissor (1 empenta = 1 anell)', '', 0],
   n_inj: [0, 12, 1, 0, 'injectors de traçador (0 = nodes espontanis)', '', 0],
   swirl: [-1, 1, 0.01, 0, 'swirl a l\'obertura w/u (+ = ↺)', '', 2],
@@ -109,19 +112,20 @@ const VIS = { w: true, e: true, n: false, lb: true, sol: true };
    els valors triats són els que fan compatible el fenomen amb l'observació.
    ─────────────────────────────────────────────────────────────────────────── */
 // Geometria observada: línies al llarg de X, anell paral·lel a les línies (pla X–Y),
-// desplaçament transversal (al llarg de Z) amb el vent; testimoni a ~900 m mirant al llarg de Z.
+// desplaçament transversal (cap a +Z) amb el vent; el testimoni comença a +Z, a ~900 m,
+// i camina cap a −Z (cap a l'anell) uns 90 s: el veu créixer una mica i després estable.
 const AMB_SEGRE = { T: 35, P: 1013, H: 30, W: 3, dirW: 0, turb: 0.2, aer: 0, trac: 0, aot: 0.1, vis: 40,
-  mes: 9, dia: 18, hora: 18, tz: 2, lat: 41.6142, lon: 0.6222, az_vis: 232, d_obs: 900,
+  mes: 9, dia: 18, hora: 18, tz: 2, lat: 41.6142, lon: 0.6222, az_vis: 232, d_obs: 900, v_obs: 5, t_cam: 90,
   hmt: 18, hcat: 11, sl: 24, vmt: 25, vcat: 25, ph: 90, f_mt: 50, rc: 0.9, tau: 0, lin_or: 0,
   a_riu: 30, h_pont: 5, h_src: 5, so: 10, sx_off: 0, D_ap: 0.5, aR: 0.12, elev: 0, az_eix: 0,
   npols: 0, n_inj: 0, swirl: 0, kdir: 1, dT0: 0,
   f1: 3.5714, f2: 3.0, db1: 100, db2: 100, phi: 0, spd: 0, model: 0,
-  e_n: 4, e_D: 25, e_cap: 3, e_T: 7, e_sent: 1, e_tau: 1.3, e_P: 1.5, e_tipus: 1, e_Temp: 2000, e_h: 25, e_vida: 180, e_ext: 25,
+  e_n: 4, e_D: 25, e_cap: 3, e_T: 7, e_sent: 1, e_tau: 1.3, e_P: 1.5, e_tipus: 1, e_Temp: 2000, e_h: 25, e_vida: 150, e_ext: 30, e_impl: 1,
   c_D: 25, c_m: 4, c_T: 7, c_K: 8, c_fc: 13.7, c_L: 172, c_r: 40, c_cap: 3, c_h: 25 };
 const OBJ_SEGRE = { oD: 25, otub: 3, on: 4, oT: 7, oh: 25, oU: 1, ovida: 180, oC: 2 };
 const AMB_LAB = Object.assign({}, AMB_SEGRE, { T: 20, H: 50, W: 0, turb: 0.02, aer: 5000, trac: 1,
   vmt: 0, vcat: 0, a_riu: 5, h_pont: 1, h_src: 1, so: 0.5, sx_off: 0.25, D_ap: 0.1, aR: 0.2, elev: 0,
-  f1: 15, f2: 15, db1: 100, db2: 80, npols: 5, d_obs: 5 });
+  f1: 15, f2: 15, db1: 100, db2: 80, npols: 5, d_obs: 5, v_obs: 0 });
 const PRESETS = [
   { t: '📍 Configuració original (V040)', d: '3.57 Hz · 100 dB · obertura 0.5 m',
     v: AMB_SEGRE },
@@ -135,7 +139,7 @@ const PRESETS = [
     v: Object.assign({}, AMB_SEGRE, { dirW: 0, trac: 1 }), solDv: 150,
     obj: Object.assign({}, OBJ_SEGRE), prioritat: 'rotacio' },
   { t: '🧪 Assaig real a escala 1:10', d: 'anell de 2.5 m · fum blanc · sol de costat',
-    v: Object.assign({}, AMB_SEGRE, { W: 1, dirW: 180, aot: 0.05, d_obs: 15, trac: 1, h_pont: 1, a_riu: 10, vmt: 0, vcat: 0 }), solDv: 100,
+    v: Object.assign({}, AMB_SEGRE, { W: 1, dirW: 0, aot: 0.05, d_obs: 90, v_obs: 0.5, t_cam: 15, trac: 1, h_pont: 1, a_riu: 10, vmt: 0, vcat: 0 }), solDv: 100,
     obj: { oD: 2.5, otub: 0.3, on: 4, oT: 7, oh: 3, oU: 0.5, ovida: 30, oC: 0.3 }, prioritat: 'deriva' },
   { t: '✴ Segre: nodes emissors (sodi)', d: '4 fonts en òrbita · rastre de 1.3 s · 1.5 kW',
     v: Object.assign({}, AMB_SEGRE, { model: 1, W: 0.5, dirW: 0, e_tipus: 1, e_P: 1.5 }), solDv: 90 },
@@ -176,7 +180,7 @@ function construeixPanell() {
   h += seccio('⚙ configuracions', `<div class="preset-grid">${pr}</div><div class="nota">Prem una configuració i després ▶ so.</div>`, 'border-color:#1a3050');
   h += seccio('🔬 model del fenomen', grup('g-model', [[0, 'A · vòrtex'], [1, 'B · emissors'], [2, 'C · patró de so']]) +
     `<div class="nota" id="nota-model"></div>`, 'border-color:#305030');
-  h += seccio('✴ nodes emissors (model B)', ['e_n', 'e_D', 'e_cap', 'e_T', 'e_tau', 'e_P', 'e_Temp', 'e_h', 'e_vida', 'e_ext'].map(filaSlider).join('') +
+  h += seccio('✴ nodes emissors (model B)', ['e_n', 'e_D', 'e_cap', 'e_T', 'e_tau', 'e_P', 'e_Temp', 'e_h', 'e_vida', 'e_ext', 'e_impl'].map(filaSlider).join('') +
     `<div class="pr-l" style="margin:2px 0">emissió</div>${grup('g-etipus', [[0, 'incandescència'], [1, 'sodi 589 nm']])}
      <div class="pr-l" style="margin:2px 0">sentit</div>${grup('g-esent', [[1, '↺ antihorari'], [-1, '↻ horari']])}
      <div style="display:flex;gap:3px;margin-top:2px"><button class="bn opt" data-act="eTau" style="flex:1">τ per a cua del 25 %</button><button class="bn opt" data-act="eP" style="flex:1">potència per C = 1</button></div>` + fm('fc-emis'), 'border-color:#504020', '1');
@@ -191,7 +195,7 @@ function construeixPanell() {
     'border-color:#203848', '0');
   h += seccio('velocitat de simulació', filaSlider('spd'));
   h += seccio('📍 lloc, data i hora', ['mes', 'dia', 'hora', 'tz', 'lat', 'lon', 'aot'].map(filaSlider).join('') + fm('fc-sol'));
-  h += seccio('👁 testimoni', ['az_vis', 'd_obs', 'vis'].map(filaSlider).join('') +
+  h += seccio('👁 testimoni', ['az_vis', 'd_obs', 'v_obs', 't_cam', 'vis'].map(filaSlider).join('') +
     `<button class="bn opt" data-act="miraSol" style="width:100%">☀ mirar 3° al costat del sol</button>` + fm('fc-obs'));
   h += seccio('🌬 atmosfera', ['T', 'P', 'H', 'W', 'dirW', 'turb'].map(filaSlider).join('') + fm('fc-amb'));
   h += seccio('🌀 emissor i anell de vòrtex', ['h_src', 'D_ap', 'aR', 'elev', 'az_eix', 'npols', 'n_inj', 'swirl', 'dT0'].map(filaSlider).join('') +
@@ -333,7 +337,7 @@ function updatePhysics(dt) {
 /** Aparença d'un anell vist pel testimoni */
 function visibilitat(r) {
   const tau = F.tauPunt(S, r);
-  const g = F.geometriaVisio(S, r.x, r.y, r.z);
+  const g = F.geometriaVisio(S, r.x, r.y, r.z, r.age);
   const ap = F.aparenca(S, tau, g.az, g.el, g.dist);
   const nucli = F.nucliTermo(S, r.ev.Gamma, r.ev.a);
   const glowT = r.T > 1500, glowP = r.ne > 1e16;
@@ -539,8 +543,10 @@ function estat() {
    Escena en perspectiva amb càmera orbital. Eixos (com a l'observació):
      X → al llarg de les línies elèctriques
      Y → amunt
-     Z → transversal a les línies; el testimoni és cap a −Z (a d_obs metres)
-   L'anell és paral·lel a les línies (pla X–Y) i es desplaça al llarg de Z.
+     Z → transversal a les línies; el testimoni comença a +Z (a d_obs metres),
+         mira cap a −Z i camina cap a l'anell (v_obs durant t_cam)
+   L'anell és paral·lel a les línies (pla X–Y) i el vent el porta cap a +Z.
+   Sistema dextrogir: mirant cap a −Z, +X queda a la dreta.
    Vistes: testimoni · frontal · zenital · lateral · 3D lliure (arrossegar per
    girar, roda o pessic per apropar, doble clic per tornar a la vista triada).
    ─────────────────────────────────────────────────────────────────────────── */
@@ -583,26 +589,30 @@ function centreEscena() {
 }
 
 /** Prepara la càmera del fotograma */
+/** Temps del fenomen (per a la posició del testimoni que camina) */
+function tFenomen() { if (S.model !== 0) return fenT || 0; const r0 = anellPrincipal(); return r0 ? r0.age : 0; }
+function posTestimoni() { const o = F.posicioTestimoni(S, tFenomen()); return v3(o.x, o.y, o.z); }
 function preparaVista(W, H) {
   const ce = centreEscena();
   let pos, target = ce.c, fov;
   if (CAM.vista === 'testimoni') {
-    pos = v3(0, S.h_pont + 1.6, -S.d_obs);
+    pos = posTestimoni();
     const semi = Math.max(ce.R * 1.5, Math.max(S.hmt, S.hcat, ce.c[1]) * 0.6, 8) / CAM.zoom;
-    fov = 2 * Math.atan(semi / Math.max(S.d_obs, 1));
+    fov = 2 * Math.atan(semi / Math.max(Math.hypot(...sub(target, pos)), 1));
   } else {
+    // yaw = 0: des del costat del testimoni (+Z) mirant cap a −Z
     const yaw = CAM.yaw * Math.PI / 180, pit = CAM.pitch * Math.PI / 180;
-    const dir = v3(Math.sin(yaw) * Math.cos(pit), Math.sin(pit), -Math.cos(yaw) * Math.cos(pit));
+    const dir = v3(Math.sin(yaw) * Math.cos(pit), Math.sin(pit), Math.cos(yaw) * Math.cos(pit));
     const ortho = CAM.vista === 'frontal' || CAM.vista === 'zenital' || CAM.vista === 'lateral';
     fov = ortho ? 6 * Math.PI / 180 : 50 * Math.PI / 180;       // les vistes planes gairebé ortogràfiques
     const dist = ce.radi * 1.25 / Math.tan(fov / 2) / CAM.zoom;
     pos = add(target, mul(dir, dist));
   }
   const fw = norm3(sub(target, pos));
-  let rt = cross(v3(0, 1, 0), fw);
+  let rt = cross(fw, v3(0, 1, 0));                 // dextrogir: dreta = endavant × amunt
   if (Math.hypot(...rt) < 1e-6) rt = v3(1, 0, 0);
   rt = norm3(rt);
-  const up = cross(fw, rt);
+  const up = cross(rt, fw);
   const foc = (H / 2) / Math.tan(fov / 2);
   VW = { pos, fw, rt, up, foc, W, H, ce, fov };
   return VW;
@@ -824,12 +834,15 @@ function draw() {
   });
 
   // Testimoni i línia de visió
-  const ull = v3(0, S.h_pont + 1.6, -S.d_obs);
+  const ull = posTestimoni(), hO = S.h_pont + 1.6;
   if (CAM.vista !== 'testimoni') {
     linia(ull, ce.c, 'rgba(230,230,210,.25)', f, [2 * f, 5 * f]);
-    linia(v3(-ar - 15, S.h_pont, -S.d_obs), v3(ar + 15, S.h_pont, -S.d_obs), 'rgba(140,140,120,.6)', 3 * f);
+    // Camí del testimoni: d'on surt fins on s'atura
+    const zFi = F.posicioTestimoni(S, Infinity).z;
+    if (zFi < S.d_obs) linia(v3(0, hO - 1.6, S.d_obs), v3(0, hO - 1.6, zFi), 'rgba(230,230,210,.35)', 2 * f, [4 * f, 4 * f]);
     brillantor(ull, 0, '230,230,210', 0.9, 3 * f);
-    text3(ull, `👁 testimoni a ${S.d_obs.toFixed(0)} m (pont)`, 'rgba(230,230,210,.85)', -8);
+    const dist = Math.hypot(...sub(ce.c, ull));
+    text3(ull, `👁 testimoni a ${dist.toFixed(0)} m${tFenomen() < S.t_cam && S.v_obs > 0 ? ' · caminant ' + S.v_obs.toFixed(1) + ' km/h' : ''}`, 'rgba(230,230,210,.85)', -8);
   }
 
   // Vent (fletxa sobre el fenomen)
@@ -904,8 +917,9 @@ function dibuixaEmissors(f) {
   const p = F.posicioEmissors(S, fenT), c = v3(p.x, p.y, p.z);
   const col_ = e.rgb.map(v => Math.round(255 * F.gammaSRGB(v))).join(',');
   const alpha = Math.max(0.12, Math.min(1, (a ? a.C : 0.5))) * env;
-  anellCometa(c, b, e.R, S.e_cap / 2, e.n, S.e_sent * 2 * Math.PI * fenT / S.e_T, S.e_sent, e.factor, col_, alpha);
-  text3(add(c, v3(0, e.R + S.e_cap + 1, 0)), `Ø ${(2 * e.R).toFixed(0)} m · ${e.n} nodes a ${(e.v * 3.6).toFixed(0)} km/h · ${e.g.toFixed(2)} g · C = ${((a ? a.C : 0) * env).toFixed(2)}`,
+  const Rt = e.R * F.factorRadiEmissors(S, fenT);       // implosió: l'òrbita es tanca
+  if (Rt > 0.05) anellCometa(c, b, Rt, Math.min(S.e_cap / 2, Rt), e.n, S.e_sent * 2 * Math.PI * fenT / S.e_T, S.e_sent, e.factor, col_, alpha);
+  text3(add(c, v3(0, Rt + S.e_cap + 1, 0)), `Ø ${(2 * Rt).toFixed(0)} m · ${e.n} nodes a ${(e.v * 3.6).toFixed(0)} km/h · ${e.g.toFixed(2)} g · C = ${((a ? a.C : 0) * env).toFixed(2)}`,
     `rgba(${col_},.95)`, -6, 'center', true);
 }
 

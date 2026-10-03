@@ -117,42 +117,57 @@ t('fum gruixut de costat al sol: el blanc és més clar que el cel, el taronja �
   assert.ok(taronja.taronja && taronja.C < 0, JSON.stringify(taronja.C));
 });
 
-/* Disseny invers i comparació amb l'observació */
+/* Disseny invers i comparació amb l'observació.
+   Escena real: el testimoni és a +Z, a 900 m, i camina cap a −Z (cap a l'anell)
+   a 5 km/h durant 90 s; el vent bufa cap a +Z (dirW = 0, cap al testimoni). */
 const sol = F.posicioSol(SEGRE);
-const BASE = amb({ dirW: 180, aot: 0.1, d_obs: 40, az_vis: sol.az - 3 });
+const ESC = { d_obs: 900, v_obs: 5, t_cam: 90 };
+const BASE = amb(Object.assign({ dirW: 0, aot: 0.1, az_vis: sol.az - 3 }, ESC));
 const OBJ = { D: 25, tub: 3, n: 4, Trot: 7, sentit: 1, h: 25, Umax: 1, vida: 180, contrast: 2 };
-t('disseny (prioritat deriva): 15/17, fallen el gir de 7 s i el taronja intens', () => {
+const ok = (ev, nom) => ev.files.find(x => x.nom === nom).ok;
+const ENC = "s'encongeix 30 s i desapareix";
+t('testimoni: comença a +Z (900 m), camina 90 s a 5 km/h cap a −Z i s\'atura', () => {
+  prop(F.posicioTestimoni(BASE, 0).z, 900, 1e-12, 'z0');
+  prop(F.posicioTestimoni(BASE, 90).z, 900 - 125, 1e-12, 'z90');
+  prop(F.posicioTestimoni(BASE, 1e4).z, 900 - 125, 1e-12, 'zfi');
+  assert.ok(F.ventXZ(BASE).z > 0);                       // el vent va cap al testimoni
+});
+t('a 900 m l\'anell es veu a ~2° sobre l\'horitzó, uns 20° per sota del sol: la pols no el fa més brillant que el cel', () => {
+  const d = F.dissenya(BASE, Object.assign({ prioritat: 'deriva' }, OBJ));
+  assert.ok(d.psi > 15 && d.cMax < 0.3, JSON.stringify({ psi: d.psi, cMax: d.cMax }));
+});
+t('disseny (prioritat deriva): creix en apropar-se, però el gir no és de 7 s i no s\'encongeix', () => {
   const d = F.dissenya(BASE, Object.assign({ prioritat: 'deriva' }, OBJ));
   const ev = F.avaluaObservacio(d.cfg);
-  const falla = ev.files.filter(f => !f.ok).map(f => f.nom);
-  assert.deepStrictEqual(falla, ['1 volta ≈ 7 s', 'color taronja'], falla.join(', '));
+  assert.ok(ok(ev, 'creix una mica (0–1.5 min)'));
+  assert.ok(!ok(ev, '1 volta ≈ 7 s') && !ok(ev, ENC));
   assert.ok(d.viable && d.conflicte > 1);
   prop(2 * ev.tr[Math.floor(ev.tr.length / 2)].ev.R, 25, 0.01, 'diàmetre al mig');
 });
-t('hipòtesi: arrossegat per una brisa de 0.5 km/h → 15/17, però amb aire gairebé quiet', () => {
-  const b = amb({ W: 0.5, dirW: 45, aot: 0.1, d_obs: 40, az_vis: sol.az - 5 });
+t('hipòtesi brisa de 0.5 km/h: creix i després és estable; un anell de vòrtex es dispersa, no implosiona', () => {
+  const b = amb(Object.assign({ W: 0.5, dirW: 45, aot: 0.1, az_vis: sol.az - 5 }, ESC));
   const d = F.dissenya(b, Object.assign({ prioritat: 'deriva', passiu: true }, OBJ));
   const ev = F.avaluaObservacio(d.cfg, { passiu: true });
-  assert.deepStrictEqual(ev.files.filter(f => !f.ok).map(f => f.nom), ['1 volta ≈ 7 s', 'color taronja']);
+  assert.ok(ok(ev, 'creix una mica (0–1.5 min)') && ok(ev, 'estable ~1.0 min'));
+  assert.ok(!ok(ev, ENC) && !ok(ev, '1 volta ≈ 7 s'));
   assert.ok(d.cfg.turb < 0.03 && d.f < 0.01, JSON.stringify({ turb: d.cfg.turb, f: d.f }));
 });
 t('disseny (prioritat gir): aconsegueix 7 s però perd la deriva lenta', () => {
   const d = F.dissenya(BASE, Object.assign({ prioritat: 'rotacio' }, OBJ));
   const ev = F.avaluaObservacio(d.cfg);
-  const f = nom => ev.files.find(x => x.nom === nom).ok;
-  assert.ok(f('1 volta ≈ 7 s') && !f('deriva lenta (U < 1.67 m/s)'));
+  assert.ok(ok(ev, '1 volta ≈ 7 s') && !ok(ev, 'deriva lenta (U < 1.67 m/s)'));
 });
-t('assaig real 1:10 amb fum blanc: només falla el color', () => {
-  const s = amb({ W: 1, dirW: 180, aot: 0.05, d_obs: 15, trac: 1, h_pont: 1, a_riu: 10, vmt: 0, vcat: 0, az_vis: (sol.az - 100 + 360) % 360 });
+t('assaig real 1:10 amb fum blanc (a 90 m): només fallen el color i la implosió', () => {
+  const s = amb({ W: 1, dirW: 0, aot: 0.05, d_obs: 90, v_obs: 0.5, t_cam: 15, trac: 1, h_pont: 1, a_riu: 10, vmt: 0, vcat: 0, az_vis: (sol.az - 100 + 360) % 360 });
   const o = { D: 2.5, tub: 0.3, n: 4, Trot: 7, sentit: 1, h: 3, Umax: 0.5, vida: 30, contrast: 0.3, prioritat: 'deriva' };
   const d = F.dissenya(s, o);
   const ev = F.avaluaObservacio(d.cfg, { D: 2.5, tub: 0.3, h: 3, nodes: 4, Trot: 7, sentit: 1, durada: 30, Umax: 0.5 });
-  assert.deepStrictEqual(ev.files.filter(x => !x.ok).map(x => x.nom), ['color taronja']);
+  assert.deepStrictEqual(ev.files.filter(x => !x.ok).map(x => x.nom), ["s'encongeix 5 s i desapareix", 'color taronja']);
   assert.ok(d.L < 120 && d.f < 20);   // infrasò i nivell assolible amb un pistó
 });
 /* Model B: nodes emissors */
-const EMIS = amb({ W: 0.5, dirW: 90, d_obs: 40, az_vis: (sol.az - 90 + 360) % 360,
-  e_n: 4, e_D: 25, e_cap: 3, e_T: 7, e_sent: 1, e_tau: 1.3, e_P: 1.5, e_tipus: 1, e_Temp: 2000, e_h: 25, e_vida: 180, e_ext: 25 });
+const EMIS = amb(Object.assign({ W: 0.5, dirW: 0, az_vis: (sol.az - 90 + 360) % 360,
+  e_n: 4, e_D: 25, e_cap: 3, e_T: 7, e_sent: 1, e_tau: 1.3, e_P: 1.5, e_tipus: 1, e_Temp: 2000, e_h: 25, e_vida: 150, e_ext: 30, e_impl: 1 }, ESC));
 t('nodes emissors: 4 nodes, 25 m, 7 s → 11.2 m/s i 1.03 g', () => {
   const e = F.emissors(EMIS);
   prop(e.v, 2 * Math.PI * 12.5 / 7, 1e-9, 'v');
@@ -167,6 +182,14 @@ t('emissió de sodi: color taronja; 1.5 kW per node la fa visible de dia', () =>
   const a = F.avaluaEmissors(EMIS);
   assert.ok(a.e.taronja && a.C > 0.3, JSON.stringify({ C: a.C, h: a.e.hue }));
   assert.deepStrictEqual(a.files.filter(f => f.ok === false).map(f => f.nom), ['forat amb un to diferent']);
+});
+t('nodes emissors: creix en apropar-s\'hi, estable 1 min, i amb implosió l\'òrbita es tanca en 30 s', () => {
+  const a = F.avaluaEmissors(EMIS);
+  assert.ok(ok(a, 'creix una mica (0–1.5 min)') && ok(a, 'estable ~1.0 min'));
+  assert.strictEqual(F.factorRadiEmissors(EMIS, 150), 1);
+  prop(F.factorRadiEmissors(EMIS, 165), 0.5, 1e-12, 'meitat');
+  assert.strictEqual(F.factorRadiEmissors(EMIS, 180), 0);
+  assert.strictEqual(ok(F.avaluaEmissors(Object.assign({}, EMIS, { e_impl: 0 })), ENC), false);
 });
 t('incandescència a 2000 K: cal ~300 vegades més potència que el sodi', () => {
   const a = F.avaluaEmissors(EMIS), b = F.avaluaEmissors(Object.assign({}, EMIS, { e_tipus: 0 }));
