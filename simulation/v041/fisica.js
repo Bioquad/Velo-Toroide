@@ -11,9 +11,9 @@
 
    Unitats de `s`:
      T [°C] · P [hPa] · H [%] · W [km/h] · dirW [° respecte a la mirada:
-     0 = s'allunya del testimoni, 90 = cap a la dreta] · turb [m/s]
+     0 = cap al testimoni (+Z), 180 = s'allunya, 90 = cap a la dreta] · turb [m/s]
      aer [mg/m³] · trac [0 pols, 1 fum, 2 boira, 3 fum taronja] · aot [β d'Ångström]
-     hmt,hcat,sl,h_pont,h_src,so,sx_off,a_riu,D_ap,d_obs [m] · rc [cm]
+     hmt,hcat,sl,h_pont,h_src,so,sx_off,a_riu,D_ap,d_obs [m] · rc [cm] · v_obs [km/h] · t_cam [s]
      vmt,vcat [kV eficaços] · ph,phi,elev,az_eix,az_vis [°] · f1,f2,f_mt [Hz]
      db1,db2 [dB SPL a 1 m sobre l'eix] · tau [µs] · aR, swirl [adimensional]
      npols [empentes d'aire de l'emissor; 0 = continu] · n_inj [0 = nodes espontanis] · kdir [±1] · dT0 [K]
@@ -529,10 +529,19 @@ function aparenca(s, tau, az, el, dist) {
   return { rgb, Y, Lsky, C, psi: psi * R2D, P, En, sol, hue: hs.h, sat: hs.sat,
     taronja: esTaronja(hs) };
 }
-/** Geometria del testimoni: és a la plataforma del pont, a d_obs de l'origen de l'anell */
-function geometriaVisio(s, x, y, z) {
-  const dz = z + s.d_obs, hO = s.h_pont + 1.6;
-  return { az: (s.az_vis + Math.atan2(x, dz) * R2D + 360) % 360, el: Math.atan2(y - hO, Math.hypot(dz, x)) * R2D, dist: Math.hypot(x, y - hO, dz) };
+/**
+ * Posició del testimoni al temps t: comença a +Z, a d_obs de l'origen de
+ * l'anell, i camina cap a −Z (cap a l'anell) a v_obs durant t_cam segons;
+ * després s'atura. Mira cap a −Z.
+ */
+function posicioTestimoni(s, t) {
+  const v = Math.max(s.v_obs || 0, 0) / 3.6, tc = s.t_cam == null ? 0 : Math.max(s.t_cam, 0);
+  return { x: 0, y: s.h_pont + 1.6, z: s.d_obs - v * Math.min(Math.max(t || 0, 0), tc) };
+}
+/** Direcció de visió i distància des del testimoni (al temps t) fins a un punt */
+function geometriaVisio(s, x, y, z, t) {
+  const o = posicioTestimoni(s, t), dz = o.z - z, dy = y - o.y;
+  return { az: (s.az_vis + Math.atan2(x, dz) * R2D + 360) % 360, el: Math.atan2(dy, Math.hypot(dz, x)) * R2D, dist: Math.hypot(x, dy, dz) };
 }
 
 /* ── Trajectòria (integració a pas fix, també per a l'avaluació) ──────────── */
@@ -585,13 +594,24 @@ function corbaContrast(s, an, src) {
   const v = vidaAnell2(s, an);
   const tEnd = v.tCoh + 4 * v.tFade;
   const tr = trajectoria(s, an, src, tEnd, Math.max(tEnd / 400, 0.05));
-  return tr.map(p => { const g = geometriaVisio(s, p.x, p.y, p.z); return { t: p.t, C: aparenca(s, tauPunt(s, p), g.az, g.el, g.dist).C }; });
+  return tr.map(p => { const g = geometriaVisio(s, p.x, p.y, p.z, p.t); return { t: p.t, C: aparenca(s, tauPunt(s, p), g.az, g.el, g.dist).C }; });
 }
 
 /* ── Comparació amb l'observació (18-09-2022) ──────────────────────────────── */
 function fmtDur(t) { return t >= 60 ? (t / 60).toFixed(1) + ' min' : t.toFixed(0) + ' s'; }
 /** Valors de l'observació (els objectius del disseny invers per defecte) */
-const OBS = { D: 25, tub: 3, h: 25, nodes: 4, Trot: 7, sentit: 1, durada: 180, Umax: 1 };
+// Fases de la mida aparent: creix una mica (0–1.5 min, el testimoni s'hi apropa),
+// estable (1 min) i s'encongeix fins a desaparèixer en els darrers 30 s.
+const OBS = { D: 25, tub: 3, h: 25, nodes: 4, Trot: 7, sentit: 1, durada: 180, Umax: 1, tCreix: 90, tEstable: 60, tImpl: 30 };
+/** Criteris de les tres fases de mida. midaAng(t) = mida angular, radi(t) = radi físic */
+function filesFases(fila, o, midaAng, radi, notaImpl) {
+  const fd = o.durada / 180, t1 = o.tCreix * fd, t2 = t1 + o.tEstable * fd, t3 = o.durada;
+  const r1 = midaAng(t1) / midaAng(0), r2 = midaAng(t2) / midaAng(t1), rf = radi(t3) / Math.max(radi(t2), 1e-9);
+  fila(`creix una mica (0–${fmtDur(t1)})`, '×' + r1.toFixed(2), r1 >= 1.03 && r1 <= 1.6);
+  fila(`estable ~${fmtDur(t2 - t1)}`, '×' + r2.toFixed(2), r2 >= 0.92 && r2 <= 1.08);
+  const impl = rf < 0.5;
+  fila(`s'encongeix ${fmtDur(t3 - t2)} i desapareix`, impl ? 'radi ×' + rf.toFixed(2) : (notaImpl || 'radi ×' + rf.toFixed(2)), notaImpl === null ? null : impl);
+}
 function avaluaObservacio(s, objectiu) {
   const o = Object.assign({}, OBS, objectiu || {});
   const fd = o.durada / 180;        // l'extinció observada (20–30 s) escala amb la durada
@@ -599,7 +619,7 @@ function avaluaObservacio(s, objectiu) {
   const files = [];
   const fila = (nom, valor, ok) => files.push({ nom, valor, ok: !!ok });
   fila('anell format', an.es_forma ? 'sí' : 'no', an.es_forma);
-  if (!an.es_forma) return { files, n: files.filter(f => f.ok).length, total: 17, an };
+  if (!an.es_forma) return { files, n: files.filter(f => f.ok).length, total: 19, an };
   const vida = vidaAnell2(s, an);
   const tObs = Math.min(o.durada, Math.max(vida.tCoh, 1));
   const tr = trajectoria(s, an, src, tObs, Math.max(tObs / 60, 0.05));
@@ -622,9 +642,12 @@ function avaluaObservacio(s, objectiu) {
     const Ulim = Math.max(1.5, 1.67 * o.Umax);
     fila(`deriva lenta (U < ${nf(Ulim, 2)} m/s)`, mig.ev.U.toFixed(2) + ' m/s', mig.ev.U < Ulim);
   }
-  const g0 = geometriaVisio(s, ini.x, ini.y, ini.z), g1 = geometriaVisio(s, fi.x, fi.y, fi.z);
-  const ratio = (2 * fi.ev.R / g1.dist) / (2 * ini.ev.R / g0.dist);
-  fila('mida aparent constant', '×' + ratio.toFixed(2), ratio > 0.75 && ratio < 1.33);
+  // Mida aparent al llarg de tota l'observació (el testimoni camina cap a l'anell)
+  const trT = trajectoria(s, an, src, o.durada, Math.max(o.durada / 180, 0.05));
+  const enT = t => trT[Math.min(trT.length - 1, Math.round(t / o.durada * (trT.length - 1)))];
+  const midaAng = t => { const p = enT(t), g = geometriaVisio(s, p.x, p.y, p.z, p.t); return 2 * p.ev.R / g.dist; };
+  const rf = enT(o.durada).ev.R / enT(o.durada * (o.tCreix + o.tEstable) / 180).ev.R;
+  filesFases(fila, o, midaAng, t => enT(t).ev.R, rf < 0.5 ? undefined : `radi ×${rf.toFixed(2)}: es dispersa, no s'encongeix`);
   // Durada i extinció tal com les veuria el testimoni: lluminós mentre és
   // almenys un 10 % més brillant que el cel ("es va fondre amb el cel")
   const corba = corbaContrast(s, an, src);
@@ -636,7 +659,7 @@ function avaluaObservacio(s, objectiu) {
   const tExt = tVis - tIni;
   fila(`durada ≈ ${fmtDur(o.durada)}`, fmtDur(tVis), tVis >= 0.67 * o.durada && tVis <= 1.67 * o.durada);
   fila(`extinció gradual ${nf(20 * fd, 0)}–${nf(30 * fd, 0)} s`, tExt.toFixed(0) + ' s', tExt >= 10 * fd && tExt <= 45 * fd);
-  const gm = geometriaVisio(s, mig.x, mig.y, mig.z);
+  const gm = geometriaVisio(s, mig.x, mig.y, mig.z, mig.t);
   const tau = tauPunt(s, mig);
   const ap = aparenca(s, tau, gm.az, gm.el, gm.dist);
   fila('lluminós de dia (C > 0.3)', 'C = ' + ap.C.toFixed(2), ap.C > 0.3);
@@ -733,7 +756,7 @@ function dissenya(s, obj) {
   // Traçador: la concentració mínima que dona el contrast demanat al mig de
   // l'observació. El contrast no és monòton amb τ (a contrallum té un màxim),
   // per això primer es busca el τ òptim en una graella logarítmica.
-  const gm = geometriaVisio(cfg, mig.x, mig.y, mig.z);
+  const gm = geometriaVisio(cfg, mig.x, mig.y, mig.z, mig.t);
   const tauU = profOptica(Object.assign({}, cfg, { aer: 1 }), mig.ev.a, mig.ev.dil);   // τ per 1 mg/m³
   const contrastTau = t => aparenca(cfg, t, gm.az, gm.el, gm.dist).C;
   let tauBest = 0.01, cMax = -Infinity;
@@ -794,6 +817,8 @@ function emissors(s) {
 function posicioEmissors(s, t) { const w = ventXZ(s); return { x: s.sx_off + w.x * t, y: s.e_h, z: w.z * t }; }
 /** Envolupant de brillantor: present durant e_vida i extinció lineal en e_ext */
 function envolupantEmissors(s, t) { return t < 0 ? 0 : t <= s.e_vida ? 1 : Math.max(0, 1 - (t - s.e_vida) / Math.max(s.e_ext, 1e-3)); }
+/** Factor del radi de l'òrbita: amb e_impl, durant l'extinció l'òrbita es tanca fins a 0 (implosió) */
+function factorRadiEmissors(s, t) { return !s.e_impl || t <= s.e_vida ? 1 : Math.max(0, 1 - (t - s.e_vida) / Math.max(s.e_ext, 1e-3)); }
 
 function avaluaEmissors(s) {
   const e = emissors(s), files = [];
@@ -805,21 +830,22 @@ function avaluaEmissors(s) {
   fila('4 nodes', e.n + ' (imposat)', null);
   fila('1 volta ≈ 7 s', s.e_T.toFixed(1) + ' s (imposat)', null);
   fila('cua de cometa fins al node següent', Math.round(e.fFinal * 100) + ' % del gruix', e.fFinal >= 0.05 && e.fFinal <= 0.4);
-  // Mida aparent: el vent pot apropar o allunyar el centre
-  const p0 = posicioEmissors(s, 0), p1 = posicioEmissors(s, s.e_vida);
-  const g0 = geometriaVisio(s, p0.x, p0.y, p0.z), g1 = geometriaVisio(s, p1.x, p1.y, p1.z);
-  const ratio = g0.dist / g1.dist;
-  fila('mida aparent constant', '×' + ratio.toFixed(2), ratio > 0.75 && ratio < 1.33);
+  // Mida aparent: el vent i el testimoni que camina apropen o allunyen el centre
+  const durE = s.e_vida + s.e_ext, oE = Object.assign({}, OBS, { durada: 180 });
+  const tE = t => t * durE / 180;    // les fases observades, escalades a la durada del fenomen
+  const midaE = t => { const p = posicioEmissors(s, tE(t)), g = geometriaVisio(s, p.x, p.y, p.z, tE(t)); return 2 * e.R * factorRadiEmissors(s, tE(t)) / g.dist; };
+  filesFases(fila, oE, midaE, t => e.R * factorRadiEmissors(s, tE(t)), s.e_impl ? null : 'òrbita fixa (activa la implosió)');
+  if (s.e_impl) files[files.length - 1].valor = `radi → 0 en ${s.e_ext.toFixed(0)} s (imposat)`;
   fila('deriva lenta amb el vent', (vent(s) * 3.6).toFixed(1) + ' km/h', vent(s) < 2);
   // Brillantor respecte al cel, a la meitat de l'observació
-  const pm = posicioEmissors(s, s.e_vida / 2), gm = geometriaVisio(s, pm.x, pm.y, pm.z);
+  const pm = posicioEmissors(s, s.e_vida / 2), gm = geometriaVisio(s, pm.x, pm.y, pm.z, s.e_vida / 2);
   const sol = posicioSol(s), Lsky = luminanciaCel(s, sol, gm.az, gm.el);
   const Tp = Math.exp(-3.912 * gm.dist / (Math.max(s.vis || 40, 0.1) * 1000));   // atenuació pel camí
   const C = e.L0 * Tp / Math.max(Lsky, 1e-6);
   fila('lluminós de dia (C > 0.3)', 'C = ' + C.toFixed(2), C > 0.3);
   fila('color taronja', Math.round(e.hue) + '°', e.taronja);
   fila('forat amb un to diferent', 'cel net', false);
-  fila('durada ≈ 3 min', (s.e_vida / 60).toFixed(1) + ' min (imposat)', null);
+  fila('durada ≈ 3 min', ((s.e_vida + s.e_ext) / 60).toFixed(1) + ' min (imposat)', null);
   fila('extinció gradual 20–30 s', s.e_ext.toFixed(0) + ' s (imposat)', null);
   fila('sense so audible', 'depèn del mecanisme', null);
   fila('un sol anell', 'sí', null);
@@ -865,7 +891,7 @@ function patroAcustic(s) {
   const pCond = P * (1 - Math.pow((Td + 273.15) / Tk(s), 3.5));
   const Lcond = 20 * Math.log10(pCond / (Math.SQRT2 * 20e-6));
   // Exposició del testimoni: el camp mitjà decau des de l'anell
-  const Lobs = s.c_L - 20 * Math.log10(Math.max(s.d_obs, R) / R);
+  const Lobs = s.c_L - 20 * Math.log10(Math.max(Math.abs(posicioTestimoni(s, Infinity).z), R) / R);   // al punt més proper
   const Lth = llindarPercepcio(s.c_fc);
   const possible = ppic < 0.9 * P;                                         // rarefacció lluny del buit
   return { m, K, R, df, v, l, fcRadi, Rnat, Lpic, ppic, possible, Tmin, Td, condensa: possible && Tmin <= Td, lwc, tau, tEv, dt, fFinal,
@@ -883,11 +909,15 @@ function avaluaPatro(s) {
   fila('nivell físicament possible', p.Lpic.toFixed(0) + ' dB al node', p.possible);
   fila('nodes visibles (boira acústica)', p.condensa ? 'sí · T = ' + p.Tmin.toFixed(1) + ' °C' : 'no · cal ' + p.Lcond.toFixed(0) + ' dB al node', p.condensa);
   fila('cua de cometa fins al node següent', p.condensa ? Math.round(p.fFinal * 100) + ' % (gotes de ' + s.c_r + ' µm)' : '—', p.condensa && p.fFinal >= 0.05 && p.fFinal <= 0.4);
-  const sol = posicioSol(s), g = geometriaVisio(s, s.sx_off, s.c_h, 0);
+  const sol = posicioSol(s), g = geometriaVisio(s, s.sx_off, s.c_h, 0, OBS.durada / 2);
   const ap = aparenca(Object.assign({}, s, { trac: 2 }), p.condensa ? p.tau : 0, g.az, g.el, g.dist);
   fila('lluminós de dia (C > 0.3)', 'C = ' + ap.C.toFixed(2), ap.C > 0.3);
   fila('color taronja', p.condensa ? Math.round(ap.hue) + '°' : '—', p.condensa && ap.taronja);
   fila('deriva amb la brisa', 'patró fix a l\'emissor', false);
+  // El patró és fix: la mida aparent només canvia perquè el testimoni s'hi apropa.
+  // El radi el fixa la portadora (R ∝ 1/f_c): encongir-lo voldria pujar f_c.
+  const midaC = t => { const g = geometriaVisio(s, s.sx_off, s.c_h, 0, t); return 2 * p.R / g.dist; };
+  filesFases(fila, OBS, midaC, () => p.R, 'radi fix (caldria pujar f_c)');
   fila('sense so perceptible', p.Lobs.toFixed(0) + ' dB al testimoni (llindar ' + p.Lth.toFixed(0) + ')', !p.percep && !p.audible);
   fila('exposició segura (< 140 dB)', p.Lobs.toFixed(0) + ' dB', !p.perillos);
   const aval = files.filter(f => f.ok !== null);
@@ -901,7 +931,7 @@ const API = {
   vidaAnell, nucliTermo, tracador, profOptica, levitacio, conductors, campEPic, corona, campRuptura,
   sincronisme, ratiRuptura, plasma, dTdt, colorCosNegre,
   evolucio, vidaAnell2, rotacioNodes, cuaNodes, posicioSol, massaAire, transSol, iluminanciaSol,
-  luminanciaCel, faseHG, aparenca, geometriaVisio, anellPrincipalFont, velocitatAnell,
+  luminanciaCel, faseHG, aparenca, geometriaVisio, posicioTestimoni, factorRadiEmissors, anellPrincipalFont, velocitatAnell,
   rhoSat, llindarPercepcio, patroAcustic, avaluaPatro,
   gammaSRGB, eficaciaEmissio, colorEmissio, emissors, posicioEmissors, envolupantEmissors, avaluaEmissors, esTaronja, toHue,
   trajectoria, estatAnell, tauPunt, corbaContrast, OBS, avaluaObservacio, dissenya,
