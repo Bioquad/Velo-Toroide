@@ -7,6 +7,7 @@ body{font-family:"Segoe UI",system-ui,sans-serif;font-size:12px;color:var(--tx);
 .hc-l{font-size:8px;color:var(--dim);text-transform:uppercase;letter-spacing:.04em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .hc-v{font-size:11px;font-weight:700;font-family:monospace;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .mid{display:flex;gap:8px;flex:1;min-height:0}
+.col{flex:1;min-width:0;min-height:0;display:flex;flex-direction:column;position:relative}
 .cvw{flex:1;min-height:0;min-width:0;position:relative;overflow:hidden;border-radius:6px}
 canvas#cv{display:block;width:100%;height:100%;background:var(--bg);border-radius:6px}
 .pnl{width:300px;flex-shrink:0;overflow-y:auto;display:flex;flex-direction:column;gap:3px;padding-bottom:6px}
@@ -39,7 +40,8 @@ canvas#cv{display:block;width:100%;height:100%;background:var(--bg);border-radiu
 .pb-btn:hover{border-color:#4a5480;color:var(--tx);background:var(--pn)}
 .pb-btn.active{border-color:#30a060;color:#40e080;background:#0a1a0a}
 .pb-t{font-weight:700;font-size:9px;display:block}.pb-d{font-size:8px;color:var(--dim);display:block;margin-top:1px}
-.bot{display:flex;align-items:center;gap:6px;padding:4px 0;flex-shrink:0;border-top:.5px solid var(--bd)}
+.bot{display:flex;align-items:center;gap:6px;padding:5px 0;flex-shrink:0}
+.bot .bn{padding:7px 12px;font-size:11px}
 .ph{flex:1;padding:3px 8px;background:var(--pn);border-radius:5px;font-size:10px;color:var(--mu);border-left:2px solid var(--bd2);line-height:1.5;min-width:0}
 .ph .pn{display:block;font-weight:700}
 .bts{display:flex;gap:4px;flex-shrink:0;flex-wrap:wrap}
@@ -65,9 +67,13 @@ canvas#cv{display:block;width:100%;height:100%;background:var(--bg);border-radiu
   body{overflow:auto;height:auto;padding:0 16px}
   .hdr{grid-template-columns:repeat(4,1fr)}
   .mid{flex-direction:column}
+  .col{flex:none}
   .cvw{height:auto;flex:none;overflow:visible}
   canvas#cv{height:55vh}
   .pnl{width:100%;overflow:visible}
-  #cmp-panel{position:static;width:auto;margin-top:6px}
+  #cmp-panel{position:static;width:auto;margin-top:2px}
+  .bot{flex-direction:column;align-items:stretch}
+  .bts{justify-content:space-between}
+  .bot .bn{flex:1;padding:9px 4px}
   #osc-panel{display:none}
 }

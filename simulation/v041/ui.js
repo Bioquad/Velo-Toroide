@@ -152,7 +152,16 @@ function filaSlider(k) {
   <div class="row"><div class="sp"><button class="sb" data-k="${k}" data-d="-1">−</button><button class="sb" data-k="${k}" data-d="1">+</button></div>
   <input type="range" id="sl-${k}" data-k="${k}" min="${mn}" max="${mx}" step="${st}"></div></div>`;
 }
-function seccio(titol, cos, estil) { return `<div class="sec"${estil ? ` style="${estil}"` : ''}><div class="sec-t">${titol}</div>${cos}</div>`; }
+/** Secció del panell; `models` = models on es mostra (per defecte, tots) */
+function seccio(titol, cos, estil, models) {
+  return `<div class="sec"${models ? ` data-models="${models}"` : ''}${estil ? ` style="${estil}"` : ''}><div class="sec-t">${titol}</div>${cos}</div>`;
+}
+/** Mostra només les seccions que afecten el model actiu */
+function mostraSeccions() {
+  document.querySelectorAll('#pnl .sec[data-models]').forEach(el => {
+    el.style.display = el.dataset.models.split(',').includes(String(S.model)) ? '' : 'none';
+  });
+}
 function fm(id) { return `<div class="fm" id="${id}">—</div>`; }
 function grup(id, items) { return `<div class="sg" id="${id}">${items.map(([v, l]) => `<div class="sg-b" data-grup="${id}" data-v="${v}">${l}</div>`).join('')}</div>`; }
 
@@ -165,16 +174,16 @@ function construeixPanell() {
   h += seccio('✴ nodes emissors (model B)', ['e_n', 'e_D', 'e_cap', 'e_T', 'e_tau', 'e_P', 'e_Temp', 'e_h', 'e_vida', 'e_ext'].map(filaSlider).join('') +
     `<div class="pr-l" style="margin:2px 0">emissió</div>${grup('g-etipus', [[0, 'incandescència'], [1, 'sodi 589 nm']])}
      <div class="pr-l" style="margin:2px 0">sentit</div>${grup('g-esent', [[1, '↺ antihorari'], [-1, '↻ horari']])}
-     <div style="display:flex;gap:3px;margin-top:2px"><button class="bn opt" data-act="eTau" style="flex:1">τ per a cua del 25 %</button><button class="bn opt" data-act="eP" style="flex:1">potència per C = 1</button></div>` + fm('fc-emis'), 'border-color:#504020');
+     <div style="display:flex;gap:3px;margin-top:2px"><button class="bn opt" data-act="eTau" style="flex:1">τ per a cua del 25 %</button><button class="bn opt" data-act="eP" style="flex:1">potència per C = 1</button></div>` + fm('fc-emis'), 'border-color:#504020', '1');
   h += seccio('🔊 patró acústic rotatiu (model C)', ['c_D', 'c_m', 'c_T', 'c_K', 'c_fc', 'c_L', 'c_r', 'c_cap', 'c_h'].map(filaSlider).join('') +
-    `<div style="display:flex;gap:3px;margin-top:2px"><button class="bn opt" data-act="cFc" style="flex:1">f_c per al radi</button><button class="bn opt" data-act="cL" style="flex:1">nivell per fer boira</button><button class="bn opt" data-act="cR" style="flex:1">gotes per a cua 25 %</button></div>` + fm('fc-patro'), 'border-color:#204860');
+    `<div style="display:flex;gap:3px;margin-top:2px"><button class="bn opt" data-act="cFc" style="flex:1">f_c per al radi</button><button class="bn opt" data-act="cL" style="flex:1">nivell per fer boira</button><button class="bn opt" data-act="cR" style="flex:1">gotes per a cua 25 %</button></div>` + fm('fc-patro'), 'border-color:#204860', '2');
   h += seccio('🎯 disseny invers: reproduir un anell',
     ['oD', 'otub', 'on', 'oT', 'oh', 'oU', 'ovida', 'oC'].map(filaSlider).join('') +
     `<div class="pr-l" style="margin:2px 0">sentit dels nodes</div>${grup('g-dir', [[1, '↺ antihorari'], [-1, '↻ horari']])}
      <div class="pr-l" style="margin:2px 0">moviment de l'anell</div>${grup('g-mov', [['contra', 'propi (contra la brisa)'], ['brisa', 'arrossegat per la brisa']])}
      <div class="pr-l" style="margin:2px 0">prioritat (gir i deriva lenta són incompatibles)</div>${grup('g-prio', [['deriva', 'deriva lenta'], ['rotacio', 'gir ràpid']])}
      <button class="bn opt" data-act="objectiu" style="width:100%;margin-top:2px">▶ dissenya i aplica</button>${fm('fc-obj')}`,
-    'border-color:#203848');
+    'border-color:#203848', '0');
   h += seccio('velocitat de simulació', filaSlider('spd'));
   h += seccio('📍 lloc, data i hora', ['mes', 'dia', 'hora', 'tz', 'lat', 'lon', 'aot'].map(filaSlider).join('') + fm('fc-sol'));
   h += seccio('👁 testimoni', ['az_vis', 'd_obs'].map(filaSlider).join('') +
@@ -182,9 +191,9 @@ function construeixPanell() {
   h += seccio('🌬 atmosfera', ['T', 'P', 'H', 'W', 'dirW', 'turb'].map(filaSlider).join('') + fm('fc-amb'));
   h += seccio('🌀 emissor i anell de vòrtex', ['h_src', 'D_ap', 'aR', 'elev', 'az_eix', 'npols', 'n_inj', 'swirl', 'dT0'].map(filaSlider).join('') +
     `<div class="pr-l" style="margin:2px 0">sentit de l'ona de Kelvin sembrada</div>${grup('g-kdir', [[1, '↺'], [-1, '↻']])}` + fm('fc-anell') +
-    `<div class="nota">Un camp acústic lineal és irrotacional (∇×v = 0): la vorticitat només neix a la vora d'una obertura on el flux oscil·lant se separa (jet sintètic / canó de vòrtex).</div>`);
-  h += seccio('🔊 generadors S₁ i S₂', ['f1', 'f2', 'db1', 'db2', 'phi'].map(filaSlider).join('') + fm('fc-ac'));
-  h += seccio('👁 traçador i visibilitat', grup('g-trac', [[0, 'pols'], [1, 'fum'], [2, 'boira'], [3, 'fum taronja']]) + filaSlider('aer') + fm('fc-vis'));
+    `<div class="nota">Un camp acústic lineal és irrotacional (∇×v = 0): la vorticitat només neix a la vora d'una obertura on el flux oscil·lant se separa (jet sintètic / canó de vòrtex).</div>`, '', '0');
+  h += seccio('🔊 generadors S₁ i S₂', ['f1', 'f2', 'db1', 'db2', 'phi'].map(filaSlider).join('') + fm('fc-ac'), '', '0');
+  h += seccio('👁 traçador i visibilitat', grup('g-trac', [[0, 'pols'], [1, 'fum'], [2, 'boira'], [3, 'fum taronja']]) + filaSlider('aer') + fm('fc-vis'), '', '0');
   h += seccio('🌊 riu i pont', ['a_riu', 'h_pont', 'so', 'sx_off'].map(filaSlider).join(''));
   h += seccio('⚡ línies elèctriques', ['hmt', 'hcat', 'sl', 'vmt', 'vcat', 'ph', 'f_mt', 'rc', 'tau'].map(filaSlider).join('') +
     `<button class="bn opt" data-act="tauopt" style="width:100%">🎯 τ òptim</button>` + fm('fc-em'));
@@ -211,7 +220,7 @@ function marcaGrup(id, v) { document.querySelectorAll(`[data-grup="${id}"]`).for
 function etiqueta(k) {
   if (k === 'trac') { marcaGrup('g-trac', S.trac); return; }
   if (k === 'kdir') { marcaGrup('g-kdir', S.kdir); return; }
-  if (k === 'model') { marcaGrup('g-model', S.model); return; }
+  if (k === 'model') { marcaGrup('g-model', S.model); mostraSeccions(); return; }
   if (k === 'e_tipus') { marcaGrup('g-etipus', S.e_tipus); return; }
   if (k === 'e_sent') { marcaGrup('g-esent', S.e_sent); return; }
   const el = document.getElementById('lv-' + k); if (!el) return;
@@ -718,8 +727,9 @@ function draw() {
   }
   if (VIS.lb) {
     cx.fillStyle = 'rgba(160,150,220,.75)'; cx.textAlign = 'left'; cx.font = `${9 * f}px sans-serif`;
-    cx.fillText(`t = ${fmtT(simT)} · anells vius ${rings.length} · escala ${(50 * f / sc.pxM).toFixed(1)} m / 50 px · vista frontal des del pont`, 8 * f, H - 6 * f);
-    if (VIS.e && (S.vmt > 0 || S.vcat > 0)) { cx.textAlign = 'right'; cx.fillText('fons: log₁₀(E/E_ruptura) de −6 a 0', W - 8 * f, H - 6 * f); }
+    cx.fillText(W / f > 700 ? `t = ${fmtT(simT)} · anells vius ${rings.length} · escala ${(50 * f / sc.pxM).toFixed(1)} m / 50 px · vista frontal des del pont`
+      : `t = ${fmtT(simT)} · ${(50 * f / sc.pxM).toFixed(1)} m / 50 px`, 8 * f, H - 6 * f);
+    if (VIS.e && (S.vmt > 0 || S.vcat > 0) && W / f > 700) { cx.textAlign = 'right'; cx.fillText('fons: log₁₀(E/E_ruptura) de −6 a 0', W - 8 * f, H - 6 * f); }
   }
 }
 
