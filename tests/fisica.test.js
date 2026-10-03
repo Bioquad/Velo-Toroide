@@ -115,19 +115,19 @@ t('fum gruixut de costat al sol: el blanc és més clar que el cel, el taronja �
 const sol = F.posicioSol(SEGRE);
 const BASE = amb({ dirW: 180, aot: 0.1, d_obs: 40, az_vis: sol.az - 3 });
 const OBJ = { D: 25, tub: 3, n: 4, Trot: 7, sentit: 1, h: 25, Umax: 1, vida: 180, contrast: 2 };
-t('disseny (prioritat deriva): 16/17 i només falla el gir de 7 s', () => {
+t('disseny (prioritat deriva): 15/17, fallen el gir de 7 s i el taronja intens', () => {
   const d = F.dissenya(BASE, Object.assign({ prioritat: 'deriva' }, OBJ));
   const ev = F.avaluaObservacio(d.cfg);
   const falla = ev.files.filter(f => !f.ok).map(f => f.nom);
-  assert.deepStrictEqual(falla, ['1 volta ≈ 7 s'], falla.join(', '));
+  assert.deepStrictEqual(falla, ['1 volta ≈ 7 s', 'color taronja'], falla.join(', '));
   assert.ok(d.viable && d.conflicte > 1);
   prop(2 * ev.tr[Math.floor(ev.tr.length / 2)].ev.R, 25, 0.01, 'diàmetre al mig');
 });
-t('hipòtesi: arrossegat per una brisa de 0.5 km/h → 16/17, però amb aire gairebé quiet', () => {
+t('hipòtesi: arrossegat per una brisa de 0.5 km/h → 15/17, però amb aire gairebé quiet', () => {
   const b = amb({ W: 0.5, dirW: 45, aot: 0.1, d_obs: 40, az_vis: sol.az - 5 });
   const d = F.dissenya(b, Object.assign({ prioritat: 'deriva', passiu: true }, OBJ));
   const ev = F.avaluaObservacio(d.cfg, { passiu: true });
-  assert.deepStrictEqual(ev.files.filter(f => !f.ok).map(f => f.nom), ['1 volta ≈ 7 s']);
+  assert.deepStrictEqual(ev.files.filter(f => !f.ok).map(f => f.nom), ['1 volta ≈ 7 s', 'color taronja']);
   assert.ok(d.cfg.turb < 0.03 && d.f < 0.01, JSON.stringify({ turb: d.cfg.turb, f: d.f }));
 });
 t('disseny (prioritat gir): aconsegueix 7 s però perd la deriva lenta', () => {
@@ -143,5 +143,28 @@ t('assaig real 1:10 amb fum blanc: només falla el color', () => {
   const ev = F.avaluaObservacio(d.cfg, { D: 2.5, tub: 0.3, h: 3, nodes: 4, Trot: 7, sentit: 1, durada: 30, Umax: 0.5 });
   assert.deepStrictEqual(ev.files.filter(x => !x.ok).map(x => x.nom), ['color taronja']);
   assert.ok(d.L < 120 && d.f < 20);   // infrasò i nivell assolible amb un pistó
+});
+/* Model B: nodes emissors */
+const EMIS = amb({ W: 0.5, dirW: 90, d_obs: 40, az_vis: (sol.az - 90 + 360) % 360,
+  e_n: 4, e_D: 25, e_cap: 3, e_T: 7, e_sent: 1, e_tau: 1.3, e_P: 1.5, e_tipus: 1, e_Temp: 2000, e_h: 25, e_vida: 180, e_ext: 25 });
+t('nodes emissors: 4 nodes, 25 m, 7 s → 11.2 m/s i 1.03 g', () => {
+  const e = F.emissors(EMIS);
+  prop(e.v, 2 * Math.PI * 12.5 / 7, 1e-9, 'v');
+  prop(e.g, e.v * e.v / 12.5 / 9.81, 1e-9, 'g');
+  assert.ok(Math.abs(e.g - 1.03) < 0.01);
+});
+t('eficàcia lluminosa: sodi ≈ 540 lm/W, cos negre de 2000 K ≈ 1.6 lm/W', () => {
+  assert.ok(Math.abs(F.eficaciaEmissio(1) - 538) < 5);
+  assert.ok(Math.abs(F.eficaciaEmissio(0, 2000) - 1.6) < 0.3);
+});
+t('emissió de sodi: color taronja; 1.5 kW per node la fa visible de dia', () => {
+  const a = F.avaluaEmissors(EMIS);
+  assert.ok(a.e.taronja && a.C > 0.3, JSON.stringify({ C: a.C, h: a.e.hue }));
+  assert.deepStrictEqual(a.files.filter(f => f.ok === false).map(f => f.nom), ['forat amb un to diferent']);
+});
+t('incandescència a 2000 K: cal ~300 vegades més potència que el sodi', () => {
+  const a = F.avaluaEmissors(EMIS), b = F.avaluaEmissors(Object.assign({}, EMIS, { e_tipus: 0 }));
+  const r = b.e.potenciaPerL(b.Lsky) / a.e.potenciaPerL(a.Lsky);
+  assert.ok(r > 250 && r < 400, String(r));
 });
 console.log(`\n${n} proves superades`);

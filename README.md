@@ -51,19 +51,26 @@ El simulador (carpeta `simulation/v041/`, versió V042) fa servir només **físi
 
 **Paràmetres nous respecte a la V040:** data, hora i coordenades (posició del sol), terbolesa d'aerosols, direcció de la mirada i distància del testimoni, direcció del vent, turbulència ambient, alçada de l'emissor (separada del pont), orientació de l'eix de l'anell, nombre de polsos, injectors de traçador, swirl, sentit de l'ona de Kelvin, excés de temperatura de l'aire emès i tipus de traçador (pols, fum blanc, boira o fum taronja).
 
-**Resultats amb les dades del Segre** (configuració «🏆 Segre: millor compromís»): **15 de 16 característiques** observades es reprodueixen amb física coneguda.
+**Model A: anell de vòrtex** (configuració «🏆 Segre: millor compromís»): **15 de 17 característiques** observades es reprodueixen amb física coneguda.
 
 - Un únic pols d'infrasò (0.07 Hz, ~118 dB a 1 m) per una obertura de ~20 m a 25 m d'alçada, amb 4 injectors de traçador, genera un anell de 25 m amb un tub de 3 m i 4 nodes antihoraris. És inaudible.
 - L'anell avança a ~1 m/s **contra la brisa** de 3 km/h. Per al testimoni gairebé no es mou i no canvia de mida aparent.
-- Amb pols de riu (~500 mg/m³) i el sol de les 18:00 (22° d'altura) **3° al costat de l'anell**, la dispersió cap endavant el fa **taronja i el doble de brillant que el cel**. Això encaixa amb la primera impressió del testimoni («un reflex del sol»).
+- Amb pols de riu (~500 mg/m³) i el sol de les 18:00 (22° d'altura) **3° al costat de l'anell**, la dispersió cap endavant el fa **el doble de brillant que el cel**. Això encaixa amb la primera impressió del testimoni («un reflex del sol»). El color, però, és un préssec pàl·lid, no el taronja intens observat (el to es calcula en sRGB, com el percep l'ull).
 - Amb una turbulència ambient de ~0.2 m/s, dura ~3 min i s'extingeix gradualment.
 - **Forma de cometa dels nodes:** darrere de cada node l'anell té el gruix del node i s'aprima fins al node següent. El model ho explica com a matèria que cada node deixa enrere i que es dispersa en un temps de remolí τ = a/σ_w. Amb la configuració de compromís, el gruix arriba al node següent amb un ~30 % del gruix inicial.
-- **Hipòtesi alternativa (configuració «🍃 Segre: arrossegat per la brisa»):** l'anell no té velocitat pròpia i el porta una brisa molt fluixa (0.5 km/h), com un globus. També dona 15/16, però exigeix condicions extremes: aire gairebé immòbil (turbulència ≤ 0.02 m/s) i un pols d'aire extremadament lent (~0.005 Hz, uns 2 minuts d'empenta). Amb aquesta circulació tan petita, el gir dels nodes passa a ~8 min per volta.
+- **Hipòtesi alternativa (configuració «🍃 Segre: arrossegat per la brisa»):** l'anell no té velocitat pròpia i el porta una brisa molt fluixa (0.5 km/h), com un globus. També dona 15/17, però exigeix condicions extremes: aire gairebé immòbil (turbulència ≤ 0.02 m/s) i un pols d'aire extremadament lent (~0.005 Hz, uns 2 minuts d'empenta). Amb aquesta circulació tan petita, el gir dels nodes passa a ~8 min per volta.
 - **El que no es pot reproduir:** que els nodes facin una volta cada 7 s. Amb la circulació compatible amb una deriva lenta, el gir és de ~35 s. Fer-lo de 7 s demana ~24 vegades més circulació, i llavors l'anell s'allunyaria a més de 3 m/s.
 - **Les línies de 25 kV no hi intervenen:** el camp a l'altura de l'anell és ~10⁴–10⁵ vegades inferior al de ruptura.
 - Els valors de la geometria del testimoni (distància, mirada) i del vent no es van mesurar: són els que fan compatible el fenomen amb l'observació.
 
-**Reproducció real:** la configuració «🧪 Assaig real a escala 1:10» (anell de 2.5 m, fum blanc, sol de costat, emissor a 3 m) compleix 15/16 dels objectius escalats, inclòs el gir de 7 s, perquè els anells petits giren més ràpid. L'única excepció és el color: el fum blanc no és taronja, i el fum taronja de senyalització és més fosc que el cel de dia.
+**Model B: nodes emissors** (configuracions «✴ Segre: nodes emissors»). Segons el testimoni, els nodes es movien com objectes que generaven l'anell. En aquest model, l'anell és el rastre lluminós de 4 fonts que orbiten:
+
+- Els nodes van a **11.2 m/s (40 km/h)**, amb una acceleració cap al centre d'**1.03 g**: cada objecte necessita una força cap al centre igual al seu pes.
+- La llum del rastre ha de durar **τ ≈ 1.1–1.5 s** perquè la cua s'aprimi fins al node següent (1.75 s entre nodes).
+- Per ser visible de dia cal radiar ~**1.5 kW per node si l'emissió és de sodi** (589 nm, el color de la làmpada de sodi amb què el testimoni el compara), o ~**500 kW per node si és incandescència** a 2000 K: unes 300 vegades més.
+- Encaixa amb la forma de cometa, el gir de 7 s, la deriva amb la brisa i el color. No explica el to diferent del forat, i el model no diu res sobre què eren els objectes ni sobre el so.
+
+**Reproducció real:** la configuració «🧪 Assaig real a escala 1:10» (anell de 2.5 m, fum blanc, sol de costat, emissor a 3 m) compleix tots els objectius escalats menys el color, inclòs el gir de 7 s, perquè els anells petits giren més ràpid. L'única excepció és el color: el fum blanc no és taronja, i el fum taronja de senyalització és més fosc que el cel de dia.
 
 ### Execució de les proves
 

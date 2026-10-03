@@ -475,7 +475,12 @@ function luminanciaCel(s, sol, az, el) {
 }
 function faseHG(g, cosT) { return (1 - g * g) / Math.pow(1 + g * g - 2 * g * cosT, 1.5); } // normalitzada a 1 (isòtrop = 1)
 function faseTracador(tr, cosT) { return tr.f * faseHG(tr.g1, cosT) + (1 - tr.f) * faseHG(tr.g2, cosT); }
-function toHue(c) {
+/** Taronja: to 15–45° (inclou el de la làmpada de sodi, la referència del testimoni) i saturat */
+function esTaronja(hs) { return hs.h >= 15 && hs.h <= 45 && hs.sat >= 0.5; }
+function gammaSRGB(v) { return v <= 0.0031308 ? 12.92 * v : 1.055 * Math.pow(v, 1 / 2.4) - 0.055; }
+/** To i saturació percebuts (HSV sobre sRGB amb gamma, no sobre valors lineals) */
+function toHue(cLin) {
+  const mxL = Math.max(...cLin, 1e-30), c = cLin.map(v => gammaSRGB(Math.max(v, 0) / mxL));
   const mx = Math.max(...c), mn = Math.min(...c), d = mx - mn;
   if (d <= 1e-12) return { h: 0, sat: 0 };
   let h = mx === c[0] ? ((c[1] - c[2]) / d) % 6 : mx === c[1] ? (c[2] - c[0]) / d + 2 : (c[0] - c[1]) / d + 4;
@@ -510,7 +515,7 @@ function aparenca(s, tau, az, el) {
   const Y = lum(rgb), hs = toHue(rgb);
   const C = Y / Math.max(Lsky, 1e-6) - 1;
   return { rgb, Y, Lsky, C, psi: psi * R2D, P, En, sol, hue: hs.h, sat: hs.sat,
-    taronja: hs.h >= 15 && hs.h <= 40 && hs.sat >= 0.5 };   // taronja saturat (no un blanc càlid)
+    taronja: esTaronja(hs) };
 }
 /** Geometria del testimoni: és a la plataforma del pont, a d_obs de l'origen de l'anell */
 function geometriaVisio(s, x, y, z) {
@@ -727,6 +732,82 @@ function dissenya(s, obj) {
   };
 }
 
+/* ═══ MODEL B: NODES EMISSORS ══════════════════════════════════════════════
+   Hipòtesi del testimoni: els nodes es movien com objectes que generaven
+   l'anell. L'anell és el RASTRE lluminós de n fonts que orbiten:
+     · velocitat dels nodes v = 2πR/T i acceleració centrípeta a = v²/R
+       (cada objecte necessita una força cap al centre de m·a);
+     · el rastre emet llum que decau amb un temps τ; entre dos nodes passa
+       Δt = T/n, i el gruix visible al node següent és exp(−Δt/τ);
+     · cada node radia una potència P. Amb una eficàcia lluminosa K (lm/W),
+       la lluminància del cap és L₀ = P·K / (4π·w·v·τ·(1 − e^{−Δt/τ})),
+       on w és el gruix del cap (balanç de flux del rastre, emissió isòtropa
+       i òpticament prima).
+   Emissió: 0 = incandescència de cos negre a T; 1 = línia D del sodi (589 nm).
+   ─────────────────────────────────────────────────────────────────────────── */
+function planck(l, T) { return 1 / (Math.pow(l, 5) * (Math.exp(14388 / (l * T)) - 1)); }   // l en µm (relativa)
+function Vlum(l) { return 1.019 * Math.exp(-285.4 * (l - 0.559) * (l - 0.559)); }             // CIE V(λ), ajust gaussià
+/** Eficàcia lluminosa de la radiació emesa [lm/W] */
+function eficaciaEmissio(tipus, T) {
+  if (tipus === 1) return 683 * Vlum(0.589);
+  let a = 0, b = 0;
+  for (let l = 0.2; l < 40; l += 0.002) { const B = planck(l, T); a += B * Vlum(l); b += B; }
+  return 683 * a / b;
+}
+/** Color lineal RGB de l'emissió (normalitzat al màxim) */
+function colorEmissio(tipus, T) {
+  // 589 nm → cromaticitat CIE (0.575, 0.424) → sRGB lineal
+  const c = tipus === 1 ? [2.76, 0.59, 0] : LAMBDA_RGB.map(l => planck(l, T));
+  const mx = Math.max(...c);
+  return c.map(v => Math.max(v, 0) / mx);
+}
+function emissors(s) {
+  const R = s.e_D / 2, n = Math.max(1, Math.round(s.e_n)), T = s.e_T, tau = Math.max(s.e_tau, 1e-3);
+  const v = 2 * Math.PI * R / T, ac = v * v / R, dt = T / n;
+  const fFinal = Math.exp(-dt / tau);
+  const K_ = eficaciaEmissio(s.e_tipus, s.e_Temp);
+  const L0 = s.e_P * 1000 * K_ / (4 * Math.PI * s.e_cap * v * tau * (1 - fFinal));
+  const rgb = colorEmissio(s.e_tipus, s.e_Temp), hs = toHue(rgb);
+  return { R, n, v, ac, g: ac / K.G, inclinacio: Math.atan(ac / K.G) * R2D, dt, tau, fFinal, eff: K_, L0, rgb, hue: hs.h, sat: hs.sat,
+    taronja: esTaronja(hs), factor: u => Math.exp(-u * dt / tau),
+    tauPerFinal: f => dt / Math.log(1 / f),                   // τ que dona un gruix f al node següent
+    potenciaPerL: L => L * 4 * Math.PI * s.e_cap * v * tau * (1 - fFinal) / K_ / 1000 };   // kW per node
+}
+/** Posició del centre al temps t (només l'arrossega el vent) */
+function posicioEmissors(s, t) { const w = ventXZ(s); return { x: s.sx_off + w.x * t, y: s.e_h, z: w.z * t }; }
+/** Envolupant de brillantor: present durant e_vida i extinció lineal en e_ext */
+function envolupantEmissors(s, t) { return t < 0 ? 0 : t <= s.e_vida ? 1 : Math.max(0, 1 - (t - s.e_vida) / Math.max(s.e_ext, 1e-3)); }
+
+function avaluaEmissors(s) {
+  const e = emissors(s), files = [];
+  // ok: true/false = conseqüència física avaluada; null = valor imposat pel paràmetre (no compta)
+  const fila = (nom, valor, ok) => files.push({ nom, valor, ok });
+  fila('diàmetre ≈ 25 m', (2 * e.R).toFixed(1) + ' m (imposat)', null);
+  fila('tub ≈ 3 m', s.e_cap.toFixed(1) + ' m (imposat)', null);
+  fila('alçada 20–30 m', s.e_h.toFixed(1) + ' m (imposat)', null);
+  fila('4 nodes', e.n + ' (imposat)', null);
+  fila('1 volta ≈ 7 s', s.e_T.toFixed(1) + ' s (imposat)', null);
+  fila('cua de cometa fins al node següent', Math.round(e.fFinal * 100) + ' % del gruix', e.fFinal >= 0.05 && e.fFinal <= 0.4);
+  // Mida aparent: el vent pot apropar o allunyar el centre
+  const p0 = posicioEmissors(s, 0), p1 = posicioEmissors(s, s.e_vida);
+  const g0 = geometriaVisio(s, p0.x, p0.y, p0.z), g1 = geometriaVisio(s, p1.x, p1.y, p1.z);
+  const ratio = g0.dist / g1.dist;
+  fila('mida aparent constant', '×' + ratio.toFixed(2), ratio > 0.75 && ratio < 1.33);
+  fila('deriva lenta amb el vent', (vent(s) * 3.6).toFixed(1) + ' km/h', vent(s) < 2);
+  // Brillantor respecte al cel, a la meitat de l'observació
+  const pm = posicioEmissors(s, s.e_vida / 2), gm = geometriaVisio(s, pm.x, pm.y, pm.z);
+  const sol = posicioSol(s), Lsky = luminanciaCel(s, sol, gm.az, gm.el), C = e.L0 / Math.max(Lsky, 1e-6);
+  fila('lluminós de dia (C > 0.3)', 'C = ' + C.toFixed(2), C > 0.3);
+  fila('color taronja', Math.round(e.hue) + '°', e.taronja);
+  fila('forat amb un to diferent', 'cel net', false);
+  fila('durada ≈ 3 min', (s.e_vida / 60).toFixed(1) + ' min (imposat)', null);
+  fila('extinció gradual 20–30 s', s.e_ext.toFixed(0) + ' s (imposat)', null);
+  fila('sense so audible', 'depèn del mecanisme', null);
+  fila('un sol anell', 'sí', null);
+  const aval = files.filter(f => f.ok !== null);
+  return { files, n: aval.filter(f => f.ok).length, total: aval.length, e, C, Lsky, emissors: true };
+}
+
 const API = {
   K, Tk, pAtm, rho, cSo, muSuth, nuAir, nDens, puntRosada, vent,
   ventXZ, pAmpDeDb, dbMax, lambda, alfaAbs, hNodePressio, hNodeVelocitat, fonts, fasorFont, pAcPunt,
@@ -735,6 +816,7 @@ const API = {
   sincronisme, ratiRuptura, plasma, dTdt, colorCosNegre,
   evolucio, vidaAnell2, rotacioNodes, cuaNodes, posicioSol, massaAire, transSol, iluminanciaSol,
   luminanciaCel, faseHG, aparenca, geometriaVisio, anellPrincipalFont, velocitatAnell,
+  gammaSRGB, eficaciaEmissio, colorEmissio, emissors, posicioEmissors, envolupantEmissors, avaluaEmissors, esTaronja, toHue,
   trajectoria, estatAnell, tauPunt, corbaContrast, OBS, avaluaObservacio, dissenya,
 };
 if (typeof module !== 'undefined' && module.exports) module.exports = API;
