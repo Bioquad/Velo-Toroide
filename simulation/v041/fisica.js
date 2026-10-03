@@ -659,6 +659,7 @@ function bisecta(fn, lo, hi, it) {
   }
   return Math.sqrt(lo * hi);
 }
+const SEP_S2 = 1.1, DB_S2 = 20;  // separació de S₂ (fracció del diàmetre de l'anell, sense solapar obertures) i atenuació en dB
 function dissenya(s, obj) {
   const D_ap0 = obj.D / (2 * K.R_SOBRE_D), aR = Math.min(Math.max(obj.tub / obj.D, 0.02), 0.8);
   const R = obj.D / 2, a = aR * R, lg = Math.log(8 * R / a) - 0.25, h = K.HOLMAN_DISSENY;
@@ -672,8 +673,10 @@ function dissenya(s, obj) {
   const GamDeriva = 4 * Math.PI * R * Math.max(Umax, 1e-4) / lg;
   const GamRot0 = (2 * Math.PI / obj.Trot) / (cK + K.SWIRL_MAX * cS);
   const base = Object.assign({}, s, {
-    D_ap: D_ap0, aR, db2: 0, phi: 0, npols: 1, n_inj: n, swirl: obj.sentit * K.SWIRL_MAX,
-    kdir: obj.sentit, h_src: obj.h, elev: 0, az_eix: 0, dT0: 0, sx_off: 0, so: 0,
+    D_ap: D_ap0, aR, phi: 0, npols: 1, n_inj: n, swirl: obj.sentit * K.SWIRL_MAX,
+    // Dues fonts: S₁ (a x = 0) forma l'anell; S₂, a 1.1·D i 20 dB per sota,
+    // no arriba al criteri de Holman i no en forma cap altre.
+    kdir: obj.sentit, h_src: obj.h, elev: 0, az_eix: 0, dT0: 0, so: SEP_S2 * obj.D, sx_off: SEP_S2 * obj.D / 2,
   });
   // Construeix la configuració per a una Γ donada (amb la terbolesa que dona la durada)
   function construeix(Gamma) {
@@ -682,6 +685,7 @@ function dissenya(s, obj) {
     const f = w / (2 * Math.PI), u = h * Math.PI * w * D_ap;
     const cfg = Object.assign({}, base, { f1: f, f2: f });
     cfg.db1 = dbPerVelocitat(cfg, f, u);
+    cfg.db2 = cfg.db1 - DB_S2;
     const an0 = anellFont(cfg, f, cfg.db1);
     // Es busca σ_w dins la branca coherent (σ_w < Γ/4πR): l'anell ha d'existir com a anell
     const vInd = an0.Gamma / (4 * Math.PI * an0.R);
