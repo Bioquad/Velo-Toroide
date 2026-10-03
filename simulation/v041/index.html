@@ -21,15 +21,9 @@
 </div>
 
 <div class="mid">
+ <div class="col">
   <div class="cvw">
     <canvas id="cv"></canvas>
-
-    <!-- Comparació amb l'observació del 18-09-2022 -->
-    <div class="ov" id="cmp-panel">
-      <div class="sec-t" style="color:#4a7090;margin-bottom:2px">📋 comparació amb l'observació</div>
-      <div id="cmp-rows"></div>
-      <div class="nota" id="cmp-score"></div>
-    </div>
 
     <!-- Oscil·loscopi -->
     <div class="ov" id="osc-panel">
@@ -42,19 +36,29 @@
     </div>
   </div>
 
-  <div class="pnl" id="pnl"></div>
-</div>
-
-<div class="bot">
-  <div class="ph"><span class="pn" id="ph-n" style="color:#4a5468">aturat</span><span id="ph-d">Tria un preset o ajusta els paràmetres i prem ▶ so</span></div>
-  <div class="bts">
-    <button class="bn" id="b-go" data-act="so">▶ so</button>
-    <button class="bn" id="b-em" data-act="em" style="border-color:#a05020;color:#e07030">⚡ EM ON</button>
-    <button class="bn pa" id="b-pa" data-act="pausa">⏸ pausa</button>
-    <button class="bn" data-act="reinicia">↺ reinicia</button>
-    <button class="bn" data-act="osc" style="border-color:#1a3050;color:#3a6080" title="Oscil·loscopi">📊</button>
-    <button class="bn" data-act="desa" style="border-color:#1a4020;color:#40a060" title="Configuracions">💾</button>
+  <!-- Botons de funcionament: sota la simulació i per sobre dels paràmetres -->
+  <div class="bot">
+    <div class="ph"><span class="pn" id="ph-n" style="color:#4a5468">aturat</span><span id="ph-d">Tria un preset o ajusta els paràmetres i prem ▶ so</span></div>
+    <div class="bts">
+      <button class="bn" id="b-go" data-act="so">▶ so</button>
+      <button class="bn" id="b-em" data-act="em" style="border-color:#a05020;color:#e07030">⚡ EM ON</button>
+      <button class="bn pa" id="b-pa" data-act="pausa">⏸ pausa</button>
+      <button class="bn" data-act="reinicia">↺ reinicia</button>
+      <button class="bn" data-act="osc" style="border-color:#1a3050;color:#3a6080" title="Oscil·loscopi">📊</button>
+      <button class="bn" data-act="desa" style="border-color:#1a4020;color:#40a060" title="Configuracions">💾</button>
+    </div>
   </div>
+
+  <!-- Comparació amb l'observació del 18-09-2022 -->
+  <div class="ov" id="cmp-panel">
+    <div class="sec-t" style="color:#4a7090;margin-bottom:2px">📋 comparació amb l'observació</div>
+    <div id="cmp-rows"></div>
+    <div class="nota" id="cmp-score"></div>
+  </div>
+
+ </div>
+
+  <div class="pnl" id="pnl"></div>
 </div>
 
 <div id="savecfg-panel">
