@@ -167,4 +167,28 @@ t('incandescència a 2000 K: cal ~300 vegades més potència que el sodi', () =>
   const r = b.e.potenciaPerL(b.Lsky) / a.e.potenciaPerL(a.Lsky);
   assert.ok(r > 250 && r < 400, String(r));
 });
+/* Model C: patró acústic rotatiu */
+const PAT = amb({ W: 0.5, dirW: 90, d_obs: 40, az_vis: (sol.az - 3 + 360) % 360,
+  c_D: 25, c_m: 4, c_T: 7, c_K: 8, c_fc: 13.7, c_L: 172, c_r: 40, c_cap: 3, c_h: 25 });
+t('patró de so: Δf = m/T = 0.571 Hz, 11.2 m/s i portadora de 13.7 Hz per a R = 12.5 m', () => {
+  const p = F.patroAcustic(PAT);
+  prop(p.df, 4 / 7, 1e-9, 'Δf');
+  prop(p.v, 2 * Math.PI * 12.5 / 7, 1e-9, 'v');
+  assert.ok(Math.abs(p.fcRadi - 13.7) < 0.1, String(p.fcRadi));
+});
+t('condensació acústica: cal ~178 dB al node; a 172 dB de mitjana (×8) fa boira', () => {
+  const p = F.patroAcustic(PAT);
+  assert.ok(Math.abs(p.Lcond - 177.6) < 0.5 && p.condensa && p.lwc > 0);
+  assert.ok(!F.patroAcustic(amb(Object.assign({}, PAT, { c_L: 160 }))).condensa);
+});
+t('la cua de 1.75 s demana gotes de ~40 µm; les de 5 µm s\'evaporen en ~20 ms', () => {
+  const p = F.patroAcustic(PAT);
+  assert.ok(Math.abs(p.rPerCua(0.25) - 40) < 5);
+  assert.ok(F.patroAcustic(Object.assign({}, PAT, { c_r: 5 })).tEv < 0.03);
+});
+t('el testimoni rebria un nivell perillós i la boira és blanca', () => {
+  const a = F.avaluaPatro(PAT);
+  assert.ok(a.p.Lobs > 140 && a.p.percep);
+  assert.ok(!a.ap.taronja);
+});
 console.log(`\n${n} proves superades`);

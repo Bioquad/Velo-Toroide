@@ -808,6 +808,73 @@ function avaluaEmissors(s) {
   return { files, n: aval.filter(f => f.ok).length, total: aval.length, e, C, Lsky, emissors: true };
 }
 
+/* ═══ MODEL C: PATRÓ ACÚSTIC ROTATIU ════════════════════════════════════════
+   Hipòtesi: els nodes són màxims d'energia d'un camp de so que gira, com
+   les rodes d'un tren sobre una via ondulada. No es mou cap material: el
+   patró avança amb velocitat de fase, sense cap força centrípeta.
+   Física (feixos acústics de vòrtex): K ones amb freqüències f_c + k·Δf i
+   càrrega topològica ℓ_k = k·m (k = 0…K−1) donen m pètals que giren amb
+   Ω = 2π·Δf/m → T_volta = m/Δf. Amb K ones ("esglaons" de la modulació)
+   la intensitat es concentra: pic/mitjana = K i amplada angular ≈ 2π/(m·K)
+   (és el mateix principi que el bloqueig de modes d'un làser).
+   Radi de l'anell: primer màxim de J_ℓ amb ℓ ≈ m/2, r = j'_ℓ/k (k = 2πf_c/c).
+   Visibilitat: condensació acústica. A la rarefacció del node l'aire
+   s'expandeix adiabàticament; si T baixa del punt de rosada es forma boira,
+   que el sol il·lumina. Quan el node passa, les gotes s'evaporen en
+   t_ev = r²ρ_w / (2·D·ρ_sat·(1 − HR)): és la cua de cometa.
+   ─────────────────────────────────────────────────────────────────────────── */
+const JP = [0, 1.841, 3.054, 4.201, 5.318, 6.416, 7.501, 8.578];   // zeros de J'_ℓ
+function rhoSat(Tc) { return 611.2 * Math.exp(17.62 * Tc / (243.12 + Tc)) / (461.5 * (Tc + 273.15)); }
+/** Llindar aproximat de percepció d'infrasò (Møller & Pedersen 2004) [dB] */
+function llindarPercepcio(f) { return f >= 20 ? 20 : 97 + 25 * Math.log10(10 / Math.max(f, 0.5)); }
+function patroAcustic(s) {
+  const m = Math.max(1, Math.round(s.c_m)), K = Math.max(1, Math.round(s.c_K)), R = s.c_D / 2;
+  const df = m / s.c_T, v = 2 * Math.PI * R / s.c_T, c = cSo(s);
+  const l = Math.min(JP.length - 1, Math.max(1, Math.round(m / 2)));
+  const fcRadi = JP[l] * c / (2 * Math.PI * R);                          // portadora que fa el radi R
+  const Rnat = JP[l] * c / (2 * Math.PI * s.c_fc);
+  const Lpic = s.c_L + 10 * Math.log10(K), ppic = pAmpDeDb(Lpic), P = pAtm(s);
+  const pmin = Math.max(P - ppic, 0.01 * P);
+  const Tmin = Tk(s) * Math.pow(pmin / P, 0.4 / 1.4) - 273.15;
+  const Td = puntRosada(s);
+  const rhoV = s.H / 100 * rhoSat(s.T), rhoVexp = rhoV * Math.pow(pmin / P, 1 / 1.4);
+  const lwc = Math.max(0, rhoVexp - rhoSat(Tmin));                       // aigua condensada [kg/m³]
+  const rg = s.c_r * 1e-6;
+  const tau = 3 * 2 * lwc * s.c_cap / (4 * 1000 * rg);                   // profunditat òptica al node
+  const tEv = rg * rg * 1000 / (2 * 2.5e-5 * rhoSat(s.T) * Math.max(1 - s.H / 100, 0.01));
+  const dt = s.c_T / m, fFinal = Math.exp(-dt / tEv);
+  const pCond = P * (1 - Math.pow((Td + 273.15) / Tk(s), 3.5));
+  const Lcond = 20 * Math.log10(pCond / (Math.SQRT2 * 20e-6));
+  // Exposició del testimoni: el camp mitjà decau des de l'anell
+  const Lobs = s.c_L - 20 * Math.log10(Math.max(s.d_obs, R) / R);
+  const Lth = llindarPercepcio(s.c_fc);
+  const possible = ppic < 0.9 * P;                                         // rarefacció lluny del buit
+  return { m, K, R, df, v, l, fcRadi, Rnat, Lpic, ppic, possible, Tmin, Td, condensa: possible && Tmin <= Td, lwc, tau, tEv, dt, fFinal,
+    Lcond, LmitjaCond: Lcond - 10 * Math.log10(K), amplada: 2 * Math.PI * R / (m * K), Lobs, Lth,
+    percep: Lobs > Lth, perillos: Lobs > 140, audible: s.c_fc >= 20 || s.c_fc + (K - 1) * df >= 20,
+    factor: u => Math.exp(-u * dt / tEv), rPerCua: f => Math.sqrt(dt / Math.log(1 / f) * 2 * 2.5e-5 * rhoSat(s.T) * Math.max(1 - s.H / 100, 0.01) / 1000) * 1e6 };
+}
+function avaluaPatro(s) {
+  const p = patroAcustic(s), files = [];
+  const fila = (nom, valor, ok) => files.push({ nom, valor, ok });
+  fila('diàmetre ≈ 25 m', (2 * p.R).toFixed(1) + ' m (imposat)', null);
+  fila('radi coherent amb la portadora', 'f_c = ' + s.c_fc.toFixed(1) + ' Hz → R = ' + p.Rnat.toFixed(1) + ' m', Math.abs(p.Rnat / p.R - 1) < 0.15);
+  fila('4 nodes', p.m + ' (imposat)', null);
+  fila('1 volta ≈ 7 s', s.c_T.toFixed(1) + ' s (Δf = ' + p.df.toFixed(3) + ' Hz)', null);
+  fila('nivell físicament possible', p.Lpic.toFixed(0) + ' dB al node', p.possible);
+  fila('nodes visibles (boira acústica)', p.condensa ? 'sí · T = ' + p.Tmin.toFixed(1) + ' °C' : 'no · cal ' + p.Lcond.toFixed(0) + ' dB al node', p.condensa);
+  fila('cua de cometa fins al node següent', p.condensa ? Math.round(p.fFinal * 100) + ' % (gotes de ' + s.c_r + ' µm)' : '—', p.condensa && p.fFinal >= 0.05 && p.fFinal <= 0.4);
+  const sol = posicioSol(s), g = geometriaVisio(s, s.sx_off, s.c_h, 0);
+  const ap = aparenca(Object.assign({}, s, { trac: 2 }), p.condensa ? p.tau : 0, g.az, g.el);
+  fila('lluminós de dia (C > 0.3)', 'C = ' + ap.C.toFixed(2), ap.C > 0.3);
+  fila('color taronja', p.condensa ? Math.round(ap.hue) + '°' : '—', p.condensa && ap.taronja);
+  fila('deriva amb la brisa', 'patró fix a l\'emissor', false);
+  fila('sense so perceptible', p.Lobs.toFixed(0) + ' dB al testimoni (llindar ' + p.Lth.toFixed(0) + ')', !p.percep && !p.audible);
+  fila('exposició segura (< 140 dB)', p.Lobs.toFixed(0) + ' dB', !p.perillos);
+  const aval = files.filter(f => f.ok !== null);
+  return { files, n: aval.filter(f => f.ok).length, total: aval.length, p, ap, C: ap.C, Lsky: ap.Lsky, patro: true };
+}
+
 const API = {
   K, Tk, pAtm, rho, cSo, muSuth, nuAir, nDens, puntRosada, vent,
   ventXZ, pAmpDeDb, dbMax, lambda, alfaAbs, hNodePressio, hNodeVelocitat, fonts, fasorFont, pAcPunt,
@@ -816,6 +883,7 @@ const API = {
   sincronisme, ratiRuptura, plasma, dTdt, colorCosNegre,
   evolucio, vidaAnell2, rotacioNodes, cuaNodes, posicioSol, massaAire, transSol, iluminanciaSol,
   luminanciaCel, faseHG, aparenca, geometriaVisio, anellPrincipalFont, velocitatAnell,
+  rhoSat, llindarPercepcio, patroAcustic, avaluaPatro,
   gammaSRGB, eficaciaEmissio, colorEmissio, emissors, posicioEmissors, envolupantEmissors, avaluaEmissors, esTaronja, toHue,
   trajectoria, estatAnell, tauPunt, corbaContrast, OBS, avaluaObservacio, dissenya,
 };

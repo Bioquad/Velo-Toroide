@@ -70,6 +70,13 @@ El simulador (carpeta `simulation/v041/`, versió V042) fa servir només **físi
 - Per ser visible de dia cal radiar ~**1.5 kW per node si l'emissió és de sodi** (589 nm, el color de la làmpada de sodi amb què el testimoni el compara), o ~**500 kW per node si és incandescència** a 2000 K: unes 300 vegades més.
 - Encaixa amb la forma de cometa, el gir de 7 s, la deriva amb la brisa i el color. No explica el to diferent del forat, i el model no diu res sobre què eren els objectes ni sobre el so.
 
+**Model C: patró acústic rotatiu** (configuració «🔊 Segre: patró acústic rotatiu»). Hipòtesi: els nodes són màxims d'energia d'un camp de so que gira, com les rodes d'un tren sobre una via ondulada. No es mou cap material.
+
+- Es fa amb K feixos acústics de vòrtex amb freqüències separades Δf. Per a 4 nodes i una volta cada 7 s, **Δf = 0.571 Hz**. Per a un anell de 25 m, la portadora ha de ser de **13.7 Hz** (infrasò).
+- Els nodes van a 11.2 m/s **sense cap força centrípeta**, perquè no hi ha matèria que giri. Els «esglaons» (K ones) concentren l'energia als nodes un factor K.
+- Visibilitat per **condensació acústica**: a la rarefacció l'aire es refreda i forma boira. Amb les condicions del Segre cal **~178 dB al node**. La cua de cometa encaixa si les gotes són de ~40 µm i s'evaporen en ~1.2 s.
+- **Problemes:** la boira és **blanca**, el patró no es mouria amb la brisa (està lligat a l'emissor) i el testimoni hauria rebut **~160 dB d'infrasò**, molt per sobre del llindar de percepció (~94 dB) i del de perill (140 dB).
+
 **Reproducció real:** la configuració «🧪 Assaig real a escala 1:10» (anell de 2.5 m, fum blanc, sol de costat, emissor a 3 m) compleix tots els objectius escalats menys el color, inclòs el gir de 7 s, perquè els anells petits giren més ràpid. L'única excepció és el color: el fum blanc no és taronja, i el fum taronja de senyalització és més fosc que el cel de dia.
 
 ### Execució de les proves
