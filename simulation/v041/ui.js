@@ -43,7 +43,8 @@ const DEF = {
   aot:   [0, 0.5, 0.01, 0.1, 'terbolesa β d\'Ångström (aerosols)', '', 2],
   // Testimoni
   az_vis:[0, 360, 0.5, 232, 'direcció de la mirada (azimut)', '°', 1],
-  d_obs: [5, 1000, 1, 60, 'distància testimoni → origen de l\'anell', 'm', 0],
+  d_obs: [5, 3000, 5, 900, 'distància testimoni → anell (observat: 800–1000 m)', 'm', 0],
+  vis:   [1, 100, 1, 40, 'visibilitat meteorològica', 'km', 0],
   // Atmosfera
   T:     [0, 50, 0.1, 35, 'temperatura', '°C', 1],
   P:     [950, 1050, 1, 1013, 'pressió', 'hPa', 0],
@@ -107,8 +108,10 @@ const VIS = { w: true, e: true, n: false, lb: true, sol: true };
    La geometria del testimoni (mirada i distància) i el vent no es van mesurar:
    els valors triats són els que fan compatible el fenomen amb l'observació.
    ─────────────────────────────────────────────────────────────────────────── */
-const AMB_SEGRE = { T: 35, P: 1013, H: 30, W: 3, dirW: 90, turb: 0.2, aer: 0, trac: 0, aot: 0.1,
-  mes: 9, dia: 18, hora: 18, tz: 2, lat: 41.6142, lon: 0.6222, az_vis: 232, d_obs: 60,
+// Geometria observada: línies al llarg de X, anell paral·lel a les línies (pla X–Y),
+// desplaçament transversal (al llarg de Z) amb el vent; testimoni a ~900 m mirant al llarg de Z.
+const AMB_SEGRE = { T: 35, P: 1013, H: 30, W: 3, dirW: 0, turb: 0.2, aer: 0, trac: 0, aot: 0.1, vis: 40,
+  mes: 9, dia: 18, hora: 18, tz: 2, lat: 41.6142, lon: 0.6222, az_vis: 232, d_obs: 900,
   hmt: 18, hcat: 11, sl: 24, vmt: 25, vcat: 25, ph: 90, f_mt: 50, rc: 0.9, tau: 0, lin_or: 0,
   a_riu: 30, h_pont: 5, h_src: 5, so: 10, sx_off: 0, D_ap: 0.5, aR: 0.12, elev: 0, az_eix: 0,
   npols: 0, n_inj: 0, swirl: 0, kdir: 1, dT0: 0,
@@ -122,24 +125,24 @@ const AMB_LAB = Object.assign({}, AMB_SEGRE, { T: 20, H: 50, W: 0, turb: 0.02, a
 const PRESETS = [
   { t: '📍 Configuració original (V040)', d: '3.57 Hz · 100 dB · obertura 0.5 m',
     v: AMB_SEGRE },
-  { t: '🏆 Segre: millor compromís', d: 'pols al contrallum · anell contra la brisa',
-    v: Object.assign({}, AMB_SEGRE, { dirW: 180, aot: 0.1, d_obs: 40, trac: 0 }), solDv: 3,
+  { t: '🏆 Segre: millor compromís (vòrtex)', d: 'testimoni a 900 m · fum · sol de costat',
+    v: Object.assign({}, AMB_SEGRE, { dirW: 0, trac: 1 }), solDv: 150,
     obj: Object.assign({}, OBJ_SEGRE), prioritat: 'deriva' },
   { t: '🍃 Segre: arrossegat per la brisa', d: 'brisa de 0.5 km/h · sense velocitat pròpia',
-    v: Object.assign({}, AMB_SEGRE, { W: 0.5, dirW: 45, aot: 0.1, d_obs: 40, trac: 0 }), solDv: 5,
+    v: Object.assign({}, AMB_SEGRE, { W: 0.5, dirW: 0, trac: 1 }), solDv: 150,
     obj: Object.assign({}, OBJ_SEGRE), prioritat: 'deriva', mov: 'brisa' },
   { t: '🌀 Segre: prioritat gir de 7 s', d: 'mostra el conflicte gir ↔ deriva',
-    v: Object.assign({}, AMB_SEGRE, { dirW: 180, aot: 0.1, d_obs: 40, trac: 0 }), solDv: 3,
+    v: Object.assign({}, AMB_SEGRE, { dirW: 0, trac: 1 }), solDv: 150,
     obj: Object.assign({}, OBJ_SEGRE), prioritat: 'rotacio' },
   { t: '🧪 Assaig real a escala 1:10', d: 'anell de 2.5 m · fum blanc · sol de costat',
     v: Object.assign({}, AMB_SEGRE, { W: 1, dirW: 180, aot: 0.05, d_obs: 15, trac: 1, h_pont: 1, a_riu: 10, vmt: 0, vcat: 0 }), solDv: 100,
     obj: { oD: 2.5, otub: 0.3, on: 4, oT: 7, oh: 3, oU: 0.5, ovida: 30, oC: 0.3 }, prioritat: 'deriva' },
   { t: '✴ Segre: nodes emissors (sodi)', d: '4 fonts en òrbita · rastre de 1.3 s · 1.5 kW',
-    v: Object.assign({}, AMB_SEGRE, { model: 1, W: 0.5, dirW: 90, aot: 0.1, d_obs: 40, e_tipus: 1, e_P: 1.5 }), solDv: 90 },
+    v: Object.assign({}, AMB_SEGRE, { model: 1, W: 0.5, dirW: 0, e_tipus: 1, e_P: 1.5 }), solDv: 90 },
   { t: '✴ Segre: nodes incandescents', d: '2000 K · caldrien ~500 kW per node',
-    v: Object.assign({}, AMB_SEGRE, { model: 1, W: 0.5, dirW: 90, aot: 0.1, d_obs: 40, e_tipus: 0, e_Temp: 2000, e_P: 500 }), solDv: 90 },
+    v: Object.assign({}, AMB_SEGRE, { model: 1, W: 0.5, dirW: 0, e_tipus: 0, e_Temp: 2000, e_P: 500 }), solDv: 90 },
   { t: '🔊 Segre: patró acústic rotatiu', d: 'portadora 13.7 Hz · Δf 0.571 Hz · 8 esglaons',
-    v: Object.assign({}, AMB_SEGRE, { model: 2, W: 0.5, dirW: 90, aot: 0.1, d_obs: 40,
+    v: Object.assign({}, AMB_SEGRE, { model: 2, W: 0.5, dirW: 0,
       f1: 13.7, f2: 13.7 + 4 / 7, db1: 172, db2: 172, h_src: 25, so: 25, sx_off: 0 }), solDv: 3 },
   { t: '🔬 Canó de vòrtex de taula', d: '15 Hz · 100 dB · D = 10 cm · fum',
     v: AMB_LAB },
@@ -188,7 +191,7 @@ function construeixPanell() {
     'border-color:#203848', '0');
   h += seccio('velocitat de simulació', filaSlider('spd'));
   h += seccio('📍 lloc, data i hora', ['mes', 'dia', 'hora', 'tz', 'lat', 'lon', 'aot'].map(filaSlider).join('') + fm('fc-sol'));
-  h += seccio('👁 testimoni', ['az_vis', 'd_obs'].map(filaSlider).join('') +
+  h += seccio('👁 testimoni', ['az_vis', 'd_obs', 'vis'].map(filaSlider).join('') +
     `<button class="bn opt" data-act="miraSol" style="width:100%">☀ mirar 3° al costat del sol</button>` + fm('fc-obs'));
   h += seccio('🌬 atmosfera', ['T', 'P', 'H', 'W', 'dirW', 'turb'].map(filaSlider).join('') + fm('fc-amb'));
   h += seccio('🌀 emissor i anell de vòrtex', ['h_src', 'D_ap', 'aR', 'elev', 'az_eix', 'npols', 'n_inj', 'swirl', 'dT0'].map(filaSlider).join('') +
@@ -331,7 +334,7 @@ function updatePhysics(dt) {
 function visibilitat(r) {
   const tau = F.tauPunt(S, r);
   const g = F.geometriaVisio(S, r.x, r.y, r.z);
-  const ap = F.aparenca(S, tau, g.az, g.el);
+  const ap = F.aparenca(S, tau, g.az, g.el, g.dist);
   const nucli = F.nucliTermo(S, r.ev.Gamma, r.ev.a);
   const glowT = r.T > 1500, glowP = r.ne > 1e16;
   let mec = 'invisible', alpha = Math.min(Math.abs(ap.C) / 0.3, 1);
@@ -369,7 +372,7 @@ function refreshInfo() {
   // Testimoni
   const src = d.fs[d.iMain];
   const g0 = F.geometriaVisio(S, src.x, src.y, 0);
-  const psi0 = F.aparenca(S, 0, g0.az, g0.el).psi;
+  const psi0 = F.aparenca(S, 0, g0.az, g0.el, g0.dist).psi;
   setH('fc-obs', `testimoni a ${c('v', (S.h_pont + 1.6).toFixed(1) + ' m')} sobre el riu<br>` +
     `l'emissor es veu a ${c('v', g0.el.toFixed(1) + '°')} d'elevació, a ${c('v', g0.dist.toFixed(0) + ' m')}<br>` +
     `angle emissor–sol ψ = ${c(psi0 < 10 ? 'g' : 'w', psi0.toFixed(1) + '°')} ${psi0 < 10 ? '(contrallum: dispersió cap endavant)' : ''}`);
@@ -532,343 +535,430 @@ function estat() {
   return { n: 'anell ' + v.mec, d: `edat ${fmtT(r0.age)} · ${r0.ev.disp ? 'dispersant-se' : 'coherent'} · Ø ${(2 * r0.ev.R).toFixed(1)} m · y = ${r0.y.toFixed(1)} m · C = ${v.ap.C.toFixed(2)}`, c: v.visible ? '#40c080' : '#8860e0' };
 }
 
-/* ── Dibuix ─────────────────────────────────────────────────────────────── */
+/* ── Dibuix 3D ──────────────────────────────────────────────────────────────
+   Escena en perspectiva amb càmera orbital. Eixos (com a l'observació):
+     X → al llarg de les línies elèctriques
+     Y → amunt
+     Z → transversal a les línies; el testimoni és cap a −Z (a d_obs metres)
+   L'anell és paral·lel a les línies (pla X–Y) i es desplaça al llarg de Z.
+   Vistes: testimoni · frontal · zenital · lateral · 3D lliure (arrossegar per
+   girar, roda o pessic per apropar, doble clic per tornar a la vista triada).
+   ─────────────────────────────────────────────────────────────────────────── */
 const cv = document.getElementById('cv'), cx = cv.getContext('2d');
 let DPR = 1;
 function rc() { DPR = window.devicePixelRatio || 1; cv.width = cv.offsetWidth * DPR; cv.height = cv.offsetHeight * DPR; campCache = null; }
 window.addEventListener('resize', rc);
 
-function escena(W, H) {
-  const d = derivat;
+const VISTES = {
+  testimoni: { nom: '👁 testimoni' },
+  frontal:   { nom: 'frontal',  yaw: 0,   pitch: 0 },
+  zenital:   { nom: 'zenital',  yaw: 0,   pitch: 89 },
+  lateral:   { nom: 'lateral',  yaw: 90,  pitch: 0 },
+  persp:     { nom: '3D',       yaw: -38, pitch: 16 },
+};
+const CAM = { vista: 'persp', yaw: -38, pitch: 16, zoom: 1 };
+const NEAR = 0.5;
+let VW = null;   // estat de la vista del fotograma actual
+
+/* Vectors */
+const v3 = (x, y, z) => [x, y, z];
+const add = (a, b) => [a[0] + b[0], a[1] + b[1], a[2] + b[2]];
+const sub = (a, b) => [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
+const mul = (a, k) => [a[0] * k, a[1] * k, a[2] * k];
+const dot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+const cross = (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
+const norm3 = a => { const l = Math.hypot(a[0], a[1], a[2]) || 1; return [a[0] / l, a[1] / l, a[2] / l]; };
+
+/** Centre i mida del fenomen (on mira la càmera) */
+function centreEscena() {
+  const d = derivat, r0 = anellPrincipal();
+  let c, R;
+  if (S.model === 1) { const p = fenT !== null ? F.posicioEmissors(S, fenT) : { x: S.sx_off, y: S.e_h, z: 0 }; c = v3(p.x, p.y, p.z); R = S.e_D / 2; }
+  else if (S.model === 2) { c = v3(S.sx_off, S.c_h, 0); R = S.c_D / 2; }
+  else if (r0) { c = v3(r0.x, r0.y, r0.z); R = r0.ev.R; }
+  else { const src = d.fs[d.iMain]; c = v3(src.x, src.y, 0); R = d.an.es_forma ? d.an.R : Math.max(S.D_ap, 1); }
   const linies = S.vmt > 0 || S.vcat > 0;
-  const R = S.model === 1 ? S.e_D / 2 : S.model === 2 ? S.c_D / 2 : (d.an.es_forma ? d.an.R : 0);
-  const xspan = Math.max(S.a_riu / 2 + 2, linies && S.lin_or === 1 ? S.sl / 2 + 8 : 0, S.so / 2 + Math.abs(S.sx_off) + 2, R * 2.2, 3);
-  let ymax = Math.max(linies ? Math.max(S.hmt, S.hcat) + 6 : 0, S.h_pont + 4, (S.model === 1 ? S.e_h : S.model === 2 ? S.c_h : S.h_src) + R * 1.8, 4);
-  const r0 = anellPrincipal();
-  if (r0) ymax = Math.max(ymax, Math.min(r0.y, 150) + r0.ev.R * 1.5 + 1);
-  if (VIS.n && d.hN < 150) ymax = Math.max(ymax, d.hN + 5);
-  ymax = Math.min(ymax * 1.08, 400);
-  const pxM = Math.min(W / (2 * xspan), (H - 34 * DPR) / ymax);
-  const ox = W / 2, oy = H - 24 * DPR;
-  return { pxM, ox, oy, X: x => ox + x * pxM, Y: y => oy - y * pxM, ymax, xspan };
+  const radi = Math.max(R * 1.8, S.so / 2 + Math.abs(S.sx_off) + 2, S.a_riu / 2 + 2, linies ? S.sl / 2 + 4 : 0, c[1] * 0.75, 6);
+  return { c, R, radi };
 }
 
-function dibuixaCamp(W, H, sc) {
-  const step = Math.round(9 * DPR);
-  if (!campCache || campCache.W !== W || campCache.H !== H) {
-    const off = document.createElement('canvas'); off.width = W; off.height = H;
-    const o = off.getContext('2d');
-    const Ebd0 = F.K.ETD_CRIT * F.nDens(F.pAtm(S), F.Tk(S));
-    for (let py = 0; py < sc.oy; py += step) for (let px = 0; px < W; px += step) {
-      const x = (px + step / 2 - sc.ox) / sc.pxM, y = (sc.oy - py - step / 2) / sc.pxM;
-      const l = Math.log10(Math.max(F.campEPic(S, x, y) / Ebd0, 1e-7));
-      const t = Math.max(0, Math.min(1, (l + 6) / 6));
-      if (t <= 0) continue;
-      o.fillStyle = `rgba(${Math.round(80 + 175 * t)},${Math.round(60 + 60 * t)},${Math.round(160 - 140 * t)},${0.06 + 0.32 * t})`;
-      o.fillRect(px, py, step, step);
-    }
-    campCache = { W, H, img: off };
+/** Prepara la càmera del fotograma */
+function preparaVista(W, H) {
+  const ce = centreEscena();
+  let pos, target = ce.c, fov;
+  if (CAM.vista === 'testimoni') {
+    pos = v3(0, S.h_pont + 1.6, -S.d_obs);
+    const semi = Math.max(ce.R * 1.5, Math.max(S.hmt, S.hcat, ce.c[1]) * 0.6, 8) / CAM.zoom;
+    fov = 2 * Math.atan(semi / Math.max(S.d_obs, 1));
+  } else {
+    const yaw = CAM.yaw * Math.PI / 180, pit = CAM.pitch * Math.PI / 180;
+    const dir = v3(Math.sin(yaw) * Math.cos(pit), Math.sin(pit), -Math.cos(yaw) * Math.cos(pit));
+    const ortho = CAM.vista === 'frontal' || CAM.vista === 'zenital' || CAM.vista === 'lateral';
+    fov = ortho ? 6 * Math.PI / 180 : 50 * Math.PI / 180;       // les vistes planes gairebé ortogràfiques
+    const dist = ce.radi * 1.25 / Math.tan(fov / 2) / CAM.zoom;
+    pos = add(target, mul(dir, dist));
   }
-  cx.drawImage(campCache.img, 0, 0);
+  const fw = norm3(sub(target, pos));
+  let rt = cross(v3(0, 1, 0), fw);
+  if (Math.hypot(...rt) < 1e-6) rt = v3(1, 0, 0);
+  rt = norm3(rt);
+  const up = cross(fw, rt);
+  const foc = (H / 2) / Math.tan(fov / 2);
+  VW = { pos, fw, rt, up, foc, W, H, ce, fov };
+  return VW;
+}
+function aCam(p) { const d = sub(p, VW.pos); return [dot(d, VW.rt), dot(d, VW.up), dot(d, VW.fw)]; }
+function deCam(c) { return { x: VW.W / 2 + c[0] * VW.foc / c[2], y: VW.H / 2 - c[1] * VW.foc / c[2], s: VW.foc / c[2], z: c[2] }; }
+/** Projecta un punt; null si és darrere la càmera */
+function P(p) { const c = aCam(p); return c[2] < NEAR ? null : deCam(c); }
+/** Segment retallat al pla proper */
+function segment(a, b) {
+  let A = aCam(a), B = aCam(b);
+  if (A[2] < NEAR && B[2] < NEAR) return null;
+  if (A[2] < NEAR) { const t = (NEAR - A[2]) / (B[2] - A[2]); A = add(A, mul(sub(B, A), t)); }
+  else if (B[2] < NEAR) { const t = (NEAR - B[2]) / (A[2] - B[2]); B = add(B, mul(sub(A, B), t)); }
+  return [deCam(A), deCam(B)];
+}
+function linia(a, b, estil, amplada, guions) {
+  const s_ = segment(a, b); if (!s_) return;
+  cx.strokeStyle = estil; cx.lineWidth = amplada; if (guions) cx.setLineDash(guions);
+  cx.beginPath(); cx.moveTo(s_[0].x, s_[0].y); cx.lineTo(s_[1].x, s_[1].y); cx.stroke();
+  if (guions) cx.setLineDash([]);
+}
+function polilinia(punts, estil, amplada, guions, tancada) {
+  for (let i = 0; i < punts.length - 1 + (tancada ? 1 : 0); i++) linia(punts[i], punts[(i + 1) % punts.length], estil, amplada, guions);
+}
+function poligon(punts, farciment) {
+  const ps = punts.map(P); if (ps.some(p => !p)) return;
+  cx.fillStyle = farciment; cx.beginPath(); cx.moveTo(ps[0].x, ps[0].y);
+  for (let i = 1; i < ps.length; i++) cx.lineTo(ps[i].x, ps[i].y);
+  cx.closePath(); cx.fill();
+}
+function brillantor(p, radiM, color, alpha, minPx) {
+  const q = P(p); if (!q) return;
+  const r = Math.max(radiM * q.s, minPx || 3 * DPR);
+  const g = cx.createRadialGradient(q.x, q.y, 0, q.x, q.y, r);
+  g.addColorStop(0, `rgba(255,245,215,${alpha})`); g.addColorStop(0.35, `rgba(${color},${alpha * 0.7})`); g.addColorStop(1, `rgba(${color},0)`);
+  cx.fillStyle = g; cx.beginPath(); cx.arc(q.x, q.y, r, 0, 2 * Math.PI); cx.fill();
+}
+function text3(p, txt, color, dy, alinea, negreta) {
+  const q = P(p); if (!q || !VIS.lb) return;
+  cx.font = `${negreta ? 'bold ' : ''}${(negreta ? 10 : 9) * DPR}px sans-serif`;
+  cx.fillStyle = color; cx.textAlign = alinea || 'center';
+  cx.fillText(txt, q.x, q.y + (dy || 0) * DPR);
+}
+/**
+ * Cinta (tub vist en pantalla): punts del centre en 3D i semiamplada en metres.
+ * Es construeix en espai de pantalla amb la normal de la tangent projectada.
+ */
+function cinta(centres, semiM, color) {
+  const ps = centres.map(P);
+  if (ps.some(p => !p)) return;
+  const ext = [], int = [];
+  for (let i = 0; i < ps.length; i++) {
+    const a = ps[Math.max(0, i - 1)], b = ps[Math.min(ps.length - 1, i + 1)];
+    let tx = b.x - a.x, ty = b.y - a.y; const l = Math.hypot(tx, ty) || 1; tx /= l; ty /= l;
+    const h = Math.max(semiM[i] * ps[i].s, 0.6 * DPR);
+    ext.push([ps[i].x - ty * h, ps[i].y + tx * h]); int.push([ps[i].x + ty * h, ps[i].y - tx * h]);
+  }
+  cx.fillStyle = color; cx.beginPath(); cx.moveTo(ext[0][0], ext[0][1]);
+  for (const [x, y] of ext) cx.lineTo(x, y);
+  for (let i = int.length - 1; i >= 0; i--) cx.lineTo(int[i][0], int[i][1]);
+  cx.closePath(); cx.fill();
+}
+/** Base del pla de l'anell a partir de la direcció de l'eix */
+function basePla(eix) {
+  let u = cross(v3(0, 1, 0), eix);
+  if (Math.hypot(...u) < 1e-6) u = v3(1, 0, 0);
+  u = norm3(u);
+  return { u, v: cross(eix, u) };
+}
+function eixAnell() {
+  const el = S.elev * Math.PI / 180, az = S.az_eix * Math.PI / 180;
+  return v3(Math.sin(az) * Math.cos(el), Math.sin(el), Math.cos(az) * Math.cos(el));
+}
+const puntAnell = (c, b, R, phi) => add(c, add(mul(b.u, R * Math.cos(phi)), mul(b.v, R * Math.sin(phi))));
+
+/** Anell amb forma de cometa (n caps; la cua s'aprima amb factor(u)) */
+function anellCometa(c, b, R, a, n, ang, sentit, factor, color, alpha) {
+  const gap = 2 * Math.PI / n, NS = 32;
+  for (let k = 0; k < n; k++) {
+    const cap = ang + k * gap, cs = [], sm = [];
+    for (let j = 0; j <= NS; j++) { const u = j / NS; cs.push(puntAnell(c, b, R, cap - sentit * u * gap)); sm.push(a * factor(u)); }
+    cinta(cs, sm, `rgba(${color},${0.85 * alpha})`);
+    brillantor(puntAnell(c, b, R, cap), a * 1.4, color, Math.min(1, alpha * 1.1));
+  }
+}
+function anellUniforme(c, b, R, a, color, alpha, guions) {
+  const cs = [], sm = [];
+  for (let j = 0; j <= 96; j++) { cs.push(puntAnell(c, b, R, j / 96 * 2 * Math.PI)); sm.push(a); }
+  if (guions) { polilinia(cs, color, DPR, [3 * DPR, 4 * DPR]); return; }
+  cinta(cs, sm, `rgba(${color},${alpha})`);
+}
+
+/* ── Mapa del camp elèctric al pla de l'anell (z = 0) ── */
+function mapaCamp(Lx, Ymax) {
+  const nx = 36, ny = 20;
+  if (!campCache || campCache.Lx !== Lx || campCache.Ymax !== Ymax) {
+    const Ebd0 = F.K.ETD_CRIT * F.nDens(F.pAtm(S), F.Tk(S)), cel = [];
+    for (let i = 0; i < nx; i++) for (let j = 0; j < ny; j++) {
+      const x = -Lx + (i + 0.5) * 2 * Lx / nx, y = (j + 0.5) * Ymax / ny;
+      const t = Math.max(0, Math.min(1, (Math.log10(Math.max(F.campEPic(S, x, y, 0) / Ebd0, 1e-7)) + 6) / 6));
+      if (t > 0) cel.push({ i, j, c: `rgba(${Math.round(80 + 175 * t)},${Math.round(60 + 60 * t)},${Math.round(160 - 140 * t)},${0.05 + 0.3 * t})` });
+    }
+    campCache = { Lx, Ymax, cel };
+  }
+  const dx = 2 * Lx / nx, dy = Ymax / ny;
+  for (const k of campCache.cel) {
+    const x0 = -Lx + k.i * dx, y0 = k.j * dy;
+    poligon([v3(x0, y0, 0), v3(x0 + dx, y0, 0), v3(x0 + dx, y0 + dy, 0), v3(x0, y0 + dy, 0)], k.c);
+  }
 }
 
 function draw() {
   const W = cv.width, H = cv.height; if (!W || !H) return;
-  const sc = escena(W, H), d = derivat, f = DPR, sol = d.sol;
+  const d = derivat, f = DPR, sol = d.sol;
+  const vw = preparaVista(W, H), ce = vw.ce;
   cx.clearRect(0, 0, W, H);
-  // Cel: més clar de dia
+  const Lx = Math.max(ce.radi * 2.6, 60), Lz = Math.max(ce.radi * 2.6, 60);
+
+  // Cel i horitzó
   const dia = Math.max(0, Math.min(1, sol.alt / 25));
-  const g = cx.createLinearGradient(0, 0, 0, sc.oy);
+  const hor = (() => { const dh = norm3(v3(vw.fw[0], 0, vw.fw[2])); const q = P(add(vw.pos, mul(dh, 1e6))); return q ? q.y : (vw.fw[1] < 0 ? -1 : H + 1); })();
+  const g = cx.createLinearGradient(0, 0, 0, Math.max(hor, 1));
   g.addColorStop(0, `rgb(${Math.round(7 + 30 * dia)},${Math.round(16 + 60 * dia)},${Math.round(31 + 100 * dia)})`);
-  g.addColorStop(1, `rgb(${Math.round(13 + 60 * dia)},${Math.round(26 + 90 * dia)},${Math.round(44 + 120 * dia)})`);
+  g.addColorStop(1, `rgb(${Math.round(13 + 70 * dia)},${Math.round(26 + 100 * dia)},${Math.round(44 + 130 * dia)})`);
   cx.fillStyle = g; cx.fillRect(0, 0, W, H);
-  // Sol (direcció relativa a la mirada, projectada al pla de l'anell)
+  if (hor < H) { cx.fillStyle = '#14110b'; cx.fillRect(0, Math.max(hor, 0), W, H - Math.max(hor, 0)); }
+
+  // Sol
+  const dAz = (sol.az - S.az_vis) * Math.PI / 180, alt = sol.alt * Math.PI / 180;
+  const dirSol = v3(Math.sin(dAz) * Math.cos(alt), Math.sin(alt), Math.cos(dAz) * Math.cos(alt));
   if (VIS.sol && sol.alt > -2) {
-    const dAz = ((sol.az - S.az_vis + 540) % 360) - 180;
-    const dist = S.d_obs, hO = S.h_pont + 1.6;
-    if (Math.abs(dAz) < 80) {
-      const sx = sc.X(dist * Math.tan(dAz * Math.PI / 180)), sy = sc.Y(hO + dist * Math.tan(sol.alt * Math.PI / 180) / Math.cos(dAz * Math.PI / 180));
-      const gg = cx.createRadialGradient(sx, sy, 0, sx, sy, 60 * f);
+    const q = P(add(vw.pos, mul(dirSol, 1e6)));
+    if (q && q.x > -60 * f && q.x < W + 60 * f && q.y > -60 * f && q.y < H + 60 * f) {
+      const gg = cx.createRadialGradient(q.x, q.y, 0, q.x, q.y, 55 * f);
       gg.addColorStop(0, 'rgba(255,245,210,.95)'); gg.addColorStop(0.15, 'rgba(255,230,170,.5)'); gg.addColorStop(1, 'rgba(255,220,150,0)');
-      cx.fillStyle = gg; cx.beginPath(); cx.arc(sx, sy, 60 * f, 0, 2 * Math.PI); cx.fill();
-      if (VIS.lb) { cx.fillStyle = 'rgba(255,230,170,.85)'; cx.font = `${9 * f}px sans-serif`; cx.textAlign = 'center'; cx.fillText(`☀ ${sol.alt.toFixed(1)}° · ${sol.az.toFixed(0)}°`, sx, sy + 70 * f); }
-    } else if (VIS.lb) {
-      cx.fillStyle = 'rgba(255,230,170,.7)'; cx.font = `${9 * f}px sans-serif`; cx.textAlign = dAz > 0 ? 'right' : 'left';
-      cx.fillText(`☀ fora de vista (${dAz > 0 ? '→' : '←'} ${Math.abs(dAz).toFixed(0)}°)`, dAz > 0 ? W - 8 * f : 8 * f, 40 * f);
+      cx.fillStyle = gg; cx.beginPath(); cx.arc(q.x, q.y, 55 * f, 0, 2 * Math.PI); cx.fill();
+      if (VIS.lb) { cx.fillStyle = 'rgba(255,230,170,.85)'; cx.font = `${9 * f}px sans-serif`; cx.textAlign = 'center'; cx.fillText(`☀ ${sol.alt.toFixed(1)}° · ${sol.az.toFixed(0)}°`, q.x, q.y + 66 * f); }
     }
   }
-  if (VIS.e && (S.vmt > 0 || S.vcat > 0)) dibuixaCamp(W, H, sc);
-  // Riu i pont
-  const rh = (S.a_riu / 2) * sc.pxM;
-  cx.fillStyle = '#16120c'; cx.fillRect(0, sc.oy, W, H - sc.oy);
-  cx.fillStyle = 'rgba(25,70,140,.6)'; cx.fillRect(sc.ox - rh, sc.oy, 2 * rh, H - sc.oy);
-  cx.strokeStyle = 'rgba(60,150,240,.8)'; cx.lineWidth = 1.5 * f;
-  cx.beginPath(); cx.moveTo(sc.ox - rh, sc.oy); cx.lineTo(sc.ox + rh, sc.oy); cx.stroke();
-  const yb = sc.Y(S.h_pont);
-  cx.fillStyle = 'rgba(120,120,110,.35)'; cx.fillRect(sc.ox - rh - 20 * f, yb, 2 * rh + 40 * f, 4 * f);
-  cx.font = `${9 * f}px sans-serif`; cx.textAlign = 'left';
-  if (VIS.lb) { cx.fillStyle = 'rgba(160,160,140,.7)'; cx.fillText('pont ' + S.h_pont.toFixed(1) + ' m', Math.max(4 * f, sc.ox - rh - 18 * f), yb - 4 * f); }
-  // Testimoni (sobre el pont, mirant cap a l'anell des de d_obs metres)
-  {
-    const xt = sc.X(0), yt = sc.Y(S.h_pont + 1.6);
-    cx.strokeStyle = 'rgba(230,230,210,.85)'; cx.lineWidth = 1.5 * f;
-    cx.beginPath(); cx.arc(xt, yt - 3 * f, 2.5 * f, 0, 2 * Math.PI); cx.stroke();
-    cx.beginPath(); cx.moveTo(xt, yt - 0.5 * f); cx.lineTo(xt, sc.Y(S.h_pont)); cx.stroke();
-    if (VIS.lb) { cx.fillStyle = 'rgba(230,230,210,.85)'; cx.textAlign = 'right'; cx.fillText(`👁 testimoni (a ${S.d_obs.toFixed(0)} m)`, xt - 8 * f, yt - 2 * f); }
+
+  // Terra: quadrícula i riu (el riu va al llarg de Z)
+  const pas = Math.pow(10, Math.floor(Math.log10(Math.max(ce.radi / 2, 1))));
+  const pasG = ce.radi / pas > 5 ? pas * 5 : ce.radi / pas > 2 ? pas * 2 : pas;
+  const nG = Math.ceil(Lx / pasG);
+  for (let i = -nG; i <= nG; i++) {
+    linia(v3(i * pasG, 0, -Lz), v3(i * pasG, 0, Lz), 'rgba(120,120,100,.13)', f);
+    linia(v3(-Lx, 0, i * pasG), v3(Lx, 0, i * pasG), 'rgba(120,120,100,.13)', f);
   }
-  // Nodes acústics
+  const ar = S.a_riu / 2, NZ = 12;
+  for (let k = 0; k < NZ; k++) {
+    const z0 = -Lz + k * 2 * Lz / NZ, z1 = z0 + 2 * Lz / NZ;
+    poligon([v3(-ar, 0, z0), v3(ar, 0, z0), v3(ar, 0, z1), v3(-ar, 0, z1)], 'rgba(25,70,140,.55)');
+  }
+  linia(v3(-ar, 0, -Lz), v3(-ar, 0, Lz), 'rgba(60,150,240,.6)', 1.2 * f);
+  linia(v3(ar, 0, -Lz), v3(ar, 0, Lz), 'rgba(60,150,240,.6)', 1.2 * f);
+  text3(v3(ar, 0, Lz * 0.6), `riu ${S.a_riu.toFixed(0)} m`, 'rgba(100,170,230,.8)', 12);
+
+  // Mapa del camp elèctric al pla de l'anell
+  const Ymax = Math.max(S.hmt, S.hcat, ce.c[1] + ce.R) * 1.3;
+  if (VIS.e && (S.vmt > 0 || S.vcat > 0)) mapaCamp(Lx, Ymax);
+
+  // Nodes acústics (plans horitzontals)
   if (VIS.n) {
-    [[d.hN, 'node de pressió λ/4', 'rgba(130,110,230,.55)'], [F.hNodeVelocitat(S, S.f1), 'trampa d\'aire calent λ/2', 'rgba(80,200,140,.45)']].forEach(([h, l, cc]) => {
-      if (h > sc.ymax) return;
-      const y = sc.Y(h);
-      cx.strokeStyle = cc; cx.lineWidth = f; cx.setLineDash([4 * f, 4 * f]);
-      cx.beginPath(); cx.moveTo(20 * f, y); cx.lineTo(W - 20 * f, y); cx.stroke(); cx.setLineDash([]);
-      if (VIS.lb) { cx.fillStyle = cc; cx.textAlign = 'right'; cx.fillText(l + ' · ' + h.toFixed(1) + ' m', W - 22 * f, y - 3 * f); }
+    [[d.hN, 'node de pressió λ/4', 'rgba(130,110,230,.55)'], [F.hNodeVelocitat(S, S.f1), 'trampa λ/2', 'rgba(80,200,140,.45)']].forEach(([h, l, cc]) => {
+      if (h > Ymax * 3) return;
+      linia(v3(-Lx, h, 0), v3(Lx, h, 0), cc, f, [4 * f, 4 * f]);
+      text3(v3(Lx, h, 0), `${l} · ${h.toFixed(1)} m`, cc, -3, 'right');
     });
   }
-  // Fronts d'ona
-  if (VIS.w && sigOn) {
-    d.fs.forEach((src, i) => {
-      if (src.L <= 0) return;
-      const lam = F.lambda(S, src.f), cs = F.cSo(S);
-      if (lam * sc.pxM < 3) return;
-      const a = Math.min(0.5, 0.08 + src.L / 400), cc = i === 0 ? '90,200,110' : '230,140,40';
-      const maxR = Math.hypot(sc.xspan, sc.ymax) * 1.2, off = (cs * simT) % lam;
-      for (let rr = off; rr < maxR; rr += lam) {
-        if (rr * sc.pxM < 2) continue;
-        cx.strokeStyle = `rgba(${cc},${a * (1 - rr / maxR)})`; cx.lineWidth = f;
-        cx.beginPath(); cx.arc(sc.X(src.x), sc.Y(src.y), rr * sc.pxM, Math.PI, 2 * Math.PI); cx.stroke();
-      }
-    });
-  }
-  // Emissors amb obertura (model A)
-  d.fs.forEach((src, i) => {
-    const w = Math.max(S.D_ap * sc.pxM, 5 * f), x = sc.X(src.x), y = sc.Y(src.y);
-    cx.strokeStyle = 'rgba(140,140,118,.3)'; cx.lineWidth = f;
-    if (src.y > S.h_pont + 0.5) { cx.beginPath(); cx.moveTo(x, sc.Y(S.h_pont)); cx.lineTo(x, y); cx.stroke(); }
-    cx.fillStyle = src.L > 0 ? (i === 0 ? '#3aa050' : '#c07020') : '#333';
-    cx.fillRect(x - w / 2, y - 3 * f, w, 6 * f);
-    if (VIS.lb) { cx.fillStyle = 'rgba(200,200,200,.75)'; cx.textAlign = 'center'; cx.fillText((i ? 'S₂ ' : 'S₁ ') + (src.f < 1 ? src.f.toFixed(3) : src.f.toFixed(2)) + ' Hz · ' + src.L.toFixed(0) + ' dB · D ' + S.D_ap.toFixed(1) + ' m', x, y + (16 + 11 * i) * f); }
-  });
+
   // Línies elèctriques
   F.conductors(S).forEach((cd, i) => {
     const on = emOn && cd.V > 0, cr = d.corona[i];
     const col_ = on ? (i === 0 ? '216,90,48' : '55,138,221') : '110,110,110';
-    if (S.lin_or !== 1) {
-      // Paral·leles al pla de l'anell: travessen tota la vista, com el pont
-      let y = sc.Y(cd.y);
-      if (y < 14 * f) {
-        const xm = W - 12 * f, ym = 64 * f + i * 26 * f;
-        cx.fillStyle = 'rgba(200,180,160,.75)';
-        cx.beginPath(); cx.moveTo(xm, ym - 6 * f); cx.lineTo(xm - 5 * f, ym + 2 * f); cx.lineTo(xm + 5 * f, ym + 2 * f); cx.closePath(); cx.fill();
-        cx.textAlign = 'right';
-        if (VIS.lb) cx.fillText(`${cd.nom} ${(i ? S.vcat : S.vmt).toFixed(0)} kV · ${cd.y.toFixed(1)} m (fora de vista)`, xm + 4 * f, ym + 14 * f);
-        return;
-      }
-      // Pals als extrems
-      cx.strokeStyle = 'rgba(140,140,118,.35)'; cx.lineWidth = 2 * f;
-      for (const xp of [22 * f + i * 10 * f, W - 22 * f - i * 10 * f]) { cx.beginPath(); cx.moveTo(xp, sc.oy); cx.lineTo(xp, y); cx.stroke(); }
-      if (on && cr.actiu) {
-        cx.strokeStyle = 'rgba(170,140,255,.35)'; cx.lineWidth = 10 * f;
-        cx.beginPath(); cx.moveTo(22 * f, y); cx.lineTo(W - 22 * f, y); cx.stroke();
-      }
-      cx.strokeStyle = `rgba(${col_},${on ? 0.85 : 0.5})`; cx.lineWidth = 1.8 * f; cx.setLineDash([10 * f, 5 * f]);
-      cx.beginPath(); cx.moveTo(22 * f, y); cx.lineTo(W - 22 * f, y); cx.stroke(); cx.setLineDash([]);
-      if (VIS.lb) {
-        const zc = (i === 0 ? -1 : 1) * S.sl / 2;
-        cx.fillStyle = `rgba(${col_},.9)`; cx.textAlign = 'left';
-        cx.fillText(`${cd.nom} ${(i ? S.vcat : S.vmt).toFixed(0)} kV · ${cd.y.toFixed(1)} m · ${zc < 0 ? Math.abs(zc).toFixed(1) + ' m més a prop' : zc > 0 ? zc.toFixed(1) + ' m més lluny' : 'al pla de l\'anell'}${on && cr.actiu ? ' · ⚡corona' : ''}`, 26 * f + i * 10 * f, y + (i === 0 ? -4 : 11) * f);
-      }
-      return;
+    const paral = S.lin_or !== 1;
+    const A = paral ? v3(-Lx, cd.y, cd.x) : v3(cd.x, cd.y, -Lz), B = paral ? v3(Lx, cd.y, cd.x) : v3(cd.x, cd.y, Lz);
+    const nPals = 4;
+    for (let k = 0; k <= nPals; k++) {
+      const t = k / nPals, p = add(A, mul(sub(B, A), t));
+      linia(v3(p[0], 0, p[2]), p, 'rgba(150,150,128,.4)', 1.6 * f);
     }
-    let x = sc.X(cd.x), y = sc.Y(cd.y);
-    // Fora del camp de visió (p. ex. al canó de taula): marca a la vora amb fletxa
-    if (y < 14 * f || x < 6 * f || x > W - 6 * f) {
-      x = W - 12 * f; y = 64 * f + i * 26 * f;   // a la dreta, lliure del panell de comparació
-      cx.fillStyle = 'rgba(200,180,160,.75)';
-      cx.beginPath(); cx.moveTo(x, y - 6 * f); cx.lineTo(x - 5 * f, y + 2 * f); cx.lineTo(x + 5 * f, y + 2 * f); cx.closePath(); cx.fill();
-      cx.textAlign = x < W / 2 ? 'left' : 'right';
-      if (VIS.lb) cx.fillText(`${cd.nom} ${(i ? S.vcat : S.vmt).toFixed(0)} kV · ${cd.y.toFixed(1)} m (fora de vista)`, x + (x < W / 2 ? -4 : 4) * f, y + 14 * f);
-      return;
-    }
-    cx.strokeStyle = 'rgba(140,140,118,.25)'; cx.lineWidth = f;
-    cx.beginPath(); cx.moveTo(x, sc.oy); cx.lineTo(x, y); cx.stroke();
-    if (on && cr.actiu) {
-      const gg = cx.createRadialGradient(x, y, 0, x, y, 14 * f);
-      gg.addColorStop(0, 'rgba(170,140,255,.9)'); gg.addColorStop(1, 'rgba(120,80,255,0)');
-      cx.fillStyle = gg; cx.beginPath(); cx.arc(x, y, 14 * f, 0, 2 * Math.PI); cx.fill();
-    }
-    cx.fillStyle = on ? (i === 0 ? '#d85a30' : '#378add') : '#444';
-    cx.beginPath(); cx.arc(x, y, 4 * f, 0, 2 * Math.PI); cx.fill();
-    if (VIS.lb) { cx.fillStyle = 'rgba(220,200,180,.8)'; cx.textAlign = 'center'; cx.fillText(cd.nom + ' ' + (i ? S.vcat : S.vmt).toFixed(0) + ' kV · ' + cd.y.toFixed(1) + ' m' + (on && cr.actiu ? ' ⚡corona' : ''), x, y - 8 * f); }
+    if (on && cr.actiu) linia(A, B, 'rgba(170,140,255,.3)', 9 * f);
+    linia(A, B, `rgba(${col_},${on ? 0.9 : 0.5})`, 1.8 * f, [10 * f, 5 * f]);
+    const et = paral ? v3(-Lx * 0.85, cd.y, cd.x) : v3(cd.x, cd.y, -Lz * 0.85);
+    text3(et, `${cd.nom} ${(i ? S.vcat : S.vmt).toFixed(0)} kV · ${cd.y.toFixed(1)} m${on && cr.actiu ? ' · ⚡corona' : ''}`, `rgba(${col_},.95)`, -6, 'left');
   });
-  // Vent (component lateral)
-  if (VIS.lb && S.W > 0) {
-    const w = F.ventXZ(S), len = Math.min(40, 10 + S.W * 4) * f, x0 = W - 70 * f, y0 = 128 * f;
-    const ax = w.x / Math.max(F.vent(S), 1e-9);
-    cx.strokeStyle = 'rgba(180,200,220,.7)'; cx.lineWidth = 1.5 * f;
-    cx.beginPath(); cx.moveTo(x0 - ax * len / 2, y0); cx.lineTo(x0 + ax * len / 2, y0); cx.stroke();
-    cx.fillStyle = 'rgba(180,200,220,.8)'; cx.textAlign = 'center';
-    cx.fillText(`vent ${S.W.toFixed(1)} km/h · ${S.dirW.toFixed(0)}°`, x0, y0 + 14 * f);
-  }
-  // Anells: el·lipse segons l'orientació de l'eix respecte a la mirada
-  const el = S.elev * Math.PI / 180, az = S.az_eix * Math.PI / 180;
-  const pX = Math.sin(az) * Math.cos(el), pY = Math.sin(el), menor = Math.abs(Math.cos(az) * Math.cos(el));
-  const rotEl = Math.hypot(pX, pY) > 1e-6 ? Math.atan2(-pX, -pY) : 0;
-  for (const r of rings) {
-    const v = visibilitat(r), ev = r.ev;
-    const x = sc.X(r.x), y = sc.Y(r.y), rx = ev.R * sc.pxM, ry = Math.max(ev.R * menor, ev.R * 0.05) * sc.pxM;
-    const lw = Math.max(2 * ev.a * sc.pxM, 1.5 * f);
-    if (rx < 1) continue;
-    cx.save(); cx.translate(x, y); cx.rotate(rotEl);
-    const n = Math.min(r.an.nodes, 24);
-    const rot = F.rotacioNodes(S, r.an, ev), cua = F.cuaNodes(S, r.an, ev, rot);
-    if (v.visible && !ev.disp && n > 1 && isFinite(cua.dtNodes)) {
-      // Forma de cometa: darrere de cada node el tub té el gruix del node i
-      // s'aprima (matèria més vella, més dispersa) fins al node següent.
-      const gap = 2 * Math.PI / n, sg = rot.om >= 0 ? 1 : -1, NS = 40, k_ = ry / rx;
-      cx.fillStyle = `rgba(${v.col},${0.85 * v.alpha})`;
-      for (let k = 0; k < n; k++) {
-        const cap = -(r.ang + k * gap), ext = [], int = [];
-        for (let j = 0; j <= NS; j++) {
-          const u = j / NS, th = cap + sg * u * gap, h = Math.max(lw * cua.factor(u), 1 * f) / 2;
-          ext.push([(rx + h) * Math.cos(th), (ry + h * k_) * Math.sin(th)]);
-          int.push([(rx - h) * Math.cos(th), (ry - h * k_) * Math.sin(th)]);
-        }
-        cx.beginPath(); cx.moveTo(ext[0][0], ext[0][1]);
-        for (const [px_, py_] of ext) cx.lineTo(px_, py_);
-        for (let j = int.length - 1; j >= 0; j--) cx.lineTo(int[j][0], int[j][1]);
-        cx.closePath(); cx.fill();
+
+  // Fronts d'ona (esferes vistes com a cercles)
+  if (VIS.w && sigOn) {
+    d.fs.forEach((src, i) => {
+      if (src.L <= 0) return;
+      const q = P(v3(src.x, src.y, 0)); if (!q) return;
+      const lam = F.lambda(S, src.f), cs = F.cSo(S);
+      if (lam * q.s < 3) return;
+      const a = Math.min(0.45, 0.08 + src.L / 400), cc = i === 0 ? '90,200,110' : '230,140,40';
+      const maxR = ce.radi * 3, off = (cs * simT) % lam;
+      for (let rr = off; rr < maxR; rr += lam) {
+        if (rr * q.s < 2) continue;
+        cx.strokeStyle = `rgba(${cc},${a * (1 - rr / maxR)})`; cx.lineWidth = f;
+        cx.beginPath(); cx.arc(q.x, q.y, rr * q.s, 0, 2 * Math.PI); cx.stroke();
       }
-    } else if (v.visible) {
-      cx.strokeStyle = `rgba(${v.col},${0.18 * v.alpha})`; cx.lineWidth = lw * (ev.disp ? 2.5 : 1.8);
-      cx.beginPath(); cx.ellipse(0, 0, rx, ry, 0, 0, 2 * Math.PI); cx.stroke();
-      cx.strokeStyle = `rgba(${v.col},${0.8 * v.alpha})`; cx.lineWidth = lw;
-      cx.beginPath(); cx.ellipse(0, 0, rx, ry, 0, 0, 2 * Math.PI); cx.stroke();
-    } else {
-      cx.strokeStyle = 'rgba(160,150,220,.35)'; cx.lineWidth = f; cx.setLineDash([3 * f, 4 * f]);
-      cx.beginPath(); cx.ellipse(0, 0, rx, ry, 0, 0, 2 * Math.PI); cx.stroke(); cx.setLineDash([]);
-    }
-    // Nodes: el patró gira amb Ω = Ω_Kelvin + Ω_swirl (positiu = antihorari a la pantalla)
-    if (!ev.disp) for (let k = 0; k < n; k++) {
-      const ang = -(r.ang + k * 2 * Math.PI / n);
-      const nx = Math.cos(ang) * rx, ny = Math.sin(ang) * ry;
-      const gl = Math.max(lw * 0.7, 3 * f);
-      if (v.visible) {
-        const gg = cx.createRadialGradient(nx, ny, 0, nx, ny, gl);
-        gg.addColorStop(0, `rgba(255,240,200,${Math.min(1, v.alpha * 1.1)})`); gg.addColorStop(1, `rgba(${v.col},0)`);
-        cx.fillStyle = gg; cx.beginPath(); cx.arc(nx, ny, gl, 0, 2 * Math.PI); cx.fill();
-      } else { cx.fillStyle = 'rgba(170,160,230,.35)'; cx.beginPath(); cx.arc(nx, ny, 2.5 * f, 0, 2 * Math.PI); cx.fill(); }
-    }
-    cx.restore();
+    });
   }
-  if (S.model === 1) dibuixaEmissors(sc, f);
-  if (S.model === 2) dibuixaPatro(sc, f);
-  const r0 = anellPrincipal();
-  if (r0 && VIS.lb) {
-    const v = visibilitat(r0);
-    cx.fillStyle = v.visible ? `rgba(${v.col},.95)` : 'rgba(170,160,230,.75)';
-    cx.textAlign = 'center'; cx.font = `bold ${10 * f}px sans-serif`;
-    cx.fillText(`Ø ${(2 * r0.ev.R).toFixed(1)} m · ${v.mec} · C = ${v.ap.C.toFixed(2)} · ${(2 * r0.ev.R / v.g.dist * 180 / Math.PI).toFixed(1)}° aparents`,
-      sc.X(r0.x), sc.Y(r0.y + r0.ev.R * Math.max(menor, 0.05)) - 8 * f);
-    cx.font = `${9 * f}px sans-serif`;
+
+  // Fonts de so S₁ i S₂: pal i obertura (disc perpendicular a l'eix d'emissió)
+  const eix = eixAnell(), bE = basePla(eix);
+  d.fs.forEach((src, i) => {
+    const c = v3(src.x, src.y, 0), col_ = src.L > 0 ? (i === 0 ? '58,160,80' : '192,112,32') : '70,70,70';
+    linia(v3(src.x, 0, 0), c, 'rgba(150,150,128,.45)', 1.5 * f);
+    const cerc = []; for (let j = 0; j <= 24; j++) cerc.push(puntAnell(c, bE, Math.max(S.D_ap / 2, 0.05), j / 24 * 2 * Math.PI));
+    const qs = cerc.map(P);
+    if (qs.every(Boolean)) {
+      cx.fillStyle = `rgba(${col_},.22)`; cx.beginPath(); cx.moveTo(qs[0].x, qs[0].y); qs.forEach(q => cx.lineTo(q.x, q.y)); cx.closePath(); cx.fill();
+      cx.strokeStyle = `rgb(${col_})`; cx.lineWidth = Math.max(1.5 * f, 0); cx.stroke();
+    }
+    brillantor(c, 0, col_, 0.9, 3.5 * f);
+    text3(c, `${i ? 'S₂' : 'S₁'} ${src.f < 1 ? src.f.toFixed(3) : src.f.toFixed(2)} Hz · ${src.L.toFixed(0)} dB`, 'rgba(210,210,210,.8)', 16 + 11 * i);
+  });
+
+  // Testimoni i línia de visió
+  const ull = v3(0, S.h_pont + 1.6, -S.d_obs);
+  if (CAM.vista !== 'testimoni') {
+    linia(ull, ce.c, 'rgba(230,230,210,.25)', f, [2 * f, 5 * f]);
+    linia(v3(-ar - 15, S.h_pont, -S.d_obs), v3(ar + 15, S.h_pont, -S.d_obs), 'rgba(140,140,120,.6)', 3 * f);
+    brillantor(ull, 0, '230,230,210', 0.9, 3 * f);
+    text3(ull, `👁 testimoni a ${S.d_obs.toFixed(0)} m (pont)`, 'rgba(230,230,210,.85)', -8);
+  }
+
+  // Vent (fletxa sobre el fenomen)
+  if (S.W > 0) {
+    const w = F.ventXZ(S), u = norm3(v3(w.x, 0, w.z)), base = add(ce.c, v3(-ce.R * 1.4, ce.R * 1.1, 0));
+    const llarg = Math.max(ce.R * 0.6, 3), punta = add(base, mul(u, llarg));
+    linia(base, punta, 'rgba(180,200,220,.8)', 1.8 * f);
+    const lat = norm3(cross(v3(0, 1, 0), u));
+    linia(punta, add(punta, add(mul(u, -llarg * 0.25), mul(lat, llarg * 0.15))), 'rgba(180,200,220,.8)', 1.8 * f);
+    linia(punta, add(punta, add(mul(u, -llarg * 0.25), mul(lat, -llarg * 0.15))), 'rgba(180,200,220,.8)', 1.8 * f);
+    text3(base, `vent ${S.W.toFixed(1)} km/h`, 'rgba(180,200,220,.85)', 12);
+  }
+
+  // Fenomen
+  if (S.model === 0) dibuixaVortex(f);
+  if (S.model === 1) dibuixaEmissors(f);
+  if (S.model === 2) dibuixaPatro(f);
+
+  // Eixos (cantonada inferior esquerra)
+  {
+    const o = { x: 34 * f, y: H - 40 * f }, Lg = 20 * f;
+    [[v3(1, 0, 0), 'X línies', '230,120,90'], [v3(0, 1, 0), 'Y', '150,220,150'], [v3(0, 0, 1), 'Z', '120,170,255']].forEach(([e, n, c]) => {
+      const sx = dot(e, vw.rt), sy = dot(e, vw.up);
+      cx.strokeStyle = `rgb(${c})`; cx.lineWidth = 2 * f;
+      cx.beginPath(); cx.moveTo(o.x, o.y); cx.lineTo(o.x + sx * Lg, o.y - sy * Lg); cx.stroke();
+      cx.fillStyle = `rgb(${c})`; cx.font = `${8 * f}px sans-serif`; cx.textAlign = 'center';
+      cx.fillText(n, o.x + sx * (Lg + 8 * f), o.y - sy * (Lg + 8 * f) + 3 * f);
+    });
   }
   if (VIS.lb) {
-    cx.fillStyle = 'rgba(160,150,220,.75)'; cx.textAlign = 'left'; cx.font = `${9 * f}px sans-serif`;
-    cx.fillText(W / f > 700 ? `t = ${fmtT(simT)} · anells vius ${rings.length} · escala ${(50 * f / sc.pxM).toFixed(1)} m / 50 px · vista frontal des del pont`
-      : `t = ${fmtT(simT)} · ${(50 * f / sc.pxM).toFixed(1)} m / 50 px`, 8 * f, H - 6 * f);
-    if (VIS.e && (S.vmt > 0 || S.vcat > 0) && W / f > 700) { cx.textAlign = 'right'; cx.fillText('fons: log₁₀(E/E_ruptura) de −6 a 0', W - 8 * f, H - 6 * f); }
+    cx.fillStyle = 'rgba(160,150,220,.75)'; cx.textAlign = 'right'; cx.font = `${9 * f}px sans-serif`;
+    cx.fillText(W / f > 700 ? `t = ${fmtT(simT)} · vista ${VISTES[CAM.vista] ? VISTES[CAM.vista].nom : 'lliure'} · arrossega per girar, roda per apropar, doble clic per restablir`
+      : `t = ${fmtT(simT)} · ${VISTES[CAM.vista] ? VISTES[CAM.vista].nom : 'lliure'}`, W - 8 * f, H - 6 * f);
   }
 }
 
-/** Model C: via ondulada (portadora) i nodes de boira que hi corren */
-function dibuixaPatro(sc, f) {
-  const a = avaluacio && avaluacio.patro ? avaluacio : F.avaluaPatro(S), p = a.p;
-  const x = sc.X(S.sx_off), y = sc.Y(S.c_h), rx = p.R * sc.pxM, t = fenT || 0;
-  const ang0 = 2 * Math.PI * t / S.c_T;
-  // Via ondulada: la portadora vista com a ondulació radial
-  const ondes = Math.max(4, Math.round(2 * Math.PI * p.R / (F.cSo(S) / S.c_fc)));
-  cx.strokeStyle = sigOn ? 'rgba(120,180,255,.35)' : 'rgba(120,180,255,.18)'; cx.lineWidth = f;
-  cx.beginPath();
-  for (let j = 0; j <= 360; j++) {
-    const th = j / 360 * 2 * Math.PI, rr = rx * (1 + 0.025 * Math.sin(ondes * th - (sigOn ? 2 * Math.PI * S.c_fc * t * 0.05 : 0)));
-    const px_ = x + rr * Math.cos(th), py_ = y + rr * Math.sin(th);
-    j ? cx.lineTo(px_, py_) : cx.moveTo(px_, py_);
-  }
-  cx.stroke();
-  if (!sigOn) return;
-  const visible = p.condensa && a.C > 0.02;
-  const lw = Math.max(S.c_cap * sc.pxM, 2 * f), gap = 2 * Math.PI / p.m, NS = 40;
-  const col_ = visible ? '240,244,248' : '150,170,255';
-  const alpha = visible ? Math.min(1, Math.max(0.2, a.C)) : 0.35;
-  cx.save(); cx.translate(x, y);
-  for (let k = 0; k < p.m; k++) {
-    const cap = -(ang0 + k * gap);
-    if (visible) {
-      const ext = [], int = [];
-      for (let j = 0; j <= NS; j++) {
-        const u = j / NS, th = cap + u * gap, h = Math.max(lw * p.factor(u), 0.5 * f) / 2;
-        ext.push([(rx + h) * Math.cos(th), (rx + h) * Math.sin(th)]); int.push([(rx - h) * Math.cos(th), (rx - h) * Math.sin(th)]);
-      }
-      cx.fillStyle = `rgba(${col_},${0.8 * alpha})`;
-      cx.beginPath(); cx.moveTo(ext[0][0], ext[0][1]);
-      for (const [u_, v_] of ext) cx.lineTo(u_, v_);
-      for (let j = int.length - 1; j >= 0; j--) cx.lineTo(int[j][0], int[j][1]);
-      cx.closePath(); cx.fill();
+/** Model A: anells de vòrtex */
+function dibuixaVortex(f) {
+  const eix = eixAnell(), b = basePla(eix);
+  for (const r of rings) {
+    const v = visibilitat(r), ev = r.ev, c = v3(r.x, r.y, r.z);
+    const n = Math.min(r.an.nodes, 24);
+    const rot = F.rotacioNodes(S, r.an, ev), cua = F.cuaNodes(S, r.an, ev, rot);
+    if (v.visible && !ev.disp && n > 1 && isFinite(cua.dtNodes)) {
+      anellCometa(c, b, ev.R, ev.a, n, r.ang, rot.om >= 0 ? 1 : -1, cua.factor, v.col, v.alpha);
+    } else if (v.visible) {
+      anellUniforme(c, b, ev.R, ev.a * (ev.disp ? 2 : 1), v.col, 0.8 * v.alpha);
+    } else {
+      anellUniforme(c, b, ev.R, ev.a, 'rgba(160,150,220,.4)', 1, true);
+      for (let k = 0; k < n && !ev.disp; k++) brillantor(puntAnell(c, b, ev.R, r.ang + k * 2 * Math.PI / n), 0, '170,160,230', 0.4, 2.5 * f);
     }
-    const hx = rx * Math.cos(cap), hy = rx * Math.sin(cap), gl = Math.max(lw, 6 * f);
-    const gg = cx.createRadialGradient(hx, hy, 0, hx, hy, gl);
-    gg.addColorStop(0, `rgba(${col_},${alpha})`); gg.addColorStop(1, `rgba(${col_},0)`);
-    cx.fillStyle = gg; cx.beginPath(); cx.arc(hx, hy, gl, 0, 2 * Math.PI); cx.fill();
   }
-  cx.restore();
-  if (VIS.lb) {
-    cx.fillStyle = 'rgba(200,220,255,.9)'; cx.textAlign = 'center'; cx.font = `bold ${10 * f}px sans-serif`;
-    cx.fillText(`${p.m} nodes de so a ${(p.v * 3.6).toFixed(0)} km/h · pic ${p.Lpic.toFixed(0)} dB · ${visible ? 'boira visible' : 'invisible (no condensa)'}`, x, y - rx - lw - 8 * f);
-    cx.font = `${9 * f}px sans-serif`;
+  const r0 = anellPrincipal();
+  if (r0) {
+    const v = visibilitat(r0);
+    text3(add(v3(r0.x, r0.y, r0.z), mul(b.v, r0.ev.R + r0.ev.a + 1)), `Ø ${(2 * r0.ev.R).toFixed(1)} m · ${v.mec} · C = ${v.ap.C.toFixed(2)} · ${(2 * r0.ev.R / v.g.dist * 180 / Math.PI).toFixed(2)}° aparents`,
+      v.visible ? `rgba(${v.col},.95)` : 'rgba(170,160,230,.8)', -6, 'center', true);
   }
 }
 
 /** Model B: n caps que orbiten i deixen un rastre lluminós que s'aprima */
-function dibuixaEmissors(sc, f) {
+function dibuixaEmissors(f) {
+  const e = F.emissors(S), b = { u: v3(1, 0, 0), v: v3(0, 1, 0) };
   if (fenT === null) {
-    const e = F.emissors(S);   // previsualització de l'òrbita
-    cx.strokeStyle = 'rgba(255,170,90,.25)'; cx.lineWidth = f; cx.setLineDash([3 * f, 5 * f]);
-    cx.beginPath(); cx.arc(sc.X(S.sx_off), sc.Y(S.e_h), e.R * sc.pxM, 0, 2 * Math.PI); cx.stroke(); cx.setLineDash([]);
+    const cs = []; for (let j = 0; j <= 96; j++) cs.push(puntAnell(v3(S.sx_off, S.e_h, 0), b, e.R, j / 96 * 2 * Math.PI));
+    polilinia(cs, 'rgba(255,170,90,.35)', f, [3 * f, 5 * f]);
+    text3(v3(S.sx_off, S.e_h + e.R + 2, 0), 'òrbita dels nodes (▶ inicia)', 'rgba(255,170,90,.7)', -4);
     return;
   }
-  const e = F.emissors(S), a = avaluacio, env = F.envolupantEmissors(S, fenT);
+  const a = avaluacio, env = F.envolupantEmissors(S, fenT);
   if (env <= 0) return;
-  const p = F.posicioEmissors(S, fenT), x = sc.X(p.x), y = sc.Y(p.y), rx = e.R * sc.pxM, ry = rx;
-  const lw = Math.max(S.e_cap * sc.pxM, 2 * f), col_ = e.rgb.map(v => Math.round(255 * F.gammaSRGB(v))).join(',');
+  const p = F.posicioEmissors(S, fenT), c = v3(p.x, p.y, p.z);
+  const col_ = e.rgb.map(v => Math.round(255 * F.gammaSRGB(v))).join(',');
   const alpha = Math.max(0.12, Math.min(1, (a ? a.C : 0.5))) * env;
-  const gap = 2 * Math.PI / e.n, ang0 = S.e_sent * 2 * Math.PI * fenT / S.e_T, NS = 40;
-  cx.save(); cx.translate(x, y);
-  cx.fillStyle = `rgba(${col_},${0.85 * alpha})`;
-  for (let k = 0; k < e.n; k++) {
-    const cap = -(ang0 + k * gap), ext = [], int = [];
-    for (let j = 0; j <= NS; j++) {
-      const u = j / NS, th = cap + S.e_sent * u * gap, h = Math.max(lw * e.factor(u), 1 * f) / 2;
-      ext.push([(rx + h) * Math.cos(th), (ry + h) * Math.sin(th)]);
-      int.push([(rx - h) * Math.cos(th), (ry - h) * Math.sin(th)]);
-    }
-    cx.beginPath(); cx.moveTo(ext[0][0], ext[0][1]);
-    for (const [u_, v_] of ext) cx.lineTo(u_, v_);
-    for (let j = int.length - 1; j >= 0; j--) cx.lineTo(int[j][0], int[j][1]);
-    cx.closePath(); cx.fill();
-    const hx = rx * Math.cos(cap), hy = ry * Math.sin(cap), gl = lw * 0.9;
-    const gg = cx.createRadialGradient(hx, hy, 0, hx, hy, gl);
-    gg.addColorStop(0, `rgba(255,245,215,${alpha})`); gg.addColorStop(1, `rgba(${col_},0)`);
-    cx.fillStyle = gg; cx.beginPath(); cx.arc(hx, hy, gl, 0, 2 * Math.PI); cx.fill();
-    cx.fillStyle = `rgba(${col_},${0.85 * alpha})`;
+  anellCometa(c, b, e.R, S.e_cap / 2, e.n, S.e_sent * 2 * Math.PI * fenT / S.e_T, S.e_sent, e.factor, col_, alpha);
+  text3(add(c, v3(0, e.R + S.e_cap + 1, 0)), `Ø ${(2 * e.R).toFixed(0)} m · ${e.n} nodes a ${(e.v * 3.6).toFixed(0)} km/h · ${e.g.toFixed(2)} g · C = ${((a ? a.C : 0) * env).toFixed(2)}`,
+    `rgba(${col_},.95)`, -6, 'center', true);
+}
+
+/** Model C: via ondulada (portadora) i nodes de boira que hi corren */
+function dibuixaPatro(f) {
+  const a = avaluacio && avaluacio.patro ? avaluacio : F.avaluaPatro(S), p = a.p;
+  const c = v3(S.sx_off, S.c_h, 0), b = { u: v3(1, 0, 0), v: v3(0, 1, 0) }, t = fenT || 0;
+  const ondes = Math.max(4, Math.round(2 * Math.PI * p.R / (F.cSo(S) / S.c_fc)));
+  const via = [];
+  for (let j = 0; j <= 240; j++) {
+    const th = j / 240 * 2 * Math.PI, rr = p.R * (1 + 0.025 * Math.sin(ondes * th - (sigOn ? 2 * Math.PI * S.c_fc * t * 0.05 : 0)));
+    via.push(puntAnell(c, b, rr, th));
   }
-  cx.restore();
-  if (VIS.lb) {
-    cx.fillStyle = `rgba(${col_},.95)`; cx.textAlign = 'center'; cx.font = `bold ${10 * f}px sans-serif`;
-    cx.fillText(`Ø ${(2 * e.R).toFixed(0)} m · ${e.n} nodes a ${(e.v * 3.6).toFixed(0)} km/h · ${e.g.toFixed(2)} g · C = ${((a ? a.C : 0) * env).toFixed(2)}`, x, y - ry - lw - 8 * f);
-    cx.font = `${9 * f}px sans-serif`;
+  polilinia(via, sigOn ? 'rgba(120,180,255,.45)' : 'rgba(120,180,255,.22)', f);
+  if (sigOn) {
+    const visible = p.condensa && a.C > 0.02;
+    const col_ = visible ? '240,244,248' : '150,170,255', alpha = visible ? Math.min(1, Math.max(0.2, a.C)) : 0.35;
+    if (visible) anellCometa(c, b, p.R, S.c_cap / 2, p.m, 2 * Math.PI * t / S.c_T, 1, p.factor, col_, alpha);
+    else for (let k = 0; k < p.m; k++) brillantor(puntAnell(c, b, p.R, 2 * Math.PI * t / S.c_T + k * 2 * Math.PI / p.m), S.c_cap / 2, col_, alpha, 5 * f);
+    text3(add(c, v3(0, p.R + S.c_cap + 1, 0)), `${p.m} nodes de so a ${(p.v * 3.6).toFixed(0)} km/h · pic ${p.Lpic.toFixed(0)} dB · ${visible ? 'boira visible' : p.condensa ? 'boira massa tènue (C = ' + a.C.toFixed(2) + ')' : 'invisible (no condensa)'}`,
+      'rgba(200,220,255,.9)', -6, 'center', true);
   }
 }
+
+/* ── Interacció amb la càmera ── */
+function posaVista(nom) {
+  CAM.vista = nom; CAM.zoom = 1;
+  const v = VISTES[nom]; if (v && v.yaw != null) { CAM.yaw = v.yaw; CAM.pitch = v.pitch; }
+  document.querySelectorAll('[data-vista]').forEach(b => b.classList.toggle('on', b.dataset.vista === nom));
+}
+(() => {
+  const punters = new Map(); let distIni = 0, zoomIni = 1;
+  cv.addEventListener('pointerdown', e => { cv.setPointerCapture(e.pointerId); punters.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (punters.size === 2) { const [a, b] = [...punters.values()]; distIni = Math.hypot(a.x - b.x, a.y - b.y); zoomIni = CAM.zoom; } });
+  cv.addEventListener('pointermove', e => {
+    if (!punters.has(e.pointerId)) return;
+    const prev = punters.get(e.pointerId); punters.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (punters.size === 2) {
+      const [a, b] = [...punters.values()]; const dd = Math.hypot(a.x - b.x, a.y - b.y);
+      if (distIni > 0) CAM.zoom = Math.min(20, Math.max(0.2, zoomIni * dd / distIni));
+      return;
+    }
+    const dx = e.clientX - prev.x, dy = e.clientY - prev.y;
+    if (Math.abs(dx) + Math.abs(dy) < 1) return;
+    if (CAM.vista === 'testimoni') { CAM.yaw = 0; CAM.pitch = 2; }
+    if (CAM.vista !== 'lliure') { CAM.vista = 'lliure'; document.querySelectorAll('[data-vista]').forEach(b => b.classList.remove('on')); }
+    CAM.yaw += dx * 0.35; CAM.pitch = Math.max(-10, Math.min(89, CAM.pitch + dy * 0.35));
+  });
+  const fi = e => { punters.delete(e.pointerId); };
+  cv.addEventListener('pointerup', fi); cv.addEventListener('pointercancel', fi);
+  cv.addEventListener('wheel', e => { e.preventDefault(); CAM.zoom = Math.min(20, Math.max(0.2, CAM.zoom * Math.exp(-e.deltaY * 0.0012))); }, { passive: false });
+  cv.addEventListener('dblclick', () => posaVista(VISTES[CAM.vista] ? CAM.vista : 'persp'));
+})();
 
 /* ── Bucle principal ────────────────────────────────────────────────────── */
 let lastW = null, lastInfo = 0;
@@ -1046,8 +1136,9 @@ function initEvents() {
     if (k && e.target.type === 'range') setParam(k, +e.target.value);
   });
   document.body.addEventListener('click', e => {
-    const t = e.target.closest('[data-k],[data-preset],[data-act],[data-vis],[data-grup],[data-audio]');
+    const t = e.target.closest('[data-k],[data-preset],[data-act],[data-vis],[data-grup],[data-audio],[data-vista]');
     if (!t) return;
+    if (t.dataset.vista) { posaVista(t.dataset.vista); return; }
     if (t.dataset.k && t.dataset.d) { const k = t.dataset.k; setParam(k, S[k] + (+t.dataset.d) * DEF[k][2]); return; }
     if (t.dataset.preset) { loadPreset(+t.dataset.preset); return; }
     if (t.dataset.vis) { const k = t.dataset.vis; VIS[k] = !VIS[k]; t.classList.toggle('on', VIS[k]); return; }
