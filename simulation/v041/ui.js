@@ -84,6 +84,7 @@ const DEF = {
   ph:    [0, 180, 1, 90, 'desfasament MT↔Cat', '°', 0],
   f_mt:  [40, 70, 0.1, 50, 'freqüència de xarxa', 'Hz', 1],
   rc:    [0.2, 3, 0.05, 0.9, 'radi del conductor', 'cm', 2],
+  lin_or:[0, 1, 1, 0, 'orientació de les línies', '', 0],
   tau:   [-10000, 10000, 1, 0, 'retard τ (so respecte a EM)', 'µs', 0],
   // Objectiu (problema invers)
   oD:    [0.1, 100, 0.1, 25, 'diàmetre', 'm', 1],
@@ -108,7 +109,7 @@ const VIS = { w: true, e: true, n: false, lb: true, sol: true };
    ─────────────────────────────────────────────────────────────────────────── */
 const AMB_SEGRE = { T: 35, P: 1013, H: 30, W: 3, dirW: 90, turb: 0.2, aer: 0, trac: 0, aot: 0.1,
   mes: 9, dia: 18, hora: 18, tz: 2, lat: 41.6142, lon: 0.6222, az_vis: 232, d_obs: 60,
-  hmt: 18, hcat: 11, sl: 24, vmt: 25, vcat: 25, ph: 90, f_mt: 50, rc: 0.9, tau: 0,
+  hmt: 18, hcat: 11, sl: 24, vmt: 25, vcat: 25, ph: 90, f_mt: 50, rc: 0.9, tau: 0, lin_or: 0,
   a_riu: 30, h_pont: 5, h_src: 5, so: 10, sx_off: 0, D_ap: 0.5, aR: 0.12, elev: 0, az_eix: 0,
   npols: 0, n_inj: 0, swirl: 0, kdir: 1, dT0: 0,
   f1: 3.5714, f2: 3.0, db1: 100, db2: 100, phi: 0, spd: 0, model: 0,
@@ -196,7 +197,8 @@ function construeixPanell() {
   h += seccio('🔊 generadors S₁ i S₂', ['f1', 'f2', 'db1', 'db2', 'phi'].map(filaSlider).join('') + fm('fc-ac'), '', '0');
   h += seccio('👁 traçador i visibilitat', grup('g-trac', [[0, 'pols'], [1, 'fum'], [2, 'boira'], [3, 'fum taronja']]) + filaSlider('aer') + fm('fc-vis'), '', '0');
   h += seccio('🌊 riu i pont', ['a_riu', 'h_pont', 'so', 'sx_off'].map(filaSlider).join(''));
-  h += seccio('⚡ línies elèctriques', ['hmt', 'hcat', 'sl', 'vmt', 'vcat', 'ph', 'f_mt', 'rc', 'tau'].map(filaSlider).join('') +
+  h += seccio('⚡ línies elèctriques', `<div class="pr-l" style="margin:2px 0">orientació respecte a l'anell</div>${grup('g-linor', [[0, '∥ paral·leles a l\'anell'], [1, '⊥ al llarg de la mirada']])}` +
+    ['hmt', 'hcat', 'sl', 'vmt', 'vcat', 'ph', 'f_mt', 'rc', 'tau'].map(filaSlider).join('') +
     `<button class="bn opt" data-act="tauopt" style="width:100%">🎯 τ òptim</button>` + fm('fc-em'));
   h += seccio('visualització',
     [['w', 'fronts d\'ona S₁ i S₂'], ['e', 'mapa del camp elèctric'], ['n', 'nodes acústics λ/4 i λ/2'], ['sol', 'direcció del sol'], ['lb', 'etiquetes']]
@@ -223,6 +225,7 @@ function etiqueta(k) {
   if (k === 'kdir') { marcaGrup('g-kdir', S.kdir); return; }
   if (k === 'model') { marcaGrup('g-model', S.model); mostraSeccions(); return; }
   if (k === 'e_tipus') { marcaGrup('g-etipus', S.e_tipus); return; }
+  if (k === 'lin_or') { marcaGrup('g-linor', S.lin_or); return; }
   if (k === 'e_sent') { marcaGrup('g-esent', S.e_sent); return; }
   const el = document.getElementById('lv-' + k); if (!el) return;
   const [, , , , , un, dec] = DEF[k];
@@ -300,7 +303,7 @@ function updatePhysics(dt) {
     let X = 0, best = null;
     if (emOn && (S.vmt > 0 || S.vcat > 0)) {
       for (const [dx, dy] of [[0, r.ev.R], [0, -r.ev.R], [r.ev.R, 0], [-r.ev.R, 0]]) {
-        const rr = F.ratiRuptura(S, r.x + dx, r.y + dy);
+        const rr = F.ratiRuptura(S, r.x + dx, r.y + dy, r.z);
         if (!best || rr.X > best.X) best = rr;
       }
       X = best.X;
@@ -402,7 +405,7 @@ function refreshInfo() {
   // Camp elèctric
   const r0 = anellPrincipal();
   const px = r0 ? r0.x : src.x, py = r0 ? r0.y : src.y;
-  const rr = F.ratiRuptura(S, px, py);
+  const rr = F.ratiRuptura(S, px, py, r0 ? r0.z : 0);
   const vMax = Math.max(S.vmt, S.vcat);
   setH('fc-em', `${r0 ? 'a l\'anell' : 'a l\'emissor'} (x=${px.toFixed(1)}, y=${py.toFixed(1)} m):<br>` +
     `E_pic = ${c('v', fmtE(rr.E))} · E_ruptura = ${c('v', fmtE(rr.Ebd))}<br>` +
@@ -539,7 +542,7 @@ function escena(W, H) {
   const d = derivat;
   const linies = S.vmt > 0 || S.vcat > 0;
   const R = S.model === 1 ? S.e_D / 2 : S.model === 2 ? S.c_D / 2 : (d.an.es_forma ? d.an.R : 0);
-  const xspan = Math.max(S.a_riu / 2 + 2, linies ? S.sl / 2 + 8 : 0, S.so / 2 + Math.abs(S.sx_off) + 2, R * 2.2, 3);
+  const xspan = Math.max(S.a_riu / 2 + 2, linies && S.lin_or === 1 ? S.sl / 2 + 8 : 0, S.so / 2 + Math.abs(S.sx_off) + 2, R * 2.2, 3);
   let ymax = Math.max(linies ? Math.max(S.hmt, S.hcat) + 6 : 0, S.h_pont + 4, (S.model === 1 ? S.e_h : S.model === 2 ? S.c_h : S.h_src) + R * 1.8, 4);
   const r0 = anellPrincipal();
   if (r0) ymax = Math.max(ymax, Math.min(r0.y, 150) + r0.ev.R * 1.5 + 1);
@@ -647,9 +650,37 @@ function draw() {
     cx.fillRect(x - w / 2, y - 3 * f, w, 6 * f);
     if (VIS.lb) { cx.fillStyle = 'rgba(200,200,200,.75)'; cx.textAlign = 'center'; cx.fillText((i ? 'S₂ ' : 'S₁ ') + (src.f < 1 ? src.f.toFixed(3) : src.f.toFixed(2)) + ' Hz · ' + src.L.toFixed(0) + ' dB · D ' + S.D_ap.toFixed(1) + ' m', x, y + (16 + 11 * i) * f); }
   });
-  // Conductors (secció transversal)
+  // Línies elèctriques
   F.conductors(S).forEach((cd, i) => {
     const on = emOn && cd.V > 0, cr = d.corona[i];
+    const col_ = on ? (i === 0 ? '216,90,48' : '55,138,221') : '110,110,110';
+    if (S.lin_or !== 1) {
+      // Paral·leles al pla de l'anell: travessen tota la vista, com el pont
+      let y = sc.Y(cd.y);
+      if (y < 14 * f) {
+        const xm = W - 12 * f, ym = 64 * f + i * 26 * f;
+        cx.fillStyle = 'rgba(200,180,160,.75)';
+        cx.beginPath(); cx.moveTo(xm, ym - 6 * f); cx.lineTo(xm - 5 * f, ym + 2 * f); cx.lineTo(xm + 5 * f, ym + 2 * f); cx.closePath(); cx.fill();
+        cx.textAlign = 'right';
+        if (VIS.lb) cx.fillText(`${cd.nom} ${(i ? S.vcat : S.vmt).toFixed(0)} kV · ${cd.y.toFixed(1)} m (fora de vista)`, xm + 4 * f, ym + 14 * f);
+        return;
+      }
+      // Pals als extrems
+      cx.strokeStyle = 'rgba(140,140,118,.35)'; cx.lineWidth = 2 * f;
+      for (const xp of [22 * f + i * 10 * f, W - 22 * f - i * 10 * f]) { cx.beginPath(); cx.moveTo(xp, sc.oy); cx.lineTo(xp, y); cx.stroke(); }
+      if (on && cr.actiu) {
+        cx.strokeStyle = 'rgba(170,140,255,.35)'; cx.lineWidth = 10 * f;
+        cx.beginPath(); cx.moveTo(22 * f, y); cx.lineTo(W - 22 * f, y); cx.stroke();
+      }
+      cx.strokeStyle = `rgba(${col_},${on ? 0.85 : 0.5})`; cx.lineWidth = 1.8 * f; cx.setLineDash([10 * f, 5 * f]);
+      cx.beginPath(); cx.moveTo(22 * f, y); cx.lineTo(W - 22 * f, y); cx.stroke(); cx.setLineDash([]);
+      if (VIS.lb) {
+        const zc = (i === 0 ? -1 : 1) * S.sl / 2;
+        cx.fillStyle = `rgba(${col_},.9)`; cx.textAlign = 'left';
+        cx.fillText(`${cd.nom} ${(i ? S.vcat : S.vmt).toFixed(0)} kV · ${cd.y.toFixed(1)} m · ${zc < 0 ? Math.abs(zc).toFixed(1) + ' m més a prop' : zc > 0 ? zc.toFixed(1) + ' m més lluny' : 'al pla de l\'anell'}${on && cr.actiu ? ' · ⚡corona' : ''}`, 26 * f + i * 10 * f, y + (i === 0 ? -4 : 11) * f);
+      }
+      return;
+    }
     let x = sc.X(cd.x), y = sc.Y(cd.y);
     // Fora del camp de visió (p. ex. al canó de taula): marca a la vora amb fletxa
     if (y < 14 * f || x < 6 * f || x > W - 6 * f) {
@@ -1027,6 +1058,7 @@ function initEvents() {
       else if (g === 'g-kdir') setParam('kdir', +v);
       else if (g === 'g-model') { reinicia(); setParam('model', +v); }
       else if (g === 'g-etipus') setParam('e_tipus', +v);
+      else if (g === 'g-linor') setParam('lin_or', +v);
       else if (g === 'g-esent') setParam('e_sent', +v);
       else if (g === 'g-dir') { OPC.dir = +v; marcaGrup(g, v); canviParams(); }
       else if (g === 'g-prio') { OPC.prioritat = v; marcaGrup(g, v); }

@@ -69,9 +69,10 @@ Aquest repositori conté la documentació factual i l'anàlisi teòrica basada e
 │   │   ├── fisica.js       Nucli de física: funcions pures i testejables
 │   │   ├── ui.js           Interfície, integració temporal i dibuix
 │   │   └── estil.css
-│   └── toroide_plasma_simulacio_V040_59.html   Model anterior (el que descriuen els documents)
+│   ├── original/           Simulació original V040_59, exactament com era abans de la V041
+│   └── toroide_plasma_simulacio_V040_59.html   Model anterior amb els errors de programació corregits
 ├── tests/fisica.test.js    Proves del nucli de física
-├── index.html              Redirecció al simulador
+├── index.html              Portada: tria entre la simulació original i la nova
 └── LICENSE.txt             GNU GPL v3 (codi)
 ```
 

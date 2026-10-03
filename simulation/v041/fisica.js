@@ -260,7 +260,15 @@ function levitacio(s, f, y) {
    MT: 25 kV entre fases → V_fase,pic = V·√2/√3 (model d'un sol conductor:
    és una COTA SUPERIOR; en una línia trifàsica real els camps es compensen).
    Catenària: 25 kV fase-terra → V_pic = V·√2.
+   Orientació (lin_or):
+     0 = les línies són PARAL·LELES al pla de l'anell (travessen la vista del
+         testimoni, com el pont). És el que es va observar. El camp depèn de
+         l'alçada i de la profunditat z; MT a z = −sl/2 i Cat a z = +sl/2.
+     1 = les línies van en la direcció de la mirada (perpendiculars a l'anell);
+         el camp depèn de l'alçada i de la posició lateral x.
    ─────────────────────────────────────────────────────────────────────────── */
+/** Coordenada transversal a les línies on es calcula el camp */
+function coordTransversal(s, x, z) { return s.lin_or === 1 ? x : (z || 0); }
 function conductors(s) {
   return [
     { nom: 'MT',  x: -s.sl / 2, y: s.hmt,  V: s.vmt * 1e3 * Math.sqrt(2 / 3), ph: 0 },
@@ -269,13 +277,13 @@ function conductors(s) {
 }
 
 /** Valor de pic de |E| en un punt [V/m] (solució analítica de l'el·lipse) */
-function campEPic(s, x, y) {
-  const rc = s.rc / 100;
+function campEPic(s, x, y, z) {
+  const rc = s.rc / 100, u = coordTransversal(s, x, z);
   let zrx = 0, zry = 0, zix = 0, ziy = 0;  // fasor vectorial Z = Zr + iZi
   for (const c of conductors(s)) {
     if (c.y <= rc) continue;
     const q = c.V / Math.log(2 * c.y / rc);       // λ/(2πε₀)
-    const dx = x - c.x, dy1 = y - c.y, dy2 = y + c.y;
+    const dx = u - c.x, dy1 = y - c.y, dy2 = y + c.y;
     const r1 = Math.max(dx * dx + dy1 * dy1, rc * rc), r2 = dx * dx + dy2 * dy2;
     const ex = q * (dx / r1 - dx / r2), ey = q * (dy1 / r1 - dy2 / r2);
     const cs = Math.cos(c.ph), sn = Math.sin(c.ph);
@@ -320,8 +328,8 @@ function sincronisme(s, yNode) {
 }
 
 /** Rati de ruptura en un punt: E_pic·q / E_bd(rarefacció). ≥1 → allau */
-function ratiRuptura(s, x, y) {
-  const E = campEPic(s, x, y);
+function ratiRuptura(s, x, y, z) {
+  const E = campEPic(s, x, y, z);
   const pAc = pAcPunt(s, x, y);
   const rb = campRuptura(s, pAc);
   const sy = sincronisme(s, y);
