@@ -116,8 +116,8 @@ const AMB_SEGRE = { T: 35, P: 1013, H: 30, W: 3, dirW: 90, turb: 0.2, aer: 0, tr
   c_D: 25, c_m: 4, c_T: 7, c_K: 8, c_fc: 13.7, c_L: 172, c_r: 40, c_cap: 3, c_h: 25 };
 const OBJ_SEGRE = { oD: 25, otub: 3, on: 4, oT: 7, oh: 25, oU: 1, ovida: 180, oC: 2 };
 const AMB_LAB = Object.assign({}, AMB_SEGRE, { T: 20, H: 50, W: 0, turb: 0.02, aer: 5000, trac: 1,
-  vmt: 0, vcat: 0, a_riu: 5, h_pont: 1, h_src: 1, so: 0, D_ap: 0.1, aR: 0.2, elev: 45,
-  f1: 15, f2: 15, db1: 100, db2: 0, npols: 5, d_obs: 5 });
+  vmt: 0, vcat: 0, a_riu: 5, h_pont: 1, h_src: 1, so: 0.5, sx_off: 0.25, D_ap: 0.1, aR: 0.2, elev: 0,
+  f1: 15, f2: 15, db1: 100, db2: 80, npols: 5, d_obs: 5 });
 const PRESETS = [
   { t: '📍 Configuració original (V040)', d: '3.57 Hz · 100 dB · obertura 0.5 m',
     v: AMB_SEGRE },
@@ -138,7 +138,8 @@ const PRESETS = [
   { t: '✴ Segre: nodes incandescents', d: '2000 K · caldrien ~500 kW per node',
     v: Object.assign({}, AMB_SEGRE, { model: 1, W: 0.5, dirW: 90, aot: 0.1, d_obs: 40, e_tipus: 0, e_Temp: 2000, e_P: 500 }), solDv: 90 },
   { t: '🔊 Segre: patró acústic rotatiu', d: 'portadora 13.7 Hz · Δf 0.571 Hz · 8 esglaons',
-    v: Object.assign({}, AMB_SEGRE, { model: 2, W: 0.5, dirW: 90, aot: 0.1, d_obs: 40 }), solDv: 3 },
+    v: Object.assign({}, AMB_SEGRE, { model: 2, W: 0.5, dirW: 90, aot: 0.1, d_obs: 40,
+      f1: 13.7, f2: 13.7 + 4 / 7, db1: 172, db2: 172, h_src: 25, so: 25, sx_off: 0 }), solDv: 3 },
   { t: '🔬 Canó de vòrtex de taula', d: '15 Hz · 100 dB · D = 10 cm · fum',
     v: AMB_LAB },
   { t: '⚡ Corona: línia de 400 kV', d: 'efecte corona real al conductor',
@@ -541,7 +542,7 @@ function escena(W, H) {
   const xspan = Math.max(S.a_riu / 2 + 2, linies ? S.sl / 2 + 8 : 0, S.so / 2 + Math.abs(S.sx_off) + 2, R * 2.2, 3);
   let ymax = Math.max(linies ? Math.max(S.hmt, S.hcat) + 6 : 0, S.h_pont + 4, (S.model === 1 ? S.e_h : S.model === 2 ? S.c_h : S.h_src) + R * 1.8, 4);
   const r0 = anellPrincipal();
-  if (r0 && r0.ev.R > 1) ymax = Math.max(ymax, Math.min(r0.y, 150) + r0.ev.R + 4);
+  if (r0) ymax = Math.max(ymax, Math.min(r0.y, 150) + r0.ev.R * 1.5 + 1);
   if (VIS.n && d.hN < 150) ymax = Math.max(ymax, d.hN + 5);
   ymax = Math.min(ymax * 1.08, 400);
   const pxM = Math.min(W / (2 * xspan), (H - 34 * DPR) / ymax);
@@ -603,7 +604,15 @@ function draw() {
   const yb = sc.Y(S.h_pont);
   cx.fillStyle = 'rgba(120,120,110,.35)'; cx.fillRect(sc.ox - rh - 20 * f, yb, 2 * rh + 40 * f, 4 * f);
   cx.font = `${9 * f}px sans-serif`; cx.textAlign = 'left';
-  if (VIS.lb) { cx.fillStyle = 'rgba(160,160,140,.7)'; cx.fillText('pont ' + S.h_pont.toFixed(1) + ' m · testimoni a ' + S.d_obs.toFixed(0) + ' m', Math.max(4 * f, sc.ox - rh - 18 * f), yb - 4 * f); }
+  if (VIS.lb) { cx.fillStyle = 'rgba(160,160,140,.7)'; cx.fillText('pont ' + S.h_pont.toFixed(1) + ' m', Math.max(4 * f, sc.ox - rh - 18 * f), yb - 4 * f); }
+  // Testimoni (sobre el pont, mirant cap a l'anell des de d_obs metres)
+  {
+    const xt = sc.X(0), yt = sc.Y(S.h_pont + 1.6);
+    cx.strokeStyle = 'rgba(230,230,210,.85)'; cx.lineWidth = 1.5 * f;
+    cx.beginPath(); cx.arc(xt, yt - 3 * f, 2.5 * f, 0, 2 * Math.PI); cx.stroke();
+    cx.beginPath(); cx.moveTo(xt, yt - 0.5 * f); cx.lineTo(xt, sc.Y(S.h_pont)); cx.stroke();
+    if (VIS.lb) { cx.fillStyle = 'rgba(230,230,210,.85)'; cx.textAlign = 'right'; cx.fillText(`👁 testimoni (a ${S.d_obs.toFixed(0)} m)`, xt - 8 * f, yt - 2 * f); }
+  }
   // Nodes acústics
   if (VIS.n) {
     [[d.hN, 'node de pressió λ/4', 'rgba(130,110,230,.55)'], [F.hNodeVelocitat(S, S.f1), 'trampa d\'aire calent λ/2', 'rgba(80,200,140,.45)']].forEach(([h, l, cc]) => {
@@ -615,7 +624,7 @@ function draw() {
     });
   }
   // Fronts d'ona
-  if (VIS.w && sigOn && S.model === 0) {
+  if (VIS.w && sigOn) {
     d.fs.forEach((src, i) => {
       if (src.L <= 0) return;
       const lam = F.lambda(S, src.f), cs = F.cSo(S);
@@ -630,8 +639,7 @@ function draw() {
     });
   }
   // Emissors amb obertura (model A)
-  if (S.model === 0) d.fs.forEach((src, i) => {
-    if (src.L <= 0 && i === 1) return;
+  d.fs.forEach((src, i) => {
     const w = Math.max(S.D_ap * sc.pxM, 5 * f), x = sc.X(src.x), y = sc.Y(src.y);
     cx.strokeStyle = 'rgba(140,140,118,.3)'; cx.lineWidth = f;
     if (src.y > S.h_pont + 0.5) { cx.beginPath(); cx.moveTo(x, sc.Y(S.h_pont)); cx.lineTo(x, y); cx.stroke(); }
@@ -641,8 +649,17 @@ function draw() {
   });
   // Conductors (secció transversal)
   F.conductors(S).forEach((cd, i) => {
-    if (cd.V <= 0) return;
-    const x = sc.X(cd.x), y = sc.Y(cd.y), on = emOn, cr = d.corona[i];
+    const on = emOn && cd.V > 0, cr = d.corona[i];
+    let x = sc.X(cd.x), y = sc.Y(cd.y);
+    // Fora del camp de visió (p. ex. al canó de taula): marca a la vora amb fletxa
+    if (y < 14 * f || x < 6 * f || x > W - 6 * f) {
+      x = W - 12 * f; y = 64 * f + i * 26 * f;   // a la dreta, lliure del panell de comparació
+      cx.fillStyle = 'rgba(200,180,160,.75)';
+      cx.beginPath(); cx.moveTo(x, y - 6 * f); cx.lineTo(x - 5 * f, y + 2 * f); cx.lineTo(x + 5 * f, y + 2 * f); cx.closePath(); cx.fill();
+      cx.textAlign = x < W / 2 ? 'left' : 'right';
+      if (VIS.lb) cx.fillText(`${cd.nom} ${(i ? S.vcat : S.vmt).toFixed(0)} kV · ${cd.y.toFixed(1)} m (fora de vista)`, x + (x < W / 2 ? -4 : 4) * f, y + 14 * f);
+      return;
+    }
     cx.strokeStyle = 'rgba(140,140,118,.25)'; cx.lineWidth = f;
     cx.beginPath(); cx.moveTo(x, sc.oy); cx.lineTo(x, y); cx.stroke();
     if (on && cr.actiu) {
@@ -656,7 +673,7 @@ function draw() {
   });
   // Vent (component lateral)
   if (VIS.lb && S.W > 0) {
-    const w = F.ventXZ(S), len = Math.min(40, 10 + S.W * 4) * f, x0 = W - 70 * f, y0 = 40 * f;
+    const w = F.ventXZ(S), len = Math.min(40, 10 + S.W * 4) * f, x0 = W - 70 * f, y0 = 128 * f;
     const ax = w.x / Math.max(F.vent(S), 1e-9);
     cx.strokeStyle = 'rgba(180,200,220,.7)'; cx.lineWidth = 1.5 * f;
     cx.beginPath(); cx.moveTo(x0 - ax * len / 2, y0); cx.lineTo(x0 + ax * len / 2, y0); cx.stroke();
