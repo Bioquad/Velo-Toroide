@@ -6,6 +6,47 @@
 
 ---
 
+## Estat del projecte · som a mig camí
+
+Aquest simulador reprodueix, **amb física establerta i publicada**, una part del fenomen observat sobre el riu Segre el 18-09-2022. La part que **no** es pot reproduir queda documentada honestament, sense amagar-la.
+
+**El que la física coneguda explica:**
+- La **forma** d'un anell toroïdal de ~25 m amb 4 nodes.
+- El **gir** dels nodes (model B, objectes que orbiten; model C, patró de so).
+- La **forma de cometa** de la cua darrere de cada node.
+- El **color taronja** i la visibilitat de dia, amb emissió tipus sodi.
+
+**El que la física coneguda NO explica (i on queda el camí per recórrer):**
+- Un **mecanisme de confinament** que mantingui el toroide estable durant 3 minuts sense parets. Cap model de plasma conegut ho fa en aire lliure a pressió atmosfèrica.
+- Que les **línies de 25 kV** ionitzin l'aire: el seu camp a l'altura de l'anell és ~10⁴ vegades inferior al de ruptura (~3 MV/m).
+- Les tres característiques alhora: cap configuració compleix els 17 criteris.
+
+**Càlculs que aquest treball deixa oberts expressament.** L'assistent que ha fet el simulador (Claude, d'Anthropic) **no proporciona** el disseny de com mantenir un arc elèctric tret de línies d'alta tensió, ni com ionitzar i confinar aire amb ràdio o microones d'alta potència, ni tan sols com a simulació. Són procediments que, portats a la pràctica, són perillosos o letals, i per això queden fora d'aquest treball. Per tant, **el model del confinament actiu del plasma resta sense resoldre** i s'ofereix a qui tingui els mitjans i l'entorn segur per estudiar-lo.
+
+> *En resum: la cinemàtica (forma, gir, aparença) és reproduïble; la dinàmica del confinament, no. Estem a mig camí.*
+
+---
+
+### Project status · halfway there (English)
+
+This simulator reproduces **part** of the toroidal luminous phenomenon observed over the Segre river (Lleida, 18 Sep 2022) using **established, published physics**, and documents openly the part it cannot.
+
+- **Reproducible:** the ~25 m toroidal shape, the 4 orbiting nodes and their rotation, the comet-tail trail, and the orange daytime appearance (sodium-type emission).
+- **Not reproducible with known physics:** a wall-less **confinement mechanism** keeping the torus stable for ~3 min; ionisation of air by the 25 kV lines (their field at ring height is ~10⁴× below the ~3 MV/m breakdown threshold); and all features at once.
+- **Deliberately out of scope:** the AI assistant that built this simulator (Claude, by Anthropic) **does not provide** designs for drawing an electric arc from high-voltage lines, nor for ionising/confining air with high-power RF or microwaves — not even as a simulation — because, if carried out, they are dangerous or lethal. The **active plasma-confinement model therefore remains unsolved** and is offered to anyone with the means and a safe environment to study it.
+
+> *Kinematics (shape, rotation, appearance) is reproducible; confinement dynamics is not. We are halfway there.*
+
+### 项目状态 · 完成一半（简体中文）
+
+本模拟器用**已确立的、公开发表的物理学**再现了 2022 年 9 月 18 日塞格雷河上空环形发光现象的**一部分**，并如实记录无法再现的部分。可再现：约 25 米的环形、4 个绕行节点及其旋转、彗尾状拖尾、日间橙色外观（钠发射型）。已知物理无法解释：维持环体约 3 分钟稳定的**无壁约束机制**；25 kV 线路对空气的电离（环高处场强比约 3 MV/m 击穿阈值低约 10⁴ 倍）。**明确不涉及**：构建此模拟器的 AI 助手（Anthropic 的 Claude）**不提供**从高压线引弧、或用大功率射频/微波电离并约束空气的设计方案（即便仅作模拟），因为付诸实践会造成危险或致命后果。因此**等离子体主动约束模型仍未解决**。
+
+### プロジェクトの現状 · 道半ば（日本語）
+
+本シミュレーターは、**確立された公開の物理**を用いて、2022 年 9 月 18 日にセグレ川上空で観測されたトーラス状発光現象の**一部**を再現し、再現できない部分も隠さず記録します。再現可能：約 25 m のトーラス形状、4 つの周回ノードとその回転、彗星の尾状の軌跡、日中のオレンジ色の外観（ナトリウム型発光）。既知の物理では説明不可：壁なしで約 3 分間トーラスを安定に保つ**閉じ込め機構**、25 kV 送電線による空気の電離（リング高度での電界は絶縁破壊閾値 約 3 MV/m より約 10⁴ 倍低い）。**意図的に対象外**：本シミュレーターを作成した AI アシスタント（Anthropic の Claude）は、高圧線からアークを引き出す設計や、大電力の RF・マイクロ波で空気を電離・閉じ込める設計を、シミュレーションであっても**提供しません**。実行すれば危険または致命的だからです。したがって**プラズマの能動的閉じ込めモデルは未解決**のままです。
+
+---
+
 ## Projecte: Observació i anàlisi del fenomen del riu Segre (2022)
 
 ### Descripció
