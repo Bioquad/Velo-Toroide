@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="ca">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Laboratori Toroide V042</title>
+<meta name="description" content="Simulador amb física establerta d'un anell de vòrtex generat per so sobre el riu Segre: formació, evolució turbulenta, gir dels nodes, òptica solar i camp elèctric de les línies.">
+<link rel="stylesheet" href="estil.css">
+</head>
+<body>
+
+<div class="hdr">
+  <div class="hc"><div class="hc-l">circulació Γ</div><div class="hc-v" id="hv-gam">—</div></div>
+  <div class="hc"><div class="hc-l">velocitat pròpia</div><div class="hc-v" id="hv-u">—</div></div>
+  <div class="hc"><div class="hc-l">volta dels nodes</div><div class="hc-v" id="hv-rot">—</div></div>
+  <div class="hc"><div class="hc-l">contrast amb el cel</div><div class="hc-v" id="hv-c">—</div></div>
+  <div class="hc"><div class="hc-l">E / E ruptura</div><div class="hc-v" id="hv-x">—</div></div>
+  <div class="hc"><div class="hc-l">nodes</div><div class="hc-v" id="hv-n">—</div></div>
+  <div class="hc"><div class="hc-l">durada visible</div><div class="hc-v" id="hv-vida">—</div></div>
+  <div class="hc"><div class="hc-l">estat</div><div class="hc-v" id="hv-es">aturat</div></div>
+</div>
+
+<div class="mid">
+  <div class="cvw">
+    <canvas id="cv"></canvas>
+
+    <!-- Comparació amb l'observació del 18-09-2022 -->
+    <div class="ov" id="cmp-panel">
+      <div class="sec-t" style="color:#4a7090;margin-bottom:2px">📋 comparació amb l'observació</div>
+      <div id="cmp-rows"></div>
+      <div class="nota" id="cmp-score"></div>
+    </div>
+
+    <!-- Oscil·loscopi -->
+    <div class="ov" id="osc-panel">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px">
+        <span style="font-size:8px;color:#3a6080;font-weight:700">📊 OSCIL·LOSCOPI</span>
+        <button class="x" data-act="osc" title="Tanca">✕</button>
+      </div>
+      <div id="osc-rows"></div>
+      <div style="font-size:6.5px;color:#2a4050;text-align:center">&lt;20 Hz: so ×100 de to per poder-lo escoltar</div>
+    </div>
+  </div>
+
+  <div class="pnl" id="pnl"></div>
+</div>
+
+<div class="bot">
+  <div class="ph"><span class="pn" id="ph-n" style="color:#4a5468">aturat</span><span id="ph-d">Tria un preset o ajusta els paràmetres i prem ▶ so</span></div>
+  <div class="bts">
+    <button class="bn" id="b-go" data-act="so">▶ so</button>
+    <button class="bn" id="b-em" data-act="em" style="border-color:#a05020;color:#e07030">⚡ EM ON</button>
+    <button class="bn pa" id="b-pa" data-act="pausa">⏸ pausa</button>
+    <button class="bn" data-act="reinicia">↺ reinicia</button>
+    <button class="bn" data-act="osc" style="border-color:#1a3050;color:#3a6080" title="Oscil·loscopi">📊</button>
+    <button class="bn" data-act="desa" style="border-color:#1a4020;color:#40a060" title="Configuracions">💾</button>
+  </div>
+</div>
+
+<div id="savecfg-panel">
+  <div style="font-size:10px;color:#6090b0;margin-bottom:8px;font-weight:700">💾 CONFIGURACIONS DESADES</div>
+  <select id="cfg-list"></select>
+  <div class="bts">
+    <button class="bn" data-act="cfg-desa">💾 Desa</button>
+    <button class="bn" data-act="cfg-carrega">📂 Carrega</button>
+    <button class="bn" data-act="cfg-elimina">🗑 Elimina</button>
+    <button class="bn" data-act="desa">✕ Tanca</button>
+  </div>
+</div>
+
+<script src="fisica.js"></script>
+<script src="ui.js"></script>
+</body>
+</html>
