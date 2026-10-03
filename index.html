@@ -3,11 +3,71 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta http-equiv="refresh" content="0; url=simulation/v041/index.html">
-<title>Laboratori Toroide</title>
+<title>Velo Toroide</title>
+<meta name="description" content="Simulacions del fenomen lluminós toroïdal observat sobre el riu Segre (Lleida, 18-09-2022): la versió original i la versió nova amb física establerta.">
+<style>
+:root{--bg:#06080f;--pn:#0d1220;--bd:#1a2035;--tx:#e8eaf0;--mu:#8892aa;--or:#ff9030;--bl:#60a0f0}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--tx);font-family:"Segoe UI",system-ui,sans-serif;min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:32px 16px}
+.hero{max-width:880px;width:100%;text-align:center;margin-bottom:26px}
+h1{font-size:28px;font-weight:700;letter-spacing:.01em}
+h1 span{color:var(--or)}
+.sub{color:var(--mu);font-size:14px;margin-top:8px;line-height:1.5}
+.cards{display:grid;grid-template-columns:1fr 1fr;gap:16px;max-width:880px;width:100%}
+.card{background:var(--pn);border:1px solid var(--bd);border-radius:10px;padding:20px;display:flex;flex-direction:column;gap:10px;text-decoration:none;color:inherit;transition:border-color .15s,transform .15s}
+.card:hover{border-color:#4a5480;transform:translateY(-2px)}
+.tag{font-size:10px;text-transform:uppercase;letter-spacing:.08em;font-weight:700}
+.card.vella .tag{color:var(--or)}
+.card.nova .tag{color:var(--bl)}
+.card h2{font-size:19px}
+.card p{color:var(--mu);font-size:13px;line-height:1.55}
+.card ul{color:var(--mu);font-size:12.5px;line-height:1.6;padding-left:18px}
+.go{margin-top:auto;padding-top:6px;font-weight:700;font-size:14px}
+.card.vella .go{color:var(--or)}
+.card.nova .go{color:var(--bl)}
+.peu{max-width:880px;width:100%;margin-top:22px;color:var(--mu);font-size:12px;line-height:1.6;text-align:center}
+.peu a{color:var(--bl)}
+@media (max-width:700px){.cards{grid-template-columns:1fr}h1{font-size:23px}}
+</style>
 </head>
-<body style="background:#06080f;color:#e8eaf0;font-family:system-ui,sans-serif">
-<p>Redirigint al simulador… <a href="simulation/v041/index.html" style="color:#60a0f0">simulation/v041/index.html</a></p>
-<p>Versió anterior (model V040_59, citat als documents): <a href="simulation/toroide_plasma_simulacio_V040_59.html" style="color:#60a0f0">V040_59</a></p>
+<body>
+
+<div class="hero">
+  <h1>Velo Toroide · <span>anell lluminós del Segre</span></h1>
+  <p class="sub">Lleida, pont del Príncep de Viana · 18 de setembre de 2022, cap a les 18:00.<br>
+  Dues simulacions del mateix fenomen, amb enfocaments diferents. Tria'n una.</p>
+</div>
+
+<div class="cards">
+  <a class="card vella" href="simulation/original/toroide_plasma_simulacio_V040_59.html">
+    <span class="tag">Simulació original · V040_59</span>
+    <h2>Laboratori Toroide Plasma</h2>
+    <p>La versió original, tal com era, sense cap canvi. És el model que descriuen els documents del projecte.</p>
+    <ul>
+      <li>Plasma toroïdal sostingut per les línies de 25 kV</li>
+      <li>Ressonància acústica amb la xarxa de 50 Hz</li>
+      <li>Escalfament fins al règim autònom</li>
+    </ul>
+    <span class="go">Obrir la simulació original →</span>
+  </a>
+
+  <a class="card nova" href="simulation/v041/index.html">
+    <span class="tag">Simulació nova · V042</span>
+    <h2>Laboratori Toroide amb física establerta</h2>
+    <p>Només física publicada i contrastable. Compara cada configuració, punt per punt, amb el que es va observar.</p>
+    <ul>
+      <li>A · anell de vòrtex creat per una empenta d'aire</li>
+      <li>B · rastre lluminós de nodes que orbiten</li>
+      <li>C · patró de so rotatiu</li>
+    </ul>
+    <span class="go">Obrir la simulació nova →</span>
+  </a>
+</div>
+
+<p class="peu">
+  També disponible: <a href="simulation/toroide_plasma_simulacio_V040_59.html">la versió original amb els errors de programació corregits</a>.<br>
+  Documentació, observació i codi: <a href="https://github.com/Bioquad/Velo-Toroide">github.com/Bioquad/Velo-Toroide</a>
+</p>
+
 </body>
 </html>

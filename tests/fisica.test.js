@@ -35,6 +35,12 @@ t('camp d\'una línia aïllada = fórmula analítica sota el conductor', () => {
   const V = 25e3 * Math.sqrt(2 / 3), h = 10, y = 5;
   prop(F.campEPic(s, 0, y), V / Math.log(2 * h / 0.009) * (1 / (h - y) + 1 / (h + y)), 1e-6, 'E');
 });
+t('línies paral·leles a l\'anell: el camp no depèn de x; perpendiculars: sí', () => {
+  const par = amb({ lin_or: 0 }), per = amb({ lin_or: 1 });
+  prop(F.campEPic(par, -10, 20, 0), F.campEPic(par, 10, 20, 0), 1e-12, 'E paral·leles');
+  assert.ok(Math.abs(F.campEPic(per, -10, 20) - F.campEPic(per, 10, 20)) > 1);
+  assert.ok(F.campEPic(par, 0, 20, -12) > F.campEPic(par, 0, 20, 0));   // més a prop de la MT
+});
 t('Segre: les línies de 25 kV queden molt lluny de la ruptura (X < 1e-3)', () => assert.ok(F.ratiRuptura(SEGRE, 0, 24.6).X < 1e-3));
 t('25 kV no fa corona; 400 kV amb el mateix conductor sí', () => {
   assert.ok(F.corona(SEGRE).every(c => !c.actiu));
