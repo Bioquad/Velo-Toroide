@@ -178,8 +178,12 @@ function seccio(titol, cos, estil, models, plegada) {
 }
 /** Mostra només les seccions que afecten el model actiu */
 function mostraSeccions() {
+  // Tots els paràmetres sempre visibles i ajustables; els que no afecten el model
+  // actiu es veuen atenuats (els valors es conserven en canviar de model)
   document.querySelectorAll('#pnl .sec[data-models]').forEach(el => {
-    el.style.display = el.dataset.models.split(',').includes(String(S.model)) ? '' : 'none';
+    const actiu = el.dataset.models.split(',').includes(String(S.model));
+    el.classList.toggle('inactiva', !actiu);
+    el.title = actiu ? '' : 'No afecta el model actiu; els valors es conserven';
   });
 }
 function fm(id) { return `<div class="fm" id="${id}">—</div>`; }
@@ -236,6 +240,7 @@ function construeixPanell() {
 }
 
 /* ── Paràmetres: lectura/escriptura coherent (slider + etiqueta + estat) ── */
+const CLAUS_INTENT = ['f1', 'f2', 'db1', 'db2', 'phi', 'forma', 'nharm', 'so', 'sx_off', 'h_src', 'theta', 'h_creu', 'h_form', 'D_ap', 'aR', 'npols', 'n_inj'];
 function setParam(k, v, silenciós) {
   const [mn, mx] = DEF[k];
   if (!Number.isFinite(v)) return;
@@ -243,6 +248,8 @@ function setParam(k, v, silenciós) {
   const sl = document.getElementById('sl-' + k); if (sl) sl.value = S[k];
   etiqueta(k);
   enllacaConvergencia(k);
+  // Simulador: si toques les fonts o la geometria amb el so en marxa, és un intent nou
+  if (!silenciós && sigOn && CLAUS_INTENT.includes(k)) { emesos[0] = emesos[1] = 0; }
   if (!silenciós) canviParams();
 }
 /** θ (convergència dels feixos) i h_creu (on es creuen) són la mateixa geometria:
@@ -311,7 +318,7 @@ const MAX_RINGS = 40;
 function fesAnell(i) {
   const src = derivat.emisors[i], an = derivat.anellsE[i];
   const vida = F.vidaAnell2(S, an);
-  return { src: i, an, vida, x: src.x, y: src.y, z: 0, age: 0, ang: 0,
+  return { src: i, an: Object.assign({}, an), vida, x: src.x, y: src.y, z: 0, age: 0, tEv: 0, alim: false, ang: 0,
     T: F.Tk(S) + S.dT0, ne: 0, X: 0, ev: F.estatAnell(S, an, 0, vida) };
 }
 
@@ -328,6 +335,7 @@ function updatePhysics(dt) {
     derivat.emisors.forEach((src, i) => {
       if (!derivat.anellsE[i].es_forma) return;
       if (S.npols > 0 && emesos[i] >= S.npols) return;
+      if (derivat.mig && rings.some(r => r.alim)) return;     // entre els feixos: un sol anell, sostingut
       emissio[i] += src.f * dt;
       while (emissio[i] >= 1 && (S.npols === 0 || emesos[i] < S.npols)) {
         emissio[i] -= 1; emesos[i]++;
@@ -338,7 +346,26 @@ function updatePhysics(dt) {
   }
   for (const r of rings) {
     r.age += dt;
-    r.ev = F.estatAnell(S, r.an, r.age, r.vida);
+    // Anell SOSTINGUT pel so (hipòtesi del model entre feixos): a cada instant es calcula
+    // el camp de S₁ i S₂ allà on és ara l'anell. Si encara compleix el criteri de
+    // formació, les ones l'alimenten (Γ cap al valor actual en ~1 cicle, gir segons Δφ)
+    // i no envelleix. Si no (menys dB, antifase, fonts separades, o el vent l'ha
+    // allunyat), queda lliure: creix, es dispersa i s'extingeix.
+    let alim = false;
+    if (sigOn && derivat.mig && !r.ev.disp) {
+      const m = F.puntMig(S, { x: r.x, y: r.y, z: r.z }), anv = F.anellVelocitat(S, m.f, m.uM);
+      if (anv.es_forma) {
+        alim = true;
+        const k = 1 - Math.exp(-dt * Math.max(m.f, 0.02));
+        r.an = Object.assign({}, r.an, { Gamma: r.an.Gamma + (anv.Gamma - r.an.Gamma) * k, u: anv.u, holman: anv.holman,
+          swirl: m.swirl, kdir: m.eps > 1e-6 ? 1 : m.eps < -1e-6 ? -1 : r.an.kdir });
+      }
+      r.camp = m;
+    }
+    r.alim = alim;
+    if (!alim) r.tEv += dt;
+    r.vida = F.vidaAnell2(S, r.an);                  // turbulència i circulació actuals
+    r.ev = F.estatAnell(S, r.an, r.tEv, r.vida);
     // Ruptura elèctrica (només si hi ha línies en tensió)
     let X = 0, best = null;
     if (emOn && (S.vmt > 0 || S.vcat > 0)) {
@@ -366,7 +393,7 @@ function updatePhysics(dt) {
   }
   // Quan l'anell s'extingeix (es dispersa i ja no es distingeix del cel) desapareix
   const abans = rings.length;
-  rings = rings.filter(r => r.age < r.vida.tCoh + 4 * r.vida.tFade && r.age < 3600 && !(r.ev.disp && !visibilitat(r).visible));
+  rings = rings.filter(r => r.tEv < r.vida.tCoh + 4 * r.vida.tFade && r.tEv < 3600 && !(r.ev.disp && !visibilitat(r).visible));
   extingits += abans - rings.length;
   // Empenta única (o n empentes) acabada i anell extingit: el so s'atura
   if (sigOn && !rings.length && extingits > 0 && S.npols > 0 &&
@@ -621,7 +648,7 @@ function estat() {
     return { n: 'extingit', d: 'l\'anell s\'ha dispersat fins a fondre\'s amb el cel i ha desaparegut', c: '#8892aa' };
   if (!r0) return { n: 'emetent', d: `formant l'anell (cal mig cicle: ${fmtT(0.5 / d.fMain)})…`, c: '#7f77dd' };
   const v = visibilitat(r0);
-  return { n: 'anell ' + v.mec, d: `edat ${fmtT(r0.age)} · ${r0.ev.disp ? 'dispersant-se' : 'coherent'} · Ø ${(2 * r0.ev.R).toFixed(1)} m · y = ${r0.y.toFixed(1)} m · C = ${v.ap.C.toFixed(2)}`, c: v.visible ? '#40c080' : '#8860e0' };
+  return { n: 'anell ' + v.mec, d: `edat ${fmtT(r0.age)} · ${r0.ev.disp ? 'dispersant-se' : r0.alim ? 'sostingut pel so' : 'lliure'} · Ø ${(2 * r0.ev.R).toFixed(1)} m · y = ${r0.y.toFixed(1)} m · C = ${v.ap.C.toFixed(2)}`, c: v.visible ? '#40c080' : '#8860e0' };
 }
 
 /* ── Dibuix 3D ──────────────────────────────────────────────────────────────
@@ -1031,7 +1058,7 @@ function dibuixaVortex(f) {
   const r0 = anellPrincipal();
   if (r0) {
     const v = visibilitat(r0);
-    text3(add(v3(r0.x, r0.y, r0.z), mul(b.v, r0.ev.R + r0.ev.a + 1)), `Ø ${(2 * r0.ev.R).toFixed(1)} m · ${v.mec} · C = ${v.ap.C.toFixed(2)} · ${(2 * r0.ev.R / v.g.dist * 180 / Math.PI).toFixed(2)}° aparents`,
+    text3(add(v3(r0.x, r0.y, r0.z), mul(b.v, r0.ev.R + r0.ev.a + 1)), `Ø ${(2 * r0.ev.R).toFixed(1)} m · ${v.mec}${derivat.mig ? (r0.alim ? ' · sostingut pel so' : ' · lliure') : ''} · C = ${v.ap.C.toFixed(2)} · ${(2 * r0.ev.R / v.g.dist * 180 / Math.PI).toFixed(2)}° aparents`,
       v.visible ? `rgba(${v.col},.95)` : 'rgba(170,160,230,.8)', -6, 'center', true);
   }
 }
