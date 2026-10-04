@@ -106,8 +106,13 @@ function hNodeVelocitat(s, f) { return lambda(s, f) / 2; }
  * a₁/√Σa_k². La física de la formació fa servir el fonamental; els harmònics
  * (k·f) compten per saber si el so és audible.
  */
+const CAU_ONA = new Map();
 function formaOna(s) {
-  const tipus = Math.round(s.forma || 0), N = Math.max(1, Math.round(s.nharm || 1));
+  const tipus = Math.round(s.forma || 0), N = Math.max(1, Math.round(s.nharm || 1)), clau = tipus + '|' + (tipus ? N : 1);
+  if (CAU_ONA.has(clau)) return CAU_ONA.get(clau);
+  const r = formaOnaCalc(tipus, N); CAU_ONA.set(clau, r); return r;
+}
+function formaOnaCalc(tipus, N) {
   const harm = [];
   if (tipus === 0) harm.push({ k: 1, a: 1 });
   else for (let j = 0; j < N; j++) { const k = 2 * j + 1; harm.push({ k, a: tipus === 1 ? 1 / k : (j % 2 ? -1 : 1) / (k * k) }); }
@@ -267,12 +272,103 @@ function anellVelocitat(s, f, u) {
  * Hipòtesi oberta: al punt mig no hi ha cap vora; el mecanisme no lineal que hi
  * generaria la vorticitat (corrent acústic) no es calcula.
  */
-/** Camp de les dues fonts al punt de formació M o, si es dona, a un punt qualsevol
- *  (x, y, z): serveix per saber si les ones encara arriben a l'anell on és ara */
+/**
+ * ON NEIX L'ANELL: no es tria, el situa la física. L'anell neix on els camps de
+ * velocitat de S₁ i S₂ es creuen amb més força i amb més angle, és a dir, on és
+ * màxima l'energia de la part del moviment que gira (espín acústic):
+ * |A×B|·ε = 2|A×B|²/(|A|²+|B|²), amb A, B les velocitats de cada font; i on a
+ * més es compleix el criteri de formació. Si al màxim no es compleix, es pren el punt
+ * següent més favorable on sí; si no es compleix enlloc, no es forma cap anell.
+ * Depèn de la separació i l'alçada de les fonts, dels dB i de la freqüència (el
+ * camp proper canvia amb kr). Exemple: dues fonts iguals en camp proper (u ∝ 1/r²)
+ * → sobre el punt mig, a (separació/2)/√3 ≈ 0.58·(separació/2) per sobre de les
+ * fonts; en camp llunyà (u ∝ 1/r) → a (separació/2)/√2 ≈ 0.71·(separació/2). Si una font és més forta,
+ * el punt es desplaça cap a la més feble.
+ */
+function campFonts(s, x, y) {
+  const c = cSo(s);
+  return fonts(s).map(q => {
+    const dx = x - q.x, dy = y - q.y, r = Math.max(Math.hypot(dx, dy), 0.5), k = 2 * Math.PI * Math.max(q.f, 1e-9) / c;
+    const u = q.L > 0 ? pAmpDeDb(q.L) / r / (rho(s) * c) * Math.sqrt(1 + 1 / Math.pow(k * r, 2)) : 0;
+    return { u, ex: dx / r, ey: dy / r };
+  });
+}
+function puntuacioFormacio(s, x, y) {
+  // Energia de la part del moviment que gira: |A×B|·ε = 2|A×B|²/(|A|²+|B|²).
+  // A prop d'una font aquesta domina i l'aire no gira (ε → 0); és màxima on
+  // els dos camps arriben comparables i creuant-se.
+  const [a, b] = campFonts(s, x, y);
+  const axb = a.u * b.u * Math.abs(a.ex * b.ey - a.ey * b.ex), uu = a.u * a.u + b.u * b.u;
+  return uu > 0 ? 2 * axb * axb / uu : 0;
+}
+/** Zona de cerca: el pla de les fonts, al voltant i per sobre */
+function zonaFormacio(s) {
+  const fs = fonts(s), sep = Math.max(Math.abs(fs[1].x - fs[0].x), 1);
+  return { x0: Math.min(fs[0].x, fs[1].x) - 0.25 * sep, x1: Math.max(fs[0].x, fs[1].x) + 0.25 * sep,
+    y0: 0.5, y1: Math.max(fs[0].y, fs[1].y) + 2 * sep + 5 };
+}
+/** El punt més favorable (màxim de l'energia del gir), amb afinament */
+function millorPuntFormacio(s) {
+  const z = zonaFormacio(s), N = 24;
+  let best = { sc: -1 };
+  for (let j = N; j >= 0; j--) for (let i = 0; i <= N; i++) {      // de dalt a baix: en empat, el punt de dalt
+    const x = z.x0 + (z.x1 - z.x0) * i / N, y = z.y0 + (z.y1 - z.y0) * j / N, sc = puntuacioFormacio(s, x, y);
+    if (sc > best.sc * (1 + 1e-9)) best = { x, y, sc };
+  }
+  let hx = (z.x1 - z.x0) / N, hy = (z.y1 - z.y0) / N;
+  for (let pas = 0; pas < 6; pas++) {
+    const c0 = best;
+    for (let i = -2; i <= 2; i++) for (let j = -2; j <= 2; j++) {
+      const x = c0.x + i * hx / 2, y = Math.max(z.y0, c0.y + j * hy / 2), sc = puntuacioFormacio(s, x, y);
+      if (sc > best.sc) best = { x, y, sc };
+    }
+    hx /= 2.5; hy /= 2.5;
+  }
+  // Sense terra reflectant, el punt simètric per sota de les fonts val igual: es pren el de dalt
+  const yF = (fonts(s)[0].y + fonts(s)[1].y) / 2;
+  if (best.y < yF) { const ym = 2 * yF - best.y, scm = puntuacioFormacio(s, best.x, ym); if (scm >= best.sc * (1 - 1e-6)) best = { x: best.x, y: ym, sc: scm }; }
+  return best;
+}
+/** Punts candidats del pla de les fonts, del més favorable al menys */
+function candidatsFormacio(s) {
+  const z = zonaFormacio(s), N = 48, L = [];
+  for (let i = 0; i <= N; i++) for (let j = 0; j <= N; j++) {
+    const x = z.x0 + (z.x1 - z.x0) * i / N, y = z.y0 + (z.y1 - z.y0) * j / N;
+    L.push({ x, y, sc: puntuacioFormacio(s, x, y) });
+  }
+  L.sort((a, b) => b.sc - a.sc);
+  L.unshift(millorPuntFormacio(s));
+  return L;
+}
+/** Posició on la física situa l'anell (i si s'hi pot formar). Es memoritza: depèn
+ *  només de les fonts, de l'aire i de la zona de formació */
+const CAU_FORMACIO = new Map();
+const CLAUS_FORMACIO = ['f1', 'f2', 'db1', 'db2', 'phi', 'so', 'sx_off', 'h_src', 'D_ap', 'aR', 'n_inj', 'T', 'P', 'H', 'forma', 'nharm', 'turb'];
+function posicioFormacio(s) {
+  const clau = CLAUS_FORMACIO.map(k => s[k]).join('|');
+  if (CAU_FORMACIO.has(clau)) return CAU_FORMACIO.get(clau);
+  const r = posicioFormacioCalc(s);
+  if (CAU_FORMACIO.size > 300) CAU_FORMACIO.clear();
+  CAU_FORMACIO.set(clau, r);
+  return r;
+}
+function posicioFormacioCalc(s) {
+  const forma = P => { const m = puntMig(s, P); return anellVelocitat(s, m.f, m.uM).es_forma; };
+  const millor = millorPuntFormacio(s);
+  if (forma(millor)) return { x: millor.x, y: millor.y, valid: true, rank: 0, millor };
+  // Al màxim no arriba: el punt següent més favorable on sí que es compleix el criteri
+  const L = candidatsFormacio(s);
+  for (let i = 1; i < Math.min(L.length, 800); i++) if (forma(L[i])) return { x: L[i].x, y: L[i].y, valid: true, rank: i, millor };
+  return { x: millor.x, y: millor.y, valid: false, rank: 0, millor };
+}
+/** Camp de les dues fonts al punt de formació (el que situa la física) o, si es
+ *  dona, a un punt qualsevol (x, y, z): serveix per saber si les ones encara
+ *  arriben a l'anell on és ara */
 function puntMig(s, punt) {
   const fs = fonts(s), c = cSo(s);
-  const x = punt ? punt.x : s.sx_off, y = punt ? punt.y : (s.h_form == null ? s.h_src : s.h_form), z = punt ? punt.z || 0 : 0;
-  const yC = s.h_creu == null ? y : s.h_creu;
+  const pos = punt ? null : posicioFormacio(s);
+  const x = punt ? punt.x : pos.x, y = punt ? punt.y : pos.y, z = punt ? punt.z || 0 : 0;
+  const yC = y;
   const d = fs.map(q => {
     const dx = x - q.x, dy = y - q.y, r = Math.max(Math.hypot(dx, dy, z), 0.5);
     const k = 2 * Math.PI * Math.max(q.f, 1e-9) / c, p = q.L > 0 ? pAmpDeDb(q.L) / r : 0;
@@ -304,7 +400,7 @@ function puntMig(s, punt) {
   const f = d[0].p + d[1].p > 0 ? (d[0].p * fs[0].f + d[1].p * fs[1].f) / (d[0].p + d[1].p) : fs[0].f;
   const fBat = iguals ? 0 : Math.abs(fs[0].f - fs[1].f);
   const e1 = d[0].e, e2 = d[1].e;
-  return { x, y, yC, d, r: d.map(q => q.r), p: d.map(q => q.p), u: d.map(q => q.u), dphi, dfu, iguals, pM, el,
+  return { x, y, yC, pos, d, r: d.map(q => q.r), p: d.map(q => q.p), u: d.map(q => q.u), dphi, dfu, iguals, pM, el,
     uM: el.max, eps: el.eps, swirl: K.SWIRL_MAX * el.eps,
     angleCreu: Math.acos(Math.min(1, Math.max(-1, e1[0] * e2[0] + e1[1] * e2[1] + e1[2] * e2[2]))), f, fBat,
     Lm: pM > 0 ? 20 * Math.log10(pM / (Math.SQRT2 * K.P_REF)) : 0,
@@ -831,7 +927,7 @@ function dissenya(s, obj) {
   // Formació al punt mig: S₁ i S₂ iguals i en fase, simètriques respecte a x = 0,
   // per sota del punt de formació; l'anell neix a x = 0 i a l'alçada observada.
   const alMig = s.form === 1;
-  if (alMig) Object.assign(base, { h_src: Math.min(s.h_src, 0.2 * obj.h), h_form: obj.h, h_creu: obj.h, sx_off: 0, so: SEP_S2 * obj.D });
+  if (alMig) Object.assign(base, { h_src: Math.min(s.h_src, 0.2 * obj.h), sx_off: 0, so: SEP_S2 * obj.D });
   // Construeix la configuració per a una Γ donada (amb la terbolesa que dona la durada)
   function construeix(Gamma) {
     const D_ap = base.D_ap;
@@ -841,10 +937,15 @@ function dissenya(s, obj) {
     if (alMig) {
       // S₁ i S₂ iguals, desfasades ±90° (el signe que dona el sentit observat): el nivell
       // es busca perquè el semieix major de l'el·lipse a M sigui u
-      const mig = L => puntMig(Object.assign({}, cfg, { db1: L, db2: L }));
+      // La física situa l'anell: es busca la separació de les fonts perquè el punt més
+      // favorable caigui a l'alçada observada, i després el nivell que hi forma l'anell
+      const yMax = so => millorPuntFormacio(Object.assign({}, cfg, { so, db1: 150, db2: 150, phi: 0 })).y;
+      cfg.so = bisecta(so => yMax(so) - obj.h, 0.5, 5000, 40);
+      const P = millorPuntFormacio(Object.assign({}, cfg, { db1: 150, db2: 150 }));
+      const mig = L => puntMig(Object.assign({}, cfg, { db1: L, db2: L }), P);
       cfg.phi = 0;
-      for (const ph of [90, -90]) { const t = Object.assign({}, cfg, { phi: ph, db1: 150, db2: 150 }); if (puntMig(t).eps * obj.sentit > 0) cfg.phi = ph; }
-      cfg.db1 = cfg.db2 = bisecta(L => mig(L).uM - u, 1, 400);
+      for (const ph of [90, -90]) { const t = Object.assign({}, cfg, { phi: ph, db1: 150, db2: 150 }); if (puntMig(t, P).eps * obj.sentit > 0) cfg.phi = ph; }
+      cfg.db1 = cfg.db2 = bisecta(L => mig(L).uM - u * 1.01, 1, 400);
     }
     else { cfg.db1 = dbPerVelocitat(cfg, f, u); cfg.db2 = cfg.db1 - DB_S2; }
     const an0 = anellPrincipalFont(cfg).an;
@@ -1057,7 +1158,7 @@ const API = {
   vidaAnell, nucliTermo, tracador, profOptica, levitacio, conductors, campEPic, corona, campRuptura,
   sincronisme, ratiRuptura, plasma, dTdt, colorCosNegre,
   evolucio, vidaAnell2, rotacioNodes, cuaNodes, posicioSol, massaAire, transSol, iluminanciaSol,
-  luminanciaCel, faseHG, aparenca, geometriaVisio, posicioTestimoni, factorRadiEmissors, anellPrincipalFont, puntMig, anellVelocitat, formaOna, harmonicsAudibles, velocitatAnell,
+  luminanciaCel, faseHG, aparenca, geometriaVisio, posicioTestimoni, factorRadiEmissors, anellPrincipalFont, puntMig, posicioFormacio, millorPuntFormacio, candidatsFormacio, puntuacioFormacio, anellVelocitat, formaOna, harmonicsAudibles, velocitatAnell,
   rhoSat, llindarPercepcio, patroAcustic, avaluaPatro,
   gammaSRGB, eficaciaEmissio, colorEmissio, emissors, posicioEmissors, envolupantEmissors, avaluaEmissors, esTaronja, toHue,
   trajectoria, estatAnell, tauPunt, corbaContrast, OBS, avaluaObservacio, dissenya,
