@@ -61,14 +61,15 @@ const DEF = {
   // Emissor i anell
   h_src: [0.5, 150, 0.1, 5, 'alçada de l\'emissor sobre el riu', 'm', 1],
   D_ap:  [0.02, 30, 0.01, 0.5, 'diàmetre de l\'obertura / zona de formació D', 'm', 2],
-  h_form:[1, 200, 0.5, 25, 'alçada del punt de formació (indeterminada)', 'm', 1],
+  h_form:[1, 200, 0.5, 25, 'alçada del punt de formació M (indeterminada)', 'm', 1],
+  h_creu:[1, 300, 0.5, 25, 'alçada on es creuen els feixos C', 'm', 1],
   form:  [0, 1, 1, 1, 'on es forma l\'anell', '', 0],
   aR:    [0.02, 0.8, 0.01, 0.12, 'gruix del nucli a/R', '', 2],
   elev:  [-90, 90, 1, 0, 'elevació de l\'eix d\'emissió', '°', 0],
   az_eix:[-180, 180, 1, 0, 'eix de l\'anell (0 = avança cap al testimoni)', '°', 0],
   npols: [0, 20, 1, 0, 'empentes d\'aire de l\'emissor (1 empenta = 1 anell)', '', 0],
   n_inj: [0, 12, 1, 0, 'injectors de traçador (0 = nodes espontanis)', '', 0],
-  swirl: [-1, 1, 0.01, 0, 'swirl a l\'obertura w/u (+ = ↺)', '', 2],
+  swirl: [-1, 1, 0.01, 0, 'swirl a l\'obertura w/u (+ = ↺; al punt mig el dona Δφ)', '', 2],
   kdir:  [-1, 1, 2, 1, 'sentit de l\'ona de Kelvin', '', 0],
   dT0:   [-10, 300, 0.5, 0, 'excés de temperatura de l\'aire emès', 'K', 1],
   // Fonts
@@ -119,7 +120,7 @@ const VIS = { w: true, e: true, n: false, lb: true, sol: true };
 const AMB_SEGRE = { T: 35, P: 1013, H: 30, W: 3, dirW: 0, turb: 0.2, aer: 0, trac: 0, aot: 0.1, vis: 40,
   mes: 9, dia: 18, hora: 18, tz: 2, lat: 41.6142, lon: 0.6222, az_vis: 232, d_obs: 900, v_obs: 5, t_cam: 90,
   hmt: 18, hcat: 11, sl: 24, vmt: 25, vcat: 25, ph: 90, f_mt: 50, rc: 0.9, tau: 0, lin_or: 0,
-  a_riu: 30, h_pont: 5, h_src: 5, so: 10, sx_off: 0, D_ap: 0.5, aR: 0.12, elev: 0, az_eix: 0, form: 1, h_form: 25,
+  a_riu: 30, h_pont: 5, h_src: 5, so: 10, sx_off: 0, D_ap: 0.5, aR: 0.12, elev: 0, az_eix: 0, form: 1, h_form: 25, h_creu: 25,
   npols: 0, n_inj: 0, swirl: 0, kdir: 1, dT0: 0,
   f1: 3.5714, f2: 3.0, db1: 100, db2: 100, phi: 0, spd: 0, model: 0,
   e_n: 4, e_D: 25, e_cap: 3, e_T: 7, e_sent: 1, e_tau: 1.3, e_P: 1.5, e_tipus: 1, e_Temp: 2000, e_h: 25, e_vida: 150, e_ext: 30, e_impl: 1,
@@ -137,7 +138,7 @@ const PRESETS = [
   { t: '🍃 Segre: arrossegat per la brisa', d: 'brisa de 0.5 km/h · sense velocitat pròpia',
     v: Object.assign({}, AMB_SEGRE, { W: 0.5, dirW: 0, trac: 1 }), solDv: 150,
     obj: Object.assign({}, OBJ_SEGRE), prioritat: 'deriva', mov: 'brisa' },
-  { t: '🌀 Segre: prioritat gir de 7 s', d: 'el gir de 7 s demanaria ~197 dB per font: impossible',
+  { t: '🌀 Segre: prioritat gir de 7 s', d: 'el gir de 7 s demanaria ~194 dB per font: impossible',
     v: Object.assign({}, AMB_SEGRE, { dirW: 0, trac: 1 }), solDv: 150,
     obj: Object.assign({}, OBJ_SEGRE), prioritat: 'rotacio' },
   { t: '🧪 Assaig real a escala 1:10', d: 'anell de 2.5 m · fum blanc · sol de costat',
@@ -200,7 +201,7 @@ function construeixPanell() {
   h += seccio('👁 testimoni', ['az_vis', 'd_obs', 'v_obs', 't_cam', 'vis'].map(filaSlider).join('') +
     `<button class="bn opt" data-act="miraSol" style="width:100%">☀ mirar 3° al costat del sol</button>` + fm('fc-obs'));
   h += seccio('🌬 atmosfera', ['T', 'P', 'H', 'W', 'dirW', 'turb'].map(filaSlider).join('') + fm('fc-amb'));
-  h += seccio('🌀 emissor i anell de vòrtex', `<div class="pr-l" style="margin:2px 0">on es forma l'anell</div>${grup('g-form', [[1, '◎ al punt mig de S₁ i S₂'], [0, 'a l\'obertura d\'una font']])}` + ['h_form', 'h_src', 'D_ap', 'aR', 'elev', 'az_eix', 'npols', 'n_inj', 'swirl', 'dT0'].map(filaSlider).join('') +
+  h += seccio('🌀 emissor i anell de vòrtex', `<div class="pr-l" style="margin:2px 0">on es forma l'anell</div>${grup('g-form', [[1, '◎ al punt mig de S₁ i S₂'], [0, 'a l\'obertura d\'una font']])}` + ['h_form', 'h_creu', 'h_src', 'D_ap', 'aR', 'elev', 'az_eix', 'npols', 'n_inj', 'swirl', 'dT0'].map(filaSlider).join('') +
     `<div class="pr-l" style="margin:2px 0">sentit de l'ona de Kelvin sembrada</div>${grup('g-kdir', [[1, '↺'], [-1, '↻']])}` + fm('fc-anell') +
     `<div class="nota">Un camp acústic lineal és irrotacional (∇×v = 0): a una obertura, la vorticitat neix a la vora on el flux oscil·lant se separa (jet sintètic / canó de vòrtex). Al punt mig no hi ha cap vora: el model hi aplica el mateix criteri a l'aire que mouen les dues ones juntes, i el mecanisme no lineal que hi generaria la vorticitat queda obert.</div>`, '', '0');
   h += seccio('🔊 generadors S₁ i S₂', ['f1', 'f2', 'db1', 'db2', 'phi'].map(filaSlider).join('') + fm('fc-ac'), '', '0');
@@ -403,8 +404,13 @@ function refreshInfo() {
     const m = d.mig, a = an;
     ha += `punt mig M: x = ${c('v', m.x.toFixed(1) + ' m')} · h = ${c('v', m.y.toFixed(1) + ' m')} · a ${c('v', m.r[0].toFixed(1))} / ${c('v', m.r[1].toFixed(1) + ' m')} de S₁ / S₂<br>` +
       `p₁ = ${c('v', m.p[0].toFixed(1) + ' Pa')} · p₂ = ${c('v', m.p[1].toFixed(1) + ' Pa')} · ` +
-      (m.iguals ? `Δφ = ${c('v', (((m.dphi * 180 / Math.PI) % 360 + 540) % 360 - 180).toFixed(0) + '°')} → ${c(Math.cos(m.dphi) > 0 ? 'g' : 'r', Math.cos(m.dphi) > 0 ? 'se sumen' : 's\'anul·len')}`
+      (m.iguals ? `Δφ = ${c('v', (((m.dphi * 180 / Math.PI) % 360 + 540) % 360 - 180).toFixed(0) + '°')} → pressió ${Math.abs(Math.cos(m.dphi)) < 0.05 ? c('v', 'en quadratura (×√2)') : c(Math.cos(m.dphi) > 0 ? 'g' : 'w', Math.cos(m.dphi) > 0 ? 'se suma' : 'es resta')}`
         : `batec |f₁−f₂| = ${c('v', m.fBat.toFixed(3) + ' Hz')} → es forma als màxims (sincronisme)`) + `<br>` +
+      `velocitats u₁ = ${c('v', m.u[0].toFixed(2))} · u₂ = ${c('v', m.u[1].toFixed(2) + ' m/s')} (camp proper) · els feixos es creuen a ${c('v', (m.angleCreu * 180 / Math.PI).toFixed(0) + '°')}<br>` +
+      `el·lipse de velocitat: ${c('v', m.el.max.toFixed(2))} × ${c('v', m.el.min.toFixed(2) + ' m/s')} → ` +
+      (m.iguals ? (Math.abs(m.eps) > 0.01 ? `${c('o', 'l\'aire gira ' + (m.eps > 0 ? '↺' : '↻'))} (ε = ${m.eps.toFixed(2)}, swirl ${m.swirl.toFixed(2)}): la diferència de fase produeix la rotació`
+        : c('w', 'oscil·la sense girar (Δφ = 0° o 180°): cap rotació per fase'))
+        : c('w', 'el gir s\'inverteix cada mig batec (de mitjana, zero)')) + `<br>` +
       `p_M = ${c('o', m.pM.toFixed(1) + ' Pa')} (${m.Lm.toFixed(0)} dB) · u_M = ${c('v', a.u.toFixed(2) + ' m/s')} · L₀/D = ${c('v', a.F.toFixed(2))} · ` +
       `Holman ${c(a.es_forma ? 'g' : 'r', a.holman.toFixed(3) + (a.es_forma ? ' ✓' : ' < 0.16 ✗'))}<br>`;
   } else d.anells.forEach((a, i) => {
@@ -816,12 +822,14 @@ function draw() {
     text3(et, `${cd.nom} ${(i ? S.vcat : S.vmt).toFixed(0)} kV · ${cd.y.toFixed(1)} m${on && cr.actiu ? ' · ⚡corona' : ''}`, `rgba(${col_},.95)`, -6, 'left');
   });
 
-  // Ones de S₁ i S₂: els fronts esfèrics tallats pel pla vertical X–Y, on hi ha
-  // les dues fonts i el punt mig. Si λ és més gran que l'escena, els fronts
-  // s'apropen (λ escalada) però conserven el període i la fase reals.
-  const mig = d.mig, maxR = ce.radi * 2.2;
+  // Feixos de S₁ i S₂: cada feix surt de la seva font cap al punt de creuament C
+  // i dibuixa la sinusoide del seu so, com a l'oscil·loscopi. Cada so gira (fasor)
+  // a la seva pròpia freqüència: la fase avança 2π·f·t + φ. Si λ no hi cap, el
+  // nombre d'oscil·lacions del feix s'escala però el període és el real.
+  const mig = d.mig, tS = sigOn ? simT : 0;
+  const Cp = mig ? v3(mig.x, mig.yC, 0) : null;
   d.fs.forEach((src, i) => {
-    const c = v3(src.x, src.y, 0), on = src.L > 0, cc = i === 0 ? '90,200,110' : '230,140,40';
+    const c = v3(src.x, src.y, 0), on = src.L > 0, cc = i === 0 ? '48,192,80' : '208,112,32';
     linia(v3(src.x, 0, 0), c, 'rgba(150,150,128,.45)', 1.5 * f);
     if (!mig) {
       // Formació a l'obertura: disc de l'obertura, perpendicular a l'eix d'emissió
@@ -834,38 +842,53 @@ function draw() {
       }
     }
     brillantor(c, 0.5, on ? cc : '90,90,90', 0.95, 4 * f);
-    const lam = F.lambda(S, src.f), lamV = Math.min(lam, maxR / 4);
-    text3(c, `${i ? 'S₂' : 'S₁'} ${src.f < 1 ? src.f.toFixed(3) : src.f.toFixed(2)} Hz · ${src.L.toFixed(0)} dB${lamV < lam ? ` · λ ${lam.toFixed(0)} m (escalada)` : ''}`, 'rgba(210,210,210,.85)', 16 + 12 * i);
-    if (!VIS.w || !on) return;
-    // Cada front avança λ per període: radi r = (f·t − φ/2π + n)·λ
-    const cicles = (sigOn ? simT : 0) * src.f - src.ph / (2 * Math.PI);
-    const off = (((cicles % 1) + 1) % 1) * lamV;
-    const a0 = Math.min(0.6, 0.15 + src.L / 400) * (sigOn ? 1 : 0.35);
-    for (let rr = off; rr < maxR; rr += lamV) {
-      if (rr < 0.3) continue;
-      const al = a0 * (1 - rr / maxR), est = `rgba(${cc},${al.toFixed(3)})`;
-      let tram = [];
-      for (let j = 0; j <= 72; j++) {
-        const th = j / 72 * 2 * Math.PI, p = v3(src.x + rr * Math.cos(th), src.y + rr * Math.sin(th), 0);
-        if (p[1] >= 0) tram.push(p); else { if (tram.length > 1) polilinia(tram, est, 1.4 * f); tram = []; }
-      }
-      if (tram.length > 1) polilinia(tram, est, 1.4 * f);
+    const lam = F.lambda(S, src.f), fase = 2 * Math.PI * src.f * tS + src.ph;
+    text3(c, `${i ? 'S₂' : 'S₁'} ${src.f < 1 ? src.f.toFixed(3) : src.f.toFixed(2)} Hz · ${src.L.toFixed(0)} dB · φ ${(src.ph * 180 / Math.PI).toFixed(0)}°`, 'rgba(210,210,210,.85)', 16 + 12 * i);
+    // Fasor: un cercle amb l'agulla que gira a la freqüència del so
+    const Rf = Math.max(ce.radi * 0.05, 0.4), cerc = [];
+    for (let j = 0; j <= 32; j++) cerc.push(add(c, v3(Rf * Math.cos(j / 32 * 2 * Math.PI), Rf * Math.sin(j / 32 * 2 * Math.PI), 0)));
+    polilinia(cerc, `rgba(${cc},${on ? 0.7 : 0.25})`, f);
+    if (on) linia(c, add(c, v3(Rf * Math.cos(fase), Rf * Math.sin(fase), 0)), `rgb(${cc})`, 2 * f);
+    if (!on || !VIS.w) return;
+    // Feix: la sinusoide del so, de la font a C (o cap amunt si no hi ha punt de creuament)
+    const fi = Cp || add(c, v3(0, ce.radi, 0)), dir = sub(fi, c), L = Math.hypot(...dir);
+    if (L < 0.5) return;
+    const u = mul(dir, 1 / L), nrm = v3(-u[1], u[0], 0);               // perpendicular dins el pla X–Y
+    const cicles = Math.min(Math.max(L / lam, 2), 12);                  // oscil·lacions visibles al feix
+    const A = Math.max(0.25, Math.min(1, (src.L - 60) / 130)) * Math.min(L * 0.06, ce.radi * 0.12);
+    const pts = [];
+    for (let j = 0; j <= 160; j++) {
+      const sF = j / 160, env = Math.sin(Math.PI * Math.min(sF * 8, 1) / 2);   // neix suau a la font
+      const y = A * env * Math.sin(fase - 2 * Math.PI * cicles * sF);          // ona que viatja cap a C
+      pts.push(add(add(c, mul(u, sF * L)), mul(nrm, y)));
     }
+    polilinia(pts, `rgba(${cc},${sigOn ? 0.95 : 0.4})`, 2 * f);
+    linia(c, fi, `rgba(${cc},.18)`, f, [3 * f, 5 * f]);                 // eix del feix
   });
 
-  // Punt mig M: on es troben les dues ones i neix l'anell
+  // C: on es creuen els feixos · M: on neix l'anell (a C o entre els feixos)
   if (mig) {
     const M = v3(mig.x, mig.y, 0);
-    linia(v3(mig.x, 0, 0), v3(mig.x, Math.max(mig.y * 1.35, mig.y + 6), 0), 'rgba(230,220,160,.35)', f, [3 * f, 4 * f]);
-    // Envolupant instantània: |p₁ + p₂·e^{i(2π·Δf·t + Δφ)}| / (p₁ + p₂)
-    const [p1, p2] = mig.p, sum = p1 + p2;
-    const ph = 2 * Math.PI * mig.fBat * (sigOn ? simT : 0) + (mig.iguals ? mig.dphi : 0);
-    const env = sum > 0 ? Math.sqrt(Math.max(p1 * p1 + p2 * p2 + 2 * p1 * p2 * Math.cos(ph), 0)) / sum : 0;
-    brillantor(M, Math.max(S.D_ap / 2, 1) * (0.4 + 0.6 * env), '255,225,140', (sigOn ? 0.25 + 0.6 * env : 0.3), 6 * f);
-    const q = P(M);
-    if (q) { cx.strokeStyle = 'rgba(255,230,150,.9)'; cx.lineWidth = 1.5 * f; cx.beginPath(); cx.arc(q.x, q.y, 4 * f, 0, 2 * Math.PI); cx.stroke(); }
-    text3(M, `M · punt mig · h = ${mig.y.toFixed(0)} m · p = ${mig.pM.toFixed(0)} Pa${mig.iguals ? (Math.cos(mig.dphi) < 0 ? ' · antifase' : '') : ` · batec ${mig.fBat.toFixed(3)} Hz`}`,
-      'rgba(255,230,150,.95)', -12, 'center');
+    linia(v3(mig.x, 0, 0), v3(mig.x, Math.max(mig.y, mig.yC) * 1.2 + 4, 0), 'rgba(230,220,160,.3)', f, [3 * f, 4 * f]);
+    if (Math.abs(mig.yC - mig.y) > 0.3) {
+      const q = P(Cp);
+      if (q) { cx.strokeStyle = 'rgba(230,230,230,.8)'; cx.lineWidth = 1.5 * f; cx.beginPath(); cx.moveTo(q.x - 5 * f, q.y - 5 * f); cx.lineTo(q.x + 5 * f, q.y + 5 * f); cx.moveTo(q.x + 5 * f, q.y - 5 * f); cx.lineTo(q.x - 5 * f, q.y + 5 * f); cx.stroke(); }
+      text3(Cp, `C · creuament dels feixos · h = ${mig.yC.toFixed(0)} m`, 'rgba(230,230,230,.85)', -10, 'center');
+    }
+    // El·lipse de la velocitat a M i el vector que hi gira: la rotació per fase
+    const el = mig.el, Re = Math.max(S.D_ap / 2, 1.5) * 0.9, kE = el.max > 0 ? Re / el.max : 0;
+    const w = 2 * Math.PI * mig.f * tS, ves = [];
+    const pT = t => mig.iguals ? v3(el.P[0] * Math.cos(t) - el.Q[0] * Math.sin(t), el.P[1] * Math.cos(t) - el.Q[1] * Math.sin(t), 0) : v3(0, 0, 0);
+    if (mig.iguals && el.P) {
+      for (let j = 0; j <= 48; j++) ves.push(add(M, mul(pT(j / 48 * 2 * Math.PI), kE)));
+      polilinia(ves, 'rgba(255,230,150,.75)', 1.5 * f);
+      const v = add(M, mul(pT(w), kE));
+      linia(M, v, 'rgba(255,240,190,.95)', 2.2 * f);
+      brillantor(v, 0.2, '255,240,190', 0.9, 3 * f);
+    }
+    brillantor(M, Math.max(S.D_ap / 2, 1) * 0.5, '255,225,140', sigOn ? 0.55 : 0.25, 6 * f);
+    const gir = mig.iguals ? (Math.abs(mig.eps) > 0.01 ? ` · gira ${mig.eps > 0 ? '↺' : '↻'} per Δφ` : ' · sense gir (Δφ = 0/180°)') : ` · batec ${mig.fBat.toFixed(3)} Hz`;
+    text3(M, `M · neix l'anell · h = ${mig.y.toFixed(0)} m · u = ${mig.uM.toFixed(1)} m/s${gir}`, 'rgba(255,230,150,.95)', -12, 'center');
   }
 
   // Testimoni i línia de visió
@@ -1075,7 +1098,7 @@ function tauOptim() {
 function dissenyaIAplica(silenciós) {
   const obj = { D: S.oD, tub: S.otub, n: S.on, Trot: S.oT, sentit: OPC.dir, h: S.oh, Umax: S.oU, vida: S.ovida, contrast: S.oC, prioritat: OPC.prioritat, passiu: OPC.mov === 'brisa' };
   const r = F.dissenya(S, obj);
-  const claus = ['h_form', 'D_ap', 'aR', 'f1', 'f2', 'db1', 'db2', 'phi', 'npols', 'n_inj', 'swirl', 'kdir', 'h_src', 'elev', 'az_eix', 'dT0', 'sx_off', 'so', 'turb', 'aer'];
+  const claus = ['h_form', 'h_creu', 'D_ap', 'aR', 'f1', 'f2', 'db1', 'db2', 'phi', 'npols', 'n_inj', 'swirl', 'kdir', 'h_src', 'elev', 'az_eix', 'dT0', 'sx_off', 'so', 'turb', 'aer'];
   claus.forEach(k => setParam(k, r.cfg[k], true));
   if (!silenciós) { reinicia(); canviParams(); }
   const conf = r.conflicte > 1.05;
