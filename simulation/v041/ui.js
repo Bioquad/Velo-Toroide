@@ -277,6 +277,7 @@ function calcDerivat() {
 /* ── Simulació temporal ─────────────────────────────────────────────────── */
 let simT = 0, PAUSED = false, sigOn = false, emOn = true;
 let rings = [];
+let extingits = 0;              // anells que ja s'han extingit
 let fenT = null;                // model B: temps des de l'inici del fenomen
 const emissio = [0.5, 0.5];     // fase d'emissió (l'anell es forma al final de l'ejecció: mig cicle)
 const emesos = [0, 0];          // anells emesos per cada font
@@ -338,7 +339,13 @@ function updatePhysics(dt) {
     r.x += v.vx * dt; r.y = Math.max(r.y + v.vy * dt, r.ev.R * 0.1); r.z += v.vz * dt;
     if (!r.ev.disp) r.ang += F.rotacioNodes(S, r.an, r.ev).om * dt;
   }
-  rings = rings.filter(r => r.age < r.vida.tCoh + 4 * r.vida.tFade && r.age < 3600);
+  // Quan l'anell s'extingeix (es dispersa i ja no es distingeix del cel) desapareix
+  const abans = rings.length;
+  rings = rings.filter(r => r.age < r.vida.tCoh + 4 * r.vida.tFade && r.age < 3600 && !(r.ev.disp && !visibilitat(r).visible));
+  extingits += abans - rings.length;
+  // Empenta única (o n empentes) acabada i anell extingit: el so s'atura
+  if (sigOn && !rings.length && extingits > 0 && S.npols > 0 &&
+      derivat.emisors.every((e, i) => emesos[i] >= S.npols || !derivat.anellsE[i].es_forma)) toggleSo();
 }
 
 /** Aparença d'un anell vist pel testimoni */
@@ -549,12 +556,15 @@ function estat() {
     return { n: env < 1 ? 'extingint-se' : 'anell de rastres', d: `t = ${fmtT(fenT)} · ${S.e_n} nodes a ${F.emissors(S).v.toFixed(1)} m/s · C = ${(a ? a.C * env : 0).toFixed(2)}`, c: env > 0 ? '#ff9030' : '#4a5468' };
   }
   const d = derivat, an = d.an, r0 = anellPrincipal();
+  if (!sigOn && !rings.length && extingits > 0) return { n: 'extingit', d: 'l\'anell s\'ha dispersat fins a fondre\'s amb el cel i ha desaparegut · prem ▶ so per tornar a començar', c: '#8892aa' };
   if (!sigOn && !rings.length) return { n: 'aturat', d: 'Prem ▶ so per emetre (la comparació és la predicció del model)', c: '#4a5468' };
   if (sigOn && !an.es_forma) {
     const a = d.an;
     if (d.mig && a.u === 0) return { n: 'ones que s\'anul·len', d: 'Al punt mig les dues ones arriben en antifase i s\'anul·len: canvia el desfasament S₁→S₂.', c: '#e0a030' };
     return { n: 'ones sense anell', d: `L₀/D = ${a.F.toFixed(3)}, Holman = ${a.holman.toFixed(3)} < 0.16: ${d.mig ? 'les ones juntes no mouen prou aire al punt mig' : 'el flux no se separa de l\'obertura'}. Puja el nivell, baixa la freqüència o redueix D.`, c: '#e0a030' };
   }
+  if (!r0 && extingits > 0 && (!sigOn || (S.npols > 0 && emesos.every((e, i) => e >= S.npols || !(d.anellsE[i] && d.anellsE[i].es_forma)))))
+    return { n: 'extingit', d: 'l\'anell s\'ha dispersat fins a fondre\'s amb el cel i ha desaparegut', c: '#8892aa' };
   if (!r0) return { n: 'emetent', d: `formant l'anell (cal mig cicle: ${fmtT(0.5 / d.fMain)})…`, c: '#7f77dd' };
   const v = visibilitat(r0);
   return { n: 'anell ' + v.mec, d: `edat ${fmtT(r0.age)} · ${r0.ev.disp ? 'dispersant-se' : 'coherent'} · Ø ${(2 * r0.ev.R).toFixed(1)} m · y = ${r0.y.toFixed(1)} m · C = ${v.ap.C.toFixed(2)}`, c: v.visible ? '#40c080' : '#8860e0' };
@@ -879,7 +889,7 @@ function draw() {
     const el = mig.el, Re = Math.max(S.D_ap / 2, 1.5) * 0.9, kE = el.max > 0 ? Re / el.max : 0;
     const w = 2 * Math.PI * mig.f * tS, ves = [];
     const pT = t => mig.iguals ? v3(el.P[0] * Math.cos(t) - el.Q[0] * Math.sin(t), el.P[1] * Math.cos(t) - el.Q[1] * Math.sin(t), 0) : v3(0, 0, 0);
-    if (mig.iguals && el.P) {
+    if (sigOn && mig.iguals && el.P) {
       for (let j = 0; j <= 48; j++) ves.push(add(M, mul(pT(j / 48 * 2 * Math.PI), kE)));
       polilinia(ves, 'rgba(255,230,150,.75)', 1.5 * f);
       const v = add(M, mul(pT(w), kE));
@@ -1070,7 +1080,7 @@ function reinicia() {
   if (sigOn) toggleSo();
   if (!emOn) toggleEM();
   if (PAUSED) togglePausa();
-  simT = 0; rings = []; fenT = null; emissio[0] = emissio[1] = 0.5; emesos[0] = emesos[1] = 0;
+  simT = 0; rings = []; extingits = 0; fenT = null; emissio[0] = emissio[1] = 0.5; emesos[0] = emesos[1] = 0;
   refreshInfo();
 }
 function aplicaValors(v) { Object.keys(DEF).forEach(k => { if (k in v) setParam(k, v[k], true); }); }
