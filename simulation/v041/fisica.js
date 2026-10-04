@@ -446,8 +446,11 @@ function posicioFormacioCalc(s) {
   const millor = millorPuntFormacio(s);
   if (forma(millor)) return { x: Math.round(millor.x * 100) / 100, y: Math.round(millor.y * 100) / 100, valid: true, rank: 0, millor };
   // Al màxim no arriba: el punt següent més favorable on sí que es compleix el criteri
-  const L = candidatsFormacio(s);
-  for (let i = 1; i < Math.min(L.length, s._rapid ? 100 : 800); i++) if (forma(L[i])) {
+  // (la mateixa llista de candidats, sencera, per a la cerca ràpida i la fina: només
+  //  l'afinament final canvia; si no, la fina podia deixar-se punts que la ràpida troba)
+  const L = candidatsFormacio(Object.assign({}, s, { _rapid: true }));
+  if (!s._rapid) L.push(...candidatsFormacio(s).slice(1, 800));
+  for (let i = 1; i < L.length; i++) if (forma(L[i])) {
     // afinament fins al centímetre: cap al punt més favorable que encara compleix totes les condicions
     let P = { x: L[i].x, y: L[i].y, sc: puntuacioFormacio(s, L[i].x, L[i].y) }, h = 2;
     const dirs = [[1, 0], [-1, 0], [0, 1], [0, -1], [0.7071, 0.7071], [-0.7071, 0.7071], [0.7071, -0.7071], [-0.7071, -0.7071]];

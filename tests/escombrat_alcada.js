@@ -18,7 +18,7 @@ const forma = (o, L, rapid) => F.anellPrincipalFont(cfg(Object.assign({}, o, { d
 function nivellMinim(o) {
   if (!forma(o, LMAX, true)) return null;
   let lo = 60, hi = LMAX;
-  if (forma(o, lo, true)) return lo;
+  if (forma(o, lo, true) && forma(o, lo, false)) return lo;
   while (hi - lo > 0.05) { const m = (lo + hi) / 2; if (forma(o, m, true)) hi = m; else lo = m; }
   let L = Math.ceil(hi * 10) / 10;
   for (let i = 0; i < 30 && L <= LMAX && !forma(o, L, false); i++) L = Math.round((L + 0.1) * 10) / 10;
@@ -51,7 +51,9 @@ for (const g of GEOM) {
   for (const f of FREQS) {
     const o = Object.assign({ f1: f, f2: f }, g), L = nivellMinim(o);
     if (L == null) { res.push(Object.assign({ f, L: null }, g)); continue; }
-    const d = detall(o, L), L6 = Math.min(L + 6, LMAX), d6 = detall(o, L6);
+    const d = detall(o, L);
+    if (!d) { res.push(Object.assign({ f, L: null }, g)); continue; }
+    const L6 = Math.min(L + 6, LMAX), d6 = detall(o, L6);
     res.push(Object.assign({ f, L, d, d6, cl: classe(L, d.V) }, g));
   }
   if (++k % 10 === 0) process.stdout.write(`${k}/${GEOM.length} `);
