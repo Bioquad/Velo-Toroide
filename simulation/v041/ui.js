@@ -614,9 +614,16 @@ function centreEscena() {
   else if (S.model === 2) { c = v3(S.sx_off, S.c_h, 0); R = S.c_D / 2; }
   else if (r0) { c = v3(r0.x, r0.y, r0.z); R = r0.ev.R; }
   else { const src = d.src; c = v3(src.x, src.y, 0); R = d.an.es_forma ? d.an.R : Math.max(S.D_ap, 1); }
-  const linies = S.vmt > 0 || S.vcat > 0;
-  const radi = Math.max(R * 1.8, S.so / 2 + Math.abs(S.sx_off) + 2, S.a_riu / 2 + 2, linies ? S.sl / 2 + 4 : 0, c[1] * 0.75, 6);
-  return { c, R, radi };
+  // La càmera enquadra tot el que importa: l'anell sencer (amb el radi), les
+  // fonts amb els seus pals, i el punt de formació M i el creuament C
+  const pts = [add(c, v3(-R, -R, 0)), add(c, v3(R, R, 0))];
+  if (S.model !== 1) d.fs.forEach(q => { pts.push(v3(q.x, q.y, 0), v3(q.x, 0, 0)); });
+  if (d.mig) pts.push(v3(d.mig.x, d.mig.y, 0), v3(d.mig.x, d.mig.yC, 0));
+  const lo = [0, 1, 2].map(k => Math.min(...pts.map(q => q[k]))), hi = [0, 1, 2].map(k => Math.max(...pts.map(q => q[k])));
+  const cv = lo.map((v, k) => (v + hi[k]) / 2);
+  const mig = Math.hypot(hi[0] - lo[0], hi[1] - lo[1], hi[2] - lo[2]) / 2;
+  const radi = Math.max(mig * 1.1, R * 1.8, S.a_riu / 2 + 2, 6);
+  return { c, R, radi, cv };
 }
 
 /** Prepara la càmera del fotograma */
@@ -625,10 +632,10 @@ function tFenomen() { if (S.model !== 0) return fenT || 0; const r0 = anellPrinc
 function posTestimoni() { const o = F.posicioTestimoni(S, tFenomen()); return v3(o.x, o.y, o.z); }
 function preparaVista(W, H) {
   const ce = centreEscena();
-  let pos, target = ce.c, fov;
+  let pos, target = ce.cv, fov;
   if (CAM.vista === 'testimoni') {
     pos = posTestimoni();
-    const semi = Math.max(ce.R * 1.5, Math.max(S.hmt, S.hcat, ce.c[1]) * 0.6, 8) / CAM.zoom;
+    const semi = Math.max(ce.radi * 0.85, 8) / CAM.zoom;
     fov = 2 * Math.atan(semi / Math.max(Math.hypot(...sub(target, pos)), 1));
   } else {
     // yaw = 0: des del costat del testimoni (+Z) mirant cap a −Z
@@ -644,7 +651,7 @@ function preparaVista(W, H) {
   if (Math.hypot(...rt) < 1e-6) rt = v3(1, 0, 0);
   rt = norm3(rt);
   const up = cross(rt, fw);
-  const foc = (H / 2) / Math.tan(fov / 2);
+  const foc = (Math.min(W, H) / 2) / Math.tan(fov / 2);   // el camp de visió cap a la dimensió més petita (mòbil vertical)
   VW = { pos, fw, rt, up, foc, W, H, ce, fov };
   return VW;
 }
@@ -686,7 +693,11 @@ function text3(p, txt, color, dy, alinea, negreta) {
   const q = P(p); if (!q || !VIS.lb) return;
   cx.font = `${negreta ? 'bold ' : ''}${(negreta ? 10 : 9) * DPR}px sans-serif`;
   cx.fillStyle = color; cx.textAlign = alinea || 'center';
-  cx.fillText(txt, q.x, q.y + (dy || 0) * DPR);
+  // Manté l'etiqueta dins la pantalla (a la vora es desplaça cap a dins)
+  const w = cx.measureText(txt).width, m = 4 * DPR, al = alinea || 'center';
+  const esq = al === 'center' ? q.x - w / 2 : al === 'left' ? q.x : q.x - w;
+  const dx = esq < m ? m - esq : esq + w > cv.width - m ? cv.width - m - (esq + w) : 0;
+  cx.fillText(txt, q.x + (w < cv.width - 2 * m ? dx : 0), q.y + (dy || 0) * DPR);
 }
 /**
  * Cinta (tub vist en pantalla): punts del centre en 3D i semiamplada en metres.
