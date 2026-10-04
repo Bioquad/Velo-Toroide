@@ -201,7 +201,7 @@ t('on neix l\'anell ho decideix la física: dues fonts iguals → sobre el punt 
   const p = F.posicioFormacio(base);
   assert.ok(p.valid && Math.abs(p.x) < 0.05, JSON.stringify(p));
   prop(p.y - 5, 13.75 / Math.sqrt(3), 0.005, 'camp proper');
-  const ll = F.millorPuntFormacio(Object.assign({}, base, { f1: 2000, f2: 2000 }));
+  const ll = F.millorPuntFormacio(Object.assign({}, base, { f1: 2000, f2: 2000, db1: 100, db2: 100 }));   // nivell baix: sense saturació no lineal
   prop(ll.y - 5, 13.75 / Math.SQRT2, 0.01, 'camp llunyà');   // l'absorció del camí el desplaça una mica
   // una font més feble desplaça el punt cap a ella; separar les fonts l'apuja
   assert.ok(F.posicioFormacio(Object.assign({}, base, { db2: 147 })).x > 2);
@@ -261,8 +261,23 @@ t('pressió de radiació sobre el contrast: el fum o l\'aire calent de l\'anell 
   const fum = F.correntAcustic(Object.assign({}, b, { aer: 500, trac: 1, dT0: 0 }), { x: 0, y: 25 });
   const calent = F.correntAcustic(Object.assign({}, b, { aer: 0, dT0: 10 }), { x: 0, y: 25 });
   assert.strictEqual(net.Fcon, 0); assert.ok(fum.Fcon > 0 && calent.Fcon > fum.Fcon);
-  const alt = F.correntAcustic(Object.assign({}, b, { aer: 0, dT0: 10, f1: 714, f2: 714 }), { x: 0, y: 25 });
-  assert.ok(alt.Fcon > calent.Fcon, String(alt.Fcon / calent.Fcon));
+  // en règim lineal (nivell moderat) creix amb la freqüència
+  const baix = F.correntAcustic(Object.assign({}, b, { aer: 0, dT0: 10, db1: 120, db2: 120 }), { x: 0, y: 25 });
+  const alt = F.correntAcustic(Object.assign({}, b, { aer: 0, dT0: 10, db1: 120, db2: 120, f1: 714, f2: 714 }), { x: 0, y: 25 });
+  assert.ok(alt.Fcon > baix.Fcon, String(alt.Fcon / baix.Fcon));
+});
+t('saturació no lineal: passat el xoc, a 40 m arriba la mateixa pressió per molts dB que posis a la font', () => {
+  const b = Object.assign({}, MIG, { so: 69.2, f1: 5000, f2: 5000, phi: 0, refl: 0, rfont: 0.3 });
+  const p = L => F.fasorsFonts(Object.assign({}, b, { db1: L, db2: L }), 0, 25, 0)[0].p;
+  assert.ok(p(180) / p(160) < 1.2, String(p(180) / p(160)));          // +20 dB a la font, < +1.6 dB a 40 m
+  const c = F.cSo(b), rh = F.rho(b), r = F.fasorsFonts(b, 0, 25, 0)[0].r;
+  const psat = rh * c ** 3 / (1.2 * 2 * Math.PI * 5000 * r * Math.log(r / 0.3));
+  assert.ok(Math.abs(p(190) / psat - 1) < 0.25, String(p(190) / psat));   // p = p_lin/(1+σ) → p_sat quan σ ≫ 1
+  // en infrasò no hi ha saturació: +10 dB a la font són +10 dB a 40 m
+  const q = L => F.fasorsFonts(Object.assign({}, b, { f1: 0.07, f2: 0.07, db1: L, db2: L }), 0, 25, 0)[0].p;
+  prop(q(160) / q(150), Math.pow(10, 0.5), 0.01, 'lineal');
+  // distància de xoc esfèrica
+  assert.ok(F.distanciaXocEsferica(b, 5000, 160) < 1 && F.distanciaXocEsferica(b, 0.07, 160) === Infinity);
 });
 t('d\'on surt el gir: en infrasò, el so dona una Γ ~10⁴–10⁶ vegades massa petita', () => {
   const d = F.dissenya(MIG, Object.assign({ prioritat: 'deriva' }, OBJ));
@@ -273,19 +288,17 @@ t('d\'on surt el gir: en infrasò, el so dona una Γ ~10⁴–10⁶ vegades mass
   // la part d'absorció creix com f²: a 2 kHz el mateix nivell empeny ~10⁸ vegades més
   const a = F.correntAcustic(Object.assign({}, d.cfg, { f1: 0.07, f2: 0.07 }), { x: 0, y: 25 }).Fabs;
   const bF = F.correntAcustic(Object.assign({}, d.cfg, { f1: 2000, f2: 2000 }), { x: 0, y: 25 }).Fabs;
-  assert.ok(bF / a > 1e7, String(bF / a));
+  assert.ok(bF / a > 1e6, String(bF / a));   // amb la saturació del xoc
 });
-t('freqüència òptima per empènyer: ~kHz; l\'ultrasò de 40 kHz s\'absorbeix pel camí abans d\'arribar', () => {
+t('freqüència òptima per empènyer: ~1 kHz; amb la saturació del xoc no n\'hi ha prou; l\'ultrasò s\'absorbeix pel camí', () => {
   const b = Object.assign({}, MIG, { so: 69.2, db1: 161.2, db2: 161.2, phi: -90, aer: 500, trac: 1, feix: 180, h_creu: 25 });
   const G = f => F.correntAcustic(Object.assign({}, b, { f1: f, f2: f }), { x: 0, y: 25 }, 40).G;
-  assert.ok(G(5000) > 100 * G(0.0714) && G(5000) > 100 * G(40000));
+  // amb la saturació del xoc, l'òptim queda prop d'1 kHz i, tot i així, molt lluny del que cal
+  assert.ok(G(1000) > 10 * G(0.0714) && G(1000) > 10 * G(40000) && G(1000) < 1);
 });
-t('a kHz l\'anell es forma per l\'empenta estable del so, entre les ones (5 kHz, 170 dB, fum)', () => {
-  const b = Object.assign({}, MIG, { so: 69.2, phi: -90, aer: 500, trac: 1, feix: 180, h_creu: 25, n_inj: 4, f1: 5000, f2: 5000 });
-  const p = F.anellPrincipalFont(Object.assign({}, b, { db1: 170, db2: 170 }));
-  assert.ok(p.an.es_forma && p.an.mecanisme === 'empenta del so' && Math.abs(p.src.x) < 1.5, JSON.stringify(p.src));
-  assert.ok(Math.min(...p.mig.u) >= Math.max(...p.mig.u) / 3);
-  assert.ok(!F.anellPrincipalFont(Object.assign({}, b, { db1: 155, db2: 155 })).an.es_forma);
+t('a kHz, amb la saturació del xoc, l\'empenta del so no forma l\'anell al Segre ni al límit físic', () => {
+  const b = Object.assign({}, MIG, { so: 69.2, phi: -90, aer: 500, trac: 1, feix: 180, h_creu: 25, n_inj: 4, f1: 5000, f2: 5000, refl: 1, rfont: 0.3 });
+  for (const L of [170, 191]) assert.ok(!F.anellPrincipalFont(Object.assign({}, b, { db1: L, db2: L })).an.es_forma, String(L));
 });
 t('reflex de l\'aigua: la font imatge (x, −h) dobla el camp a prop de l\'aigua en infrasò i abaixa el nivell necessari', () => {
   const b = Object.assign({}, MIG, { so: 69.2, phi: -90, n_inj: 4, f1: 0.07, f2: 0.07, db1: 150, db2: 150 });
@@ -382,5 +395,32 @@ t('el testimoni rebria un nivell perillós i la boira és blanca', () => {
   const a = F.avaluaPatro(PAT);
   assert.ok(a.p.Lobs > 140 && a.p.percep);
   assert.ok(!a.ap.taronja);
+});
+/* Estàtica, soroll del gir, volum desplaçat i mapa de viabilitat */
+t('estàtica: amb boira densa el camp no arriba a la ruptura; sense partícules, zero', () => {
+  const boira = F.estaticaAnell(amb({ aer: 5000, trac: 1 }), 39, 1.43, 180), net = F.estaticaAnell(amb({ aer: 0 }), 39, 1.43, 180);
+  assert.ok(boira.E > 0 && boira.ratio < 1 && !boira.espurnes, `E ${boira.E}`);
+  assert.strictEqual(net.E, 0);
+  prop(boira.tau, 8.854e-12 / 2e-14, 1e-9, 'τ de descàrrega');
+});
+t('estàtica: més partícules i més temps, més camp', () => {
+  const a = F.estaticaAnell(amb({ aer: 500 }), 39, 1.43, 60), b = F.estaticaAnell(amb({ aer: 3600 }), 39, 1.43, 60), c = F.estaticaAnell(amb({ aer: 500 }), 39, 1.43, 180);
+  assert.ok(b.E > a.E && c.E > a.E);
+});
+t('soroll del gir (Lighthill): ∝ v⁸ → +24 dB per doblar Γ; el de Segre és inaudible', () => {
+  const a = F.sorollAnell(SEGRE, 39, 1.43, 900), b = F.sorollAnell(SEGRE, 78, 1.43, 900);
+  prop(b.L - a.L, 80 * Math.log10(2), 1e-6, 'ΔL');
+  assert.ok(a.L1 < 20);
+});
+t('volum per cicle: ∝ 1/f² i ∝ p (a 0.07 Hz i 150 dB, ~10⁵–10⁶ m³)', () => {
+  const v = F.volumFont(SEGRE, 0.07, 150);
+  prop(F.volumFont(SEGRE, 0.14, 150), v / 4, 1e-9, '1/f²');
+  prop(F.volumFont(SEGRE, 0.07, 156.0206), 2 * v, 1e-4, '∝ p');
+  assert.ok(v > 1e5 && v < 1e6, `V ${v}`);
+});
+t('posició de l\'anell arrodonida al centímetre; per sobre de 191 dB és impossible', () => {
+  const p = F.posicioFormacio(MIG);
+  assert.strictEqual(Math.round(p.y * 100) / 100, p.y);
+  assert.ok(F.viabilitat(MIG, 0.07, 200).impossible && !F.viabilitat(MIG, 0.07, 200).forma);
 });
 console.log(`\n${n} proves superades`);

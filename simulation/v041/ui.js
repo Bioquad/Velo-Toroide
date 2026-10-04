@@ -11,26 +11,26 @@ const DEF = {
   spd:   [-2, 2, 0.05, 0, 'escala temporal (log₁₀)', '', 2],
   model: [0, 2, 1, 0, 'model del fenomen', '', 0],
   // Model C: patró acústic rotatiu
-  c_D:   [1, 100, 0.5, 25, 'diàmetre de l\'anell', 'm', 1],
+  c_D:   [1, 100, 0.01, 25, 'diàmetre de l\'anell', 'm', 2],
   c_m:   [1, 12, 1, 4, 'nodes (pètals)', '', 0],
   c_T:   [0.5, 120, 0.1, 7, 'període d\'una volta', 's', 1],
   c_K:   [1, 32, 1, 8, 'esglaons: ones de la pinta K', '', 0],
   c_fc:  [1, 200, 0.1, 13.7, 'freqüència portadora f_c', 'Hz', 1],
   c_L:   [100, 191, 0.5, 172, 'nivell mitjà a l\'anell', 'dB', 1],
   c_r:   [0.5, 100, 0.5, 40, 'radi de les gotes de boira', 'µm', 1],
-  c_cap: [0.1, 10, 0.1, 3, 'gruix del node', 'm', 1],
-  c_h:   [1, 150, 0.5, 25, 'alçada del centre', 'm', 1],
+  c_cap: [0.1, 10, 0.01, 3, 'gruix del node', 'm', 2],
+  c_h:   [1, 150, 0.01, 25, 'alçada del centre', 'm', 2],
   // Model B: nodes emissors
   e_n:   [1, 12, 1, 4, 'nombre de nodes', '', 0],
-  e_D:   [1, 100, 0.5, 25, 'diàmetre de l\'òrbita', 'm', 1],
-  e_cap: [0.1, 10, 0.1, 3, 'mida del cap (gruix del rastre)', 'm', 1],
+  e_D:   [1, 100, 0.01, 25, 'diàmetre de l\'òrbita', 'm', 2],
+  e_cap: [0.1, 10, 0.01, 3, 'mida del cap (gruix del rastre)', 'm', 2],
   e_T:   [0.5, 120, 0.1, 7, 'període d\'una volta', 's', 1],
   e_sent:[-1, 1, 2, 1, 'sentit', '', 0],
   e_tau: [0.05, 30, 0.01, 1.3, 'durada de la llum del rastre τ', 's', 2],
   e_P:   [0, 1000, 0.1, 1.5, 'potència radiada per node', 'kW', 1],
   e_tipus:[0, 1, 1, 1, 'tipus d\'emissió', '', 0],
   e_Temp:[800, 6000, 10, 2000, 'temperatura (incandescència)', 'K', 0],
-  e_h:   [1, 150, 0.5, 25, 'alçada del centre', 'm', 1],
+  e_h:   [1, 150, 0.01, 25, 'alçada del centre', 'm', 2],
   e_vida:[5, 900, 1, 180, 'durada', 's', 0],
   e_ext: [1, 300, 1, 25, 'durada de l\'extinció', 's', 0],
   e_impl:[0, 1, 1, 1, 'implosió: l\'òrbita es tanca durant l\'extinció (0/1)', '', 0],
@@ -43,8 +43,8 @@ const DEF = {
   lon:   [-180, 180, 0.0001, 0.6222, 'longitud', '°', 4],
   aot:   [0, 0.5, 0.01, 0.1, 'terbolesa β d\'Ångström (aerosols)', '', 2],
   // Testimoni
-  az_vis:[0, 360, 0.5, 232, 'direcció de la mirada (azimut)', '°', 1],
-  d_obs: [5, 3000, 5, 900, 'distància inicial testimoni → anell (observat: 800–1000 m)', 'm', 0],
+  az_vis:[0, 360, 0.1, 232, 'direcció de la mirada (azimut)', '°', 1],
+  d_obs: [5, 3000, 0.01, 900, 'distància inicial testimoni → anell (observat: 800–1000 m)', 'm', 2],
   v_obs: [0, 10, 0.1, 5, 'el testimoni camina cap a l\'anell a', 'km/h', 1],
   t_cam: [0, 600, 5, 90, 'durant (després s\'atura)', 's', 0],
   vis:   [1, 100, 1, 40, 'visibilitat meteorològica', 'km', 0],
@@ -55,22 +55,22 @@ const DEF = {
   W:     [0, 40, 0.1, 3, 'vent', 'km/h', 1],
   IR:    [0, 5, 0.01, 0, 'ionització residual (suposada mantinguda)', '%', 2],
   beta:  [1, 2, 0.01, 1.2, 'coef. de no-linealitat β (aire: 1.2)', '', 2],
-  dirW:  [0, 360, 1, 90, 'direcció del vent (0 = cap al testimoni, 180 = s\'allunya, 90 = →)', '°', 0],
+  dirW:  [0, 360, 0.1, 90, 'direcció del vent (0 = cap al testimoni, 180 = s\'allunya, 90 = →)', '°', 1],
   turb:  [0.001, 2, 0.001, 0.2, 'turbulència ambient σ_w', 'm/s', 3],
   // Traçador
   aer:   [0, 20000, 1, 0, 'traçador a l\'aire de l\'obertura', 'mg/m³', 0],
   trac:  [0, 3, 1, 0, 'tipus de traçador', '', 0],
   // Emissor i anell
-  h_src: [0.5, 150, 0.1, 5, 'alçada de l\'emissor sobre el riu', 'm', 1],
+  h_src: [0.5, 150, 0.01, 5, 'alçada de l\'emissor sobre el riu', 'm', 2],
   D_ap:  [0.02, 30, 0.01, 0.5, 'diàmetre de l\'obertura / zona de formació D', 'm', 2],
   // h_form, h_creu i θ ja no són paràmetres: on neix l'anell ho decideix la física
   h_form:[1, 200, 0.5, 25, '(obsolet)', 'm', 1],
-  h_creu:[1, 300, 0.5, 25, 'alçada on es creuen els feixos C', 'm', 1],
-  feix:  [0, 180, 1, 180, 'obertura dels feixos (0° tancat · 180° altaveu convencional)', '°', 0],
+  h_creu:[1, 300, 0.01, 25, 'alçada on es creuen els feixos C', 'm', 2],
+  feix:  [0, 180, 0.1, 180, 'obertura dels feixos (0° tancat · 180° altaveu convencional)', '°', 1],
   form:  [0, 1, 1, 1, 'on es forma l\'anell', '', 0],
   aR:    [0.02, 0.8, 0.01, 0.12, 'gruix del nucli a/R', '', 2],
-  elev:  [-90, 90, 1, 0, 'elevació de l\'eix d\'emissió', '°', 0],
-  az_eix:[-180, 180, 1, 0, 'eix de l\'anell (0 = avança cap al testimoni)', '°', 0],
+  elev:  [-90, 90, 0.1, 0, 'elevació de l\'eix d\'emissió', '°', 1],
+  az_eix:[-180, 180, 0.1, 0, 'eix de l\'anell (0 = avança cap al testimoni)', '°', 1],
   npols: [0, 20, 1, 0, 'empentes d\'aire de l\'emissor (1 empenta = 1 anell)', '', 0],
   n_inj: [0, 12, 1, 0, 'injectors de traçador (0 = nodes espontanis)', '', 0],
   swirl: [-1, 1, 0.01, 0, 'swirl a l\'obertura w/u (+ = ↺; al punt mig el dona Δφ)', '', 2],
@@ -78,36 +78,37 @@ const DEF = {
   dT0:   [-10, 300, 0.5, 0, 'excés de temperatura de l\'aire emès', 'K', 1],
   // Fonts
   // freqüència: control logarítmic, de 0.0005 Hz a 40 kHz (infrasò, audible i ultrasò)
+  rfont: [0.01, 5, 0.01, 0.3, 'radi de cada font (on comença l\'ona)', 'm', 2],
   f1:    [0.0005, 40000, 0.0001, 3.5714, 'freqüència S₁', 'Hz', 4, 'log'],
   f2:    [0.0005, 40000, 0.0001, 3.0, 'freqüència S₂', 'Hz', 4, 'log'],
-  db1:   [0, 191, 0.5, 100, 'nivell S₁ (a 1 m)', 'dB', 1],
-  db2:   [0, 191, 0.5, 100, 'nivell S₂ (a 1 m)', 'dB', 1],
-  phi:   [-180, 180, 1, 0, 'desfasament S₁→S₂ φ (gir: −90° ↺, +90° ↻)', '°', 0],
+  db1:   [0, 191, 0.1, 100, 'nivell S₁ (a 1 m)', 'dB', 1],
+  db2:   [0, 191, 0.1, 100, 'nivell S₂ (a 1 m)', 'dB', 1],
+  phi:   [-180, 180, 0.1, 0, 'desfasament S₁→S₂ φ (gir: −90° ↺, +90° ↻)', '°', 1],
   forma: [0, 2, 1, 0, 'forma del senyal', '', 0],
   nharm: [1, 25, 1, 9, 'harmònics de la forma (N)', '', 0],
   // Riu, pont i línies
-  a_riu: [5, 500, 1, 30, 'amplada del riu', 'm', 0],
+  a_riu: [5, 500, 0.01, 30, 'amplada del riu', 'm', 2],
   refl:  [0, 1, 0.01, 1, 'reflexió del so a l\'aigua (1 = mirall, 0 = sense)', '', 2],
-  h_pont:[0.5, 50, 0.1, 5, 'alçada del pont (testimoni a +1.6 m)', 'm', 1],
-  so:    [0, 100, 0.1, 10, 'separació S₁↔S₂', 'm', 1],
-  sx_off:[-30, 30, 0.1, 0, 'posició lateral de S₁S₂', 'm', 1],
+  h_pont:[0.5, 50, 0.01, 5, 'alçada del pont (testimoni a +1.6 m)', 'm', 2],
+  so:    [0, 300, 0.01, 10, 'separació S₁↔S₂', 'm', 2],
+  sx_off:[-30, 30, 0.01, 0, 'posició lateral de S₁S₂', 'm', 2],
   theta: [0.5, 89, 0.5, 34.5, 'convergència θ dels feixos (respecte a la vertical)', '°', 1],
-  hmt:   [0.5, 80, 0.1, 18, 'alçada MT sobre el riu', 'm', 1],
-  hcat:  [0.5, 80, 0.1, 11, 'alçada catenària sobre el riu', 'm', 1],
-  sl:    [0, 60, 0.1, 24, 'separació horitzontal MT↔Cat', 'm', 1],
+  hmt:   [0.5, 80, 0.01, 18, 'alçada MT sobre el riu', 'm', 2],
+  hcat:  [0.5, 80, 0.01, 11, 'alçada catenària sobre el riu', 'm', 2],
+  sl:    [0, 60, 0.01, 24, 'separació horitzontal MT↔Cat', 'm', 2],
   vmt:   [0, 500, 0.5, 25, 'tensió MT (entre fases, ef.)', 'kV', 1],
   vcat:  [0, 500, 0.5, 25, 'tensió catenària (fase-terra, ef.)', 'kV', 1],
-  ph:    [0, 180, 1, 90, 'desfasament MT↔Cat', '°', 0],
+  ph:    [0, 180, 0.1, 90, 'desfasament MT↔Cat', '°', 1],
   f_mt:  [40, 70, 0.1, 50, 'freqüència de xarxa', 'Hz', 1],
   rc:    [0.2, 3, 0.05, 0.9, 'radi del conductor', 'cm', 2],
   lin_or:[0, 1, 1, 0, 'orientació de les línies', '', 0],
   tau:   [-10000, 10000, 1, 0, 'retard τ (so respecte a EM)', 'µs', 0],
   // Objectiu (problema invers)
-  oD:    [0.1, 100, 0.1, 25, 'diàmetre', 'm', 1],
+  oD:    [0.1, 100, 0.01, 25, 'diàmetre', 'm', 2],
   otub:  [0.01, 20, 0.01, 3, 'gruix del tub', 'm', 2],
   on:    [1, 12, 1, 4, 'nodes', '', 0],
   oT:    [0.5, 120, 0.1, 7, 'període d\'una volta', 's', 1],
-  oh:    [0.5, 150, 0.5, 25, 'alçada', 'm', 1],
+  oh:    [0.5, 150, 0.01, 25, 'alçada', 'm', 2],
   oU:    [0.01, 10, 0.01, 1, 'velocitat pròpia màxima', 'm/s', 2],
   ovida: [5, 900, 1, 180, 'durada', 's', 0],
   oC:    [0.05, 5, 0.05, 2, 'contrast amb el cel', '', 2],
@@ -129,7 +130,7 @@ const VIS = { w: true, e: true, n: false, lb: true, sol: true };
 const AMB_SEGRE = { T: 35, P: 1013, H: 30, W: 3, dirW: 0, turb: 0.2, aer: 0, trac: 0, aot: 0.1, vis: 40,
   mes: 9, dia: 18, hora: 18, tz: 2, lat: 41.6142, lon: 0.6222, az_vis: 232, d_obs: 900, v_obs: 5, t_cam: 90,
   hmt: 18, hcat: 11, sl: 24, vmt: 25, vcat: 25, ph: 90, f_mt: 50, rc: 0.9, tau: 0, lin_or: 0,
-  a_riu: 30, h_pont: 5, h_src: 5, so: 10, sx_off: 0, D_ap: 0.5, aR: 0.12, elev: 0, az_eix: 0, form: 1, h_form: 25, h_creu: 25, feix: 180, refl: 1, forma: 0, nharm: 9, IR: 0, beta: 1.2,
+  a_riu: 30, h_pont: 5, h_src: 5, so: 10, sx_off: 0, D_ap: 0.5, aR: 0.12, elev: 0, az_eix: 0, form: 1, h_form: 25, h_creu: 25, feix: 180, refl: 1, rfont: 0.3, forma: 0, nharm: 9, IR: 0, beta: 1.2,
   npols: 0, n_inj: 0, swirl: 0, kdir: 1, dT0: 0,
   f1: 3.5714, f2: 3.0, db1: 100, db2: 100, phi: 0, spd: 0, model: 0,
   e_n: 4, e_D: 25, e_cap: 3, e_T: 7, e_sent: 1, e_tau: 1.3, e_P: 1.5, e_tipus: 1, e_Temp: 2000, e_h: 25, e_vida: 150, e_ext: 30, e_impl: 1,
@@ -203,10 +204,13 @@ function construeixPanell() {
   h += seccio('🔬 model del fenomen', grup('g-model', [[0, 'A · vòrtex'], [1, 'B · emissors'], [2, 'C · patró de so']]) +
     `<div class="nota" id="nota-model"></div>` + filaSlider('spd'), 'border-color:#305030');
   // 1. Les fonts de so: el que es pot ajustar per provocar el fenomen
-  h += seccio('🔊 generadors de so S₁ i S₂', ['f1', 'f2', 'db1', 'db2', 'phi'].map(filaSlider).join('') +
+  h += seccio('🔊 generadors de so S₁ i S₂', ['f1', 'f2', 'db1', 'db2', 'phi', 'rfont'].map(filaSlider).join('') +
     `<div style="display:flex;gap:3px;margin:2px 0"><button class="bn opt" data-act="f2f1" style="flex:1">f₂ = f₁</button><button class="bn opt" data-act="phiL" style="flex:1">φ = −90° ↺</button><button class="bn opt" data-act="phiR" style="flex:1">φ = +90° ↻</button><button class="bn opt" data-act="phi0" style="flex:1">φ = 0°</button></div>
      <div class="pr-l" style="margin:2px 0">forma del senyal</div>${grup('g-forma', [[0, '∿ sinusoïdal'], [1, '⊓ quadrada'], [2, '△ triangular']])}` +
-    filaSlider('nharm') + fm('fc-ac'), 'border-color:#305048', '0');
+    filaSlider('nharm') + fm('fc-ac') +
+    `<button class="bn opt" data-act="mapa" style="width:100%;margin-top:4px">🗺 mapa: on es forma el toroide (freqüència × nivell)</button>
+     <canvas id="mapa-cv" width="300" height="190" style="width:100%;display:none;margin-top:3px;border-radius:4px;background:#05070d;cursor:crosshair"></canvas>
+     <div class="fm" id="mapa-info" style="display:none"></div>`, 'border-color:#305048', '0');
   h += seccio('📐 geometria de les fonts i formació', ['so', 'sx_off', 'h_src', 'h_creu', 'feix'].map(filaSlider).join('') +
     `<div class="pr-l" style="margin:2px 0">on es forma l'anell</div>${grup('g-form', [[1, '◎ entre els feixos (on el situa la física)'], [0, 'a l\'obertura d\'una font']])}` + fm('fc-geom'), 'border-color:#305048', '0');
   h += seccio('🌀 anell de vòrtex', ['D_ap', 'aR', 'npols', 'n_inj', 'swirl', 'dT0', 'elev', 'az_eix'].map(filaSlider).join('') +
@@ -248,7 +252,7 @@ function construeixPanell() {
 }
 
 /* ── Paràmetres: lectura/escriptura coherent (slider + etiqueta + estat) ── */
-const CLAUS_INTENT = ['f1', 'f2', 'db1', 'db2', 'phi', 'forma', 'nharm', 'so', 'sx_off', 'h_src', 'h_creu', 'feix', 'D_ap', 'aR', 'npols', 'n_inj'];
+const CLAUS_INTENT = ['rfont', 'f1', 'f2', 'db1', 'db2', 'phi', 'forma', 'nharm', 'so', 'sx_off', 'h_src', 'h_creu', 'feix', 'D_ap', 'aR', 'npols', 'n_inj'];
 function setParam(k, v, silenciós) {
   const [mn, mx] = DEF[k];
   if (!Number.isFinite(v)) return;
@@ -273,7 +277,7 @@ function etiqueta(k) {
   const [, , , , , un, dec] = DEF[k];
   let txt = S[k].toFixed(dec) + (un ? ' ' + un : '');
   if (k === 'spd') txt = '×' + Math.pow(10, S.spd).toFixed(Math.pow(10, S.spd) < 0.1 ? 3 : 2);
-  if (k === 'f1' || k === 'f2') { const f = S[k]; txt = f >= 20000 ? (f / 1000).toFixed(2) + ' kHz (ultrasò)' : f >= 1000 ? (f / 1000).toFixed(3) + ' kHz' : f >= 20 ? f.toFixed(1) + ' Hz' : f.toFixed(f < 1 ? 4 : 3) + ' Hz (infrasò)'; }
+  if (k === 'f1' || k === 'f2') { const f = S[k]; txt = (f >= 1 ? f.toFixed(1) : f >= 0.1 ? f.toFixed(2) : f.toFixed(3)) + ' Hz' + (f >= 20000 ? ' (ultrasò)' : f < 20 ? ' (infrasò)' : ''); }
   if (k === 'npols' && S.npols === 0) txt = 'continu';
   if (k === 'n_inj' && S.n_inj === 0) txt = 'espontanis';
   if ((k === 'db1' || k === 'db2') && S[k] > F.dbMax(S)) txt += ' ⚠';
@@ -457,14 +461,16 @@ function refreshInfo() {
   const fb = S.f1 !== S.f2 ? Math.abs(S.f1 - S.f2) : 0;
   setH('fc-ac', `λ₁ = ${c('v', fmtL(F.lambda(S, S.f1)))} · període ${c('v', fmtT(1 / S.f1))} · absorció ${c('v', (F.alfaAbs(S.f1, S) * 8.686).toExponential(1) + ' dB/m')}<br>` +
     `node de pressió λ₁/4 = ${c('v', fmtL(F.hNodePressio(S, S.f1)))} · trampa λ₁/2 = ${c('v', fmtL(F.hNodeVelocitat(S, S.f1)))}<br>` +
-    `xoc de S₁ a ${c(xs1 > 50 ? 'g' : 'r', isFinite(xs1) ? fmtL(xs1) : '∞')} · nivell màxim físic ${F.dbMax(S).toFixed(0)} dB<br>` +
+    (() => { const xe = F.distanciaXocEsferica(S, S.f1, S.db1), V = F.volumFont(S, S.f1, S.db1);
+      return `xoc de S₁ a ${c(xe > 50 ? 'g' : 'r', isFinite(xe) ? fmtL(xe) : 'mai (lineal)')} · nivell màxim físic ${F.dbMax(S).toFixed(0)} dB<br>` +
+        `volum d'aire que mou cada font per cicle: ${c('v', V >= 1e6 ? (V / 1e6).toFixed(2) + ' hm³' : V >= 1 ? V.toFixed(V < 10 ? 2 : 0) + ' m³' : (V * 1000).toFixed(2) + ' L')}<br>`; })() +
     `${fb > 0 ? `batec |f₁ − f₂| = ${c('v', fb.toFixed(3) + ' Hz')} (període ${fmtT(1 / fb)})<br>` : ''}` +
     `forma ${c('v', ['sinusoïdal', 'quadrada', 'triangular'][fo.tipus])}${fo.tipus ? ` · ${fo.harm.length} harmònics fins a ${c('v', (fo.harm[fo.harm.length - 1].k * Math.max(S.f1, S.f2)).toFixed(1) + ' Hz')} · el fonamental porta el ${c('v', (fo.frac * fo.frac * 100).toFixed(0) + ' %')} de l'energia` : ''}<br>` +
     `${audible ? c('w', `⚠ audible al testimoni: ${hAud[0].f.toFixed(0)} Hz (harmònic ${hAud[0].k}, ${hAud[0].L.toFixed(0)} dB) — el testimoni no va sentir res`) : c('g', '✓ inaudible per al testimoni (infrasò o harmònics per sota del llindar)')}`);
   // On la física situa l'anell
   if (d.mig) {
     const m = d.mig, ps = m.pos, a2 = S.so / 2, dh = m.y - S.h_src;
-    setH('fc-geom', `la física situa l'anell a ${c('o', 'x = ' + m.x.toFixed(1) + ' m · h = ' + m.y.toFixed(1) + ' m')}` +
+    setH('fc-geom', `la física situa l'anell a ${c('o', 'x = ' + m.x.toFixed(2) + ' m · h = ' + m.y.toFixed(2) + ' m')}` +
       ` (${(Math.abs(dh) / Math.max(a2, 1e-9)).toFixed(2)} × separació/2 per sobre de les fonts)<br>` +
       `és on les dues velocitats es creuen amb més força i angle (màxim de l'energia del gir)<br>` +
       `els feixos es creuen a C: ${c('v', 'h = ' + S.h_creu.toFixed(1) + ' m')} · convergència θ = ${c('v', (Math.atan2(a2, Math.max(S.h_creu - S.h_src, 1e-6)) * 180 / Math.PI).toFixed(1) + '°')}` +
@@ -474,7 +480,12 @@ function refreshInfo() {
       (Math.abs(m.x - S.sx_off) > 0.5 && S.f1 === S.f2 && S.db1 === S.db2 ? c('w', '(fonts simètriques: hi ha un punt equivalent a l\'altre costat)') + '<br>' : '') +
       (ps && ps.valid ? (ps.rank === 0 ? c('g', '✓ al punt més favorable es compleix el criteri de formació')
         : c('w', `al punt més favorable (h = ${ps.millor.y.toFixed(1)} m) les ones no hi arriben prou: es forma al següent punt on sí`))
-        : c('r', '✗ enlloc del pla es compleix el criteri de formació: no es forma cap anell')));
+        : c('r', '✗ enlloc del pla es compleix el criteri de formació: no es forma cap anell') + (() => {
+          const mot = ps ? F.anellAlPunt(S, ps.millor).an.motiu : '';
+          return mot === 'turbulència' ? '<br>' + c('r', 'al punt més favorable l\'anell seria més feble que la turbulència de l\'aire (Γ/4πR < σ_w)')
+            : mot === 'vent' ? '<br>' + c('r', 'al punt més favorable el corrent del so és més lent que la brisa: se l\'emporta abans d\'enrotllar-se')
+            : mot === 'criteri de formació' ? '<br>' + c('r', 'al punt més favorable l\'aire oscil·la massa poc (Holman) i l\'empenta del so no venç la turbulència')
+            : '<br>' + c('r', 'on n\'hi hauria prou, les dues ones no hi arriben comparables o l\'anell no hi cap per sobre de l\'aigua'); })()));
   } else setH('fc-geom', 'l\'anell surt de l\'obertura de la font principal');
   // Anell
   let ha = '';
@@ -495,7 +506,12 @@ function refreshInfo() {
       (() => { const ca = F.correntAcustic(S, null, a.Gamma); return `<b>què empeny l'aire?</b> absorció de les ones (α = ${(ca.alfa * 8.686).toExponential(1)} dB/m): ${c('v', ca.Fabs.toExponential(1) + ' N/m³')} · ` +
         `pressió de radiació sobre el contingut de l'anell (fum, gotes, aire calent; contrast ${ca.Phi.toExponential(1)}): ${c('v', ca.Fcon.toExponential(1) + ' N/m³')} · parell de l'espín ${c('v', ca.tau.toExponential(1) + ' N/m²')} → ` +
         `poden sostenir Γ ≈ ${c(ca.suficient ? 'g' : 'r', ca.G.toExponential(1) + ' m²/s')}` + (a.Gamma > 0 ? ` de ${a.Gamma.toFixed(1)} que cal ${ca.suficient ? c('g', '✓') : c('r', '(falta ×' + ca.factor.toExponential(0) + ')')}` : '') + `<br>` +
-        (() => { const xs = F.distanciaXoc(S, m.f, Math.max(S.db1, S.db2)); return xs < Math.min(...m.r) ? c('w', `⚠ el so fa xoc a ${fmtL(xs)} de la font, abans d'arribar a M: el model lineal no compta la dissipació del xoc (incerta, normalment més empenta a prop de les fonts i menys so a M)`) + '<br>' : ''; })(); })();
+        (() => { const sg = Math.max(m.d[0].sigma || 0, m.d[1].sigma || 0); return sg >= 1 ? c('w', `⚠ el so fa xoc abans d'arribar (σ = ${sg.toFixed(1)}): a M arriba saturat, ${m.d[0].p.toFixed(1)} Pa, i pujar els dB de la font gairebé no hi canvia res`) + '<br>' : ''; })() +
+        (() => { const r0 = anellPrincipal(), G = r0 ? r0.ev.Gamma : a.Gamma, aa = r0 ? r0.ev.a : a.a, edat = r0 ? r0.age : d.vida.tCoh;
+          const est = F.estaticaAnell(S, G, aa, edat), so = F.sorollAnell(S, G, aa, Math.hypot(S.d_obs, 25));
+          return `<b>estàtica de l'anell</b> (fregament del traçador en girar, a ${fmtT(edat)}): camp ${c('v', est.E < 1 ? est.E.toExponential(1) + ' V/m' : est.E.toFixed(0) + ' V/m')} · tensió ~${c('v', est.V < 1 ? est.V.toExponential(1) : est.V.toFixed(0))} V · ` +
+            `${est.espurnes ? c('o', '⚡ ' + est.soroll) : c('g', est.soroll)} (ruptura ${fmtE(est.Ebd)})<br>` +
+            `<b>soroll de l'anell en girar</b> (vòrtex, Lighthill): ${c('v', so.L1.toFixed(0) + ' dB')} a 1 m · ${c('v', so.L.toFixed(0) + ' dB')} al testimoni<br>`; })(); })();
   } else d.anells.forEach((a, i) => {
     if (d.fs[i].L <= 0) { ha += `${i ? 'S₂' : 'S₁'}: ${c('r', 'apagada')}<br>`; return; }
     ha += `${i ? 'S₂' : 'S₁'}: u = ${c('v', a.u.toFixed(2) + ' m/s')} (Mach ${a.mach.toFixed(3)}) · L₀/D = ${c('v', a.F.toFixed(2))} · ` +
@@ -1292,6 +1308,55 @@ let audioCtx = null;
 const audioNodes = {};
 function fBase(id) { return id === 's1' ? S.f1 : id === 's2' ? S.f2 : S.f_mt; }
 function freqAudio(id) { let f = Math.max(fBase(id), 0.005); while (f < 20) f *= 10; while (f > 18000) f /= 10; return f; }   // infrasò ×10, ultrasò ÷10 fins que és audible
+/* ── Mapa de viabilitat: per a la geometria actual, on es forma el toroide ── */
+const MAPA = { f0: -2, f1: Math.log10(40000), L0: 60, L1: 191, nf: 34, nL: 22, cel: [], fent: false };
+function calculaMapa() {
+  const cvm = document.getElementById('mapa-cv'), info = document.getElementById('mapa-info');
+  cvm.style.display = 'block'; info.style.display = 'block';
+  if (MAPA.fent) return;
+  MAPA.fent = true; MAPA.cel = []; MAPA.s = Object.assign({}, S);
+  let i = 0; const tot = MAPA.nf * MAPA.nL;
+  const pas = () => {
+    const t0 = performance.now();
+    while (i < tot && performance.now() - t0 < 30) {
+      const fi = i % MAPA.nf, li = Math.floor(i / MAPA.nf);
+      const f = Math.pow(10, MAPA.f0 + (MAPA.f1 - MAPA.f0) * (fi + 0.5) / MAPA.nf), L = MAPA.L0 + (MAPA.L1 - MAPA.L0) * (li + 0.5) / MAPA.nL;
+      MAPA.cel[i] = Object.assign({ f, L }, F.viabilitat(MAPA.s, f, L)); i++;
+    }
+    dibuixaMapa(i / tot);
+    if (i < tot) setTimeout(pas, 0); else MAPA.fent = false;
+  };
+  pas();
+}
+function dibuixaMapa(progres) {
+  const cvm = document.getElementById('mapa-cv'); if (!cvm) return;
+  const o = cvm.getContext('2d'), W = cvm.width, H = cvm.height, ml = 30, mb = 18, mt = 4, mr = 4;
+  const pw = W - ml - mr, ph = H - mb - mt, cw = pw / MAPA.nf, ch = ph / MAPA.nL;
+  o.fillStyle = '#05070d'; o.fillRect(0, 0, W, H);
+  const hMax = Math.max(30, ...MAPA.cel.filter(c => c && c.forma).map(c => c.h));
+  MAPA.cel.forEach((c, i) => {
+    if (!c) return;
+    const fi = i % MAPA.nf, li = Math.floor(i / MAPA.nf), x = ml + fi * cw, y = mt + ph - (li + 1) * ch;
+    if (c.impossible) o.fillStyle = '#1a1414';
+    else if (!c.forma) o.fillStyle = '#10141f';
+    else { const t = Math.min(1, c.h / hMax); o.fillStyle = c.mec === 'oscil·lació' ? `rgb(${40 + 60 * t | 0},${120 + 120 * t | 0},${70 + 40 * t | 0})` : `rgb(${60 + 60 * t | 0},${110 + 80 * t | 0},${190 + 60 * t | 0})`; }
+    o.fillRect(x + 0.5, y + 0.5, cw - 1, ch - 1);
+  });
+  // eixos
+  o.fillStyle = '#7a849a'; o.font = '8px sans-serif'; o.textAlign = 'center';
+  [0.01, 0.1, 1, 10, 100, 1000, 10000].forEach(f => { const x = ml + (Math.log10(f) - MAPA.f0) / (MAPA.f1 - MAPA.f0) * pw; o.fillText(f >= 1000 ? f / 1000 + 'k' : String(f), x, H - 6); });
+  o.textAlign = 'right';
+  [60, 100, 140, 180].forEach(L => { const y = mt + ph - (L - MAPA.L0) / (MAPA.L1 - MAPA.L0) * ph; o.fillText(L + '', ml - 3, y + 3); });
+  const yLim = mt + ph - (F.dbMax(S) - MAPA.L0) / (MAPA.L1 - MAPA.L0) * ph;
+  o.strokeStyle = 'rgba(224,80,80,.7)'; o.setLineDash([3, 3]); o.beginPath(); o.moveTo(ml, yLim); o.lineTo(W - mr, yLim); o.stroke(); o.setLineDash([]);
+  // punt actual
+  const xa = ml + (Math.log10(Math.max(S.f1, 0.01)) - MAPA.f0) / (MAPA.f1 - MAPA.f0) * pw, ya = mt + ph - (S.db1 - MAPA.L0) / (MAPA.L1 - MAPA.L0) * ph;
+  o.strokeStyle = '#fff'; o.lineWidth = 1.2; o.beginPath(); o.moveTo(xa - 5, ya); o.lineTo(xa + 5, ya); o.moveTo(xa, ya - 5); o.lineTo(xa, ya + 5); o.stroke();
+  const nForma = MAPA.cel.filter(c => c && c.forma).length;
+  setH('mapa-info', (progres < 1 ? `calculant… ${Math.round(progres * 100)} % · ` : '') +
+    `<span style="color:#7fd08f">■</span> es forma per oscil·lació · <span style="color:#7fa8f0">■</span> per empenta del so · <span style="color:#3a4258">■</span> no es forma · ` +
+    `línia vermella: límit físic (${F.dbMax(S).toFixed(0)} dB) · més clar = més amunt (fins a ${hMax.toFixed(0)} m) · ${nForma} combinacions formen l'anell. Toca el mapa per triar f i dB.`);
+}
 function toggleAudio(id) {
   if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
   const btn = document.getElementById('spk-' + id);
@@ -1352,6 +1417,16 @@ function cfgRefreshList() {
 
 /* ── Esdeveniments (delegació) ──────────────────────────────────────────── */
 function initEvents() {
+  document.addEventListener('click', e => {
+    if (e.target.id !== 'mapa-cv') return;
+    const cvm = e.target, r = cvm.getBoundingClientRect(), sx = cvm.width / r.width;
+    const x = (e.clientX - r.left) * sx, y = (e.clientY - r.top) * sx, ml = 30, mb = 18, mt = 4, mr = 4, pw = cvm.width - ml - mr, ph = cvm.height - mb - mt;
+    if (x < ml || y > mt + ph) return;
+    const f = Math.pow(10, MAPA.f0 + (x - ml) / pw * (MAPA.f1 - MAPA.f0)), L = MAPA.L0 + (mt + ph - y) / ph * (MAPA.L1 - MAPA.L0);
+    const fr = f >= 1 ? Math.round(f * 10) / 10 : f >= 0.1 ? Math.round(f * 100) / 100 : Math.round(f * 1000) / 1000;
+    setParam('f1', fr); setParam('f2', fr); setParam('db1', Math.round(L * 10) / 10); setParam('db2', Math.round(L * 10) / 10);
+    dibuixaMapa(1);
+  });
   document.body.addEventListener('input', e => {
     const k = e.target.dataset && e.target.dataset.k;
     if (k && e.target.type === 'range') setParam(k, esLog(k) ? Math.pow(10, +e.target.value) : +e.target.value);
@@ -1360,7 +1435,12 @@ function initEvents() {
     const t = e.target.closest('[data-k],[data-preset],[data-act],[data-vis],[data-grup],[data-audio],[data-vista]');
     if (!t) return;
     if (t.dataset.vista) { posaVista(t.dataset.vista); return; }
-    if (t.dataset.k && t.dataset.d) { const k = t.dataset.k; setParam(k, esLog(k) ? S[k] * Math.pow(1.01, +t.dataset.d) : S[k] + (+t.dataset.d) * DEF[k][2]); return; }   // log: ±1 %
+    if (t.dataset.k && t.dataset.d) {
+      const k = t.dataset.k, d = +t.dataset.d;
+      // freqüència: passos de 0.1 Hz (per sota d'1 Hz, 0.01; per sota de 0.1 Hz, 0.001)
+      const pas = esLog(k) ? (S[k] >= 1 ? 0.1 : S[k] >= 0.1 ? 0.01 : 0.001) : DEF[k][2];
+      setParam(k, Math.round((S[k] + d * pas) / pas) * pas); return;
+    }
     if (t.dataset.preset) { loadPreset(+t.dataset.preset); return; }
     if (t.dataset.vis) { const k = t.dataset.vis; VIS[k] = !VIS[k]; t.classList.toggle('on', VIS[k]); return; }
     if (t.dataset.audio) { toggleAudio(t.dataset.audio); return; }
@@ -1386,6 +1466,7 @@ function initEvents() {
       'cfg-desa': cfgSave, 'cfg-carrega': cfgLoad, 'cfg-elimina': cfgDelete,
       objectiu: () => dissenyaIAplica(false), tauopt: tauOptim,
       miraSol: () => setParam('az_vis', (F.posicioSol(S).az - 3 + 360) % 360),
+      mapa: calculaMapa,
       f2f1: () => setParam('f2', S.f1), phiL: () => setParam('phi', -90), phiR: () => setParam('phi', 90), phi0: () => setParam('phi', 0),
       eTau: () => setParam('e_tau', F.emissors(S).tauPerFinal(0.25)),
       cFc: () => setParam('c_fc', F.patroAcustic(S).fcRadi),
