@@ -63,8 +63,9 @@ const DEF = {
   // Emissor i anell
   h_src: [0.5, 150, 0.1, 5, 'alçada de l\'emissor sobre el riu', 'm', 1],
   D_ap:  [0.02, 30, 0.01, 0.5, 'diàmetre de l\'obertura / zona de formació D', 'm', 2],
-  h_form:[1, 200, 0.5, 25, 'alçada del punt de formació M (indeterminada)', 'm', 1],
-  h_creu:[1, 300, 0.5, 25, 'alçada on es creuen els feixos C', 'm', 1],
+  // h_form, h_creu i θ ja no són paràmetres: on neix l'anell ho decideix la física
+  h_form:[1, 200, 0.5, 25, '(obsolet)', 'm', 1],
+  h_creu:[1, 300, 0.5, 25, '(obsolet)', 'm', 1],
   form:  [0, 1, 1, 1, 'on es forma l\'anell', '', 0],
   aR:    [0.02, 0.8, 0.01, 0.12, 'gruix del nucli a/R', '', 2],
   elev:  [-90, 90, 1, 0, 'elevació de l\'eix d\'emissió', '°', 0],
@@ -143,7 +144,7 @@ const PRESETS = [
   { t: '🍃 Segre: arrossegat per la brisa', d: 'brisa de 0.5 km/h · sense velocitat pròpia',
     v: Object.assign({}, AMB_SEGRE, { W: 0.5, dirW: 0, trac: 1 }), solDv: 150,
     obj: Object.assign({}, OBJ_SEGRE), prioritat: 'deriva', mov: 'brisa' },
-  { t: '🌀 Segre: prioritat gir de 7 s', d: 'el gir de 7 s demanaria ~194 dB per font: impossible',
+  { t: '🌀 Segre: prioritat gir de 7 s', d: 'el gir de 7 s demanaria ~202 dB per font: impossible',
     v: Object.assign({}, AMB_SEGRE, { dirW: 0, trac: 1 }), solDv: 150,
     obj: Object.assign({}, OBJ_SEGRE), prioritat: 'rotacio' },
   { t: '🧪 Assaig real a escala 1:10', d: 'anell de 2.5 m · fum blanc · sol de costat',
@@ -200,8 +201,8 @@ function construeixPanell() {
     `<div style="display:flex;gap:3px;margin:2px 0"><button class="bn opt" data-act="f2f1" style="flex:1">f₂ = f₁</button><button class="bn opt" data-act="phiL" style="flex:1">φ = −90° ↺</button><button class="bn opt" data-act="phiR" style="flex:1">φ = +90° ↻</button><button class="bn opt" data-act="phi0" style="flex:1">φ = 0°</button></div>
      <div class="pr-l" style="margin:2px 0">forma del senyal</div>${grup('g-forma', [[0, '∿ sinusoïdal'], [1, '⊓ quadrada'], [2, '△ triangular']])}` +
     filaSlider('nharm') + fm('fc-ac'), 'border-color:#305048', '0');
-  h += seccio('📐 geometria de les fonts i formació', ['so', 'sx_off', 'h_src', 'theta', 'h_creu', 'h_form'].map(filaSlider).join('') +
-    `<div class="pr-l" style="margin:2px 0">on es forma l'anell</div>${grup('g-form', [[1, '◎ entre els feixos (punt mig)'], [0, 'a l\'obertura d\'una font']])}`, 'border-color:#305048', '0');
+  h += seccio('📐 geometria de les fonts i formació', ['so', 'sx_off', 'h_src'].map(filaSlider).join('') +
+    `<div class="pr-l" style="margin:2px 0">on es forma l'anell</div>${grup('g-form', [[1, '◎ entre els feixos (on el situa la física)'], [0, 'a l\'obertura d\'una font']])}` + fm('fc-geom'), 'border-color:#305048', '0');
   h += seccio('🌀 anell de vòrtex', ['D_ap', 'aR', 'npols', 'n_inj', 'swirl', 'dT0', 'elev', 'az_eix'].map(filaSlider).join('') +
     `<div class="pr-l" style="margin:2px 0">sentit de l'ona de Kelvin sembrada</div>${grup('g-kdir', [[1, '↺'], [-1, '↻']])}` + fm('fc-anell') +
     `<div class="nota">Un camp acústic lineal és irrotacional (∇×v = 0): a una obertura, la vorticitat neix a la vora on el flux oscil·lant se separa (jet sintètic / canó de vòrtex). Al punt mig no hi ha cap vora: el model hi aplica el mateix criteri a l'aire que mouen les dues ones juntes, i el mecanisme no lineal que hi generaria la vorticitat queda obert.</div>`, '', '0');
@@ -240,25 +241,16 @@ function construeixPanell() {
 }
 
 /* ── Paràmetres: lectura/escriptura coherent (slider + etiqueta + estat) ── */
-const CLAUS_INTENT = ['f1', 'f2', 'db1', 'db2', 'phi', 'forma', 'nharm', 'so', 'sx_off', 'h_src', 'theta', 'h_creu', 'h_form', 'D_ap', 'aR', 'npols', 'n_inj'];
+const CLAUS_INTENT = ['f1', 'f2', 'db1', 'db2', 'phi', 'forma', 'nharm', 'so', 'sx_off', 'h_src', 'D_ap', 'aR', 'npols', 'n_inj'];
 function setParam(k, v, silenciós) {
   const [mn, mx] = DEF[k];
   if (!Number.isFinite(v)) return;
   S[k] = Math.round(Math.min(mx, Math.max(mn, v)) * 1e6) / 1e6;   // sense arrodonir al pas
   const sl = document.getElementById('sl-' + k); if (sl) sl.value = S[k];
   etiqueta(k);
-  enllacaConvergencia(k);
   // Simulador: si toques les fonts o la geometria amb el so en marxa, és un intent nou
   if (!silenciós && sigOn && CLAUS_INTENT.includes(k)) { emesos[0] = emesos[1] = 0; }
   if (!silenciós) canviParams();
-}
-/** θ (convergència dels feixos) i h_creu (on es creuen) són la mateixa geometria:
- *  tan θ = (separació/2) / (h_creu − h_fonts) */
-function enllacaConvergencia(k) {
-  const posa = (q, v) => { const [mn, mx] = DEF[q]; S[q] = Math.round(Math.min(mx, Math.max(mn, v)) * 1e3) / 1e3; const el = document.getElementById('sl-' + q); if (el) el.value = S[q]; etiqueta(q); };
-  if (k === 'theta') posa('h_creu', S.h_src + (S.so / 2) / Math.tan(S.theta * Math.PI / 180));
-  else if (k === 'h_creu' || k === 'so' || k === 'h_src')
-    posa('theta', S.h_creu > S.h_src ? Math.atan2(S.so / 2, S.h_creu - S.h_src) * 180 / Math.PI : 89);
 }
 function marcaGrup(id, v) { document.querySelectorAll(`[data-grup="${id}"]`).forEach(b => b.classList.toggle('on', String(b.dataset.v) === String(v))); }
 function etiqueta(k) {
@@ -460,11 +452,21 @@ function refreshInfo() {
     `${fb > 0 ? `batec |f₁ − f₂| = ${c('v', fb.toFixed(3) + ' Hz')} (període ${fmtT(1 / fb)})<br>` : ''}` +
     `forma ${c('v', ['sinusoïdal', 'quadrada', 'triangular'][fo.tipus])}${fo.tipus ? ` · ${fo.harm.length} harmònics fins a ${c('v', (fo.harm[fo.harm.length - 1].k * Math.max(S.f1, S.f2)).toFixed(1) + ' Hz')} · el fonamental porta el ${c('v', (fo.frac * fo.frac * 100).toFixed(0) + ' %')} de l'energia` : ''}<br>` +
     `${audible ? c('w', `⚠ audible al testimoni: ${hAud[0].f.toFixed(0)} Hz (harmònic ${hAud[0].k}, ${hAud[0].L.toFixed(0)} dB) — el testimoni no va sentir res`) : c('g', '✓ inaudible per al testimoni (infrasò o harmònics per sota del llindar)')}`);
+  // On la física situa l'anell
+  if (d.mig) {
+    const m = d.mig, ps = m.pos, a2 = S.so / 2, dh = m.y - S.h_src;
+    setH('fc-geom', `la física situa l'anell a ${c('o', 'x = ' + m.x.toFixed(1) + ' m · h = ' + m.y.toFixed(1) + ' m')}` +
+      ` (${(Math.abs(dh) / Math.max(a2, 1e-9)).toFixed(2)} × separació/2 per sobre de les fonts)<br>` +
+      `és on les dues velocitats es creuen amb més força i angle (màxim de l'energia del gir); convergència dels feixos θ = ${c('v', (Math.atan2(a2, Math.max(dh, 1e-6)) * 180 / Math.PI).toFixed(1) + '°')}<br>` +
+      (ps && ps.valid ? (ps.rank === 0 ? c('g', '✓ al punt més favorable es compleix el criteri de formació')
+        : c('w', `al punt més favorable (h = ${ps.millor.y.toFixed(1)} m) les ones no hi arriben prou: es forma al següent punt on sí`))
+        : c('r', '✗ enlloc del pla es compleix el criteri de formació: no es forma cap anell')));
+  } else setH('fc-geom', 'l\'anell surt de l\'obertura de la font principal');
   // Anell
   let ha = '';
   if (d.mig) {
     const m = d.mig, a = an;
-    ha += `punt mig M: x = ${c('v', m.x.toFixed(1) + ' m')} · h = ${c('v', m.y.toFixed(1) + ' m')} · a ${c('v', m.r[0].toFixed(1))} / ${c('v', m.r[1].toFixed(1) + ' m')} de S₁ / S₂<br>` +
+    ha += `punt de formació M: x = ${c('v', m.x.toFixed(1) + ' m')} · h = ${c('v', m.y.toFixed(1) + ' m')} · a ${c('v', m.r[0].toFixed(1))} / ${c('v', m.r[1].toFixed(1) + ' m')} de S₁ / S₂<br>` +
       `p₁ = ${c('v', m.p[0].toFixed(1) + ' Pa')} · p₂ = ${c('v', m.p[1].toFixed(1) + ' Pa')} · ` +
       (m.iguals ? `Δφ = ${c('v', (((m.dphi * 180 / Math.PI) % 360 + 540) % 360 - 180).toFixed(0) + '°')} → pressió ${Math.abs(Math.cos(m.dphi)) < 0.05 ? c('v', 'en quadratura (×√2)') : c(Math.cos(m.dphi) > 0 ? 'g' : 'w', Math.cos(m.dphi) > 0 ? 'se suma' : 'es resta')}`
         : `batec |f₁−f₂| = ${c('v', m.fBat.toFixed(3) + ' Hz')} → es forma als màxims (sincronisme)`) + `<br>` +
@@ -1180,7 +1182,6 @@ function loadPreset(i) {
   reinicia();
   const p = PRESETS[i];
   aplicaValors(p.v);
-  enllacaConvergencia('h_creu');
   if (p.solDv != null) setParam('az_vis', (F.posicioSol(S).az - p.solDv + 360) % 360, true);
   aplicaValors(p.obj || OBJ_SEGRE); OPC.dir = 1; OPC.prioritat = p.prioritat || 'deriva'; OPC.mov = p.mov || 'contra'; totesEtiquetes();
   if (p.obj) dissenyaIAplica(true);
@@ -1201,7 +1202,7 @@ function tauOptim() {
 function dissenyaIAplica(silenciós) {
   const obj = { D: S.oD, tub: S.otub, n: S.on, Trot: S.oT, sentit: OPC.dir, h: S.oh, Umax: S.oU, vida: S.ovida, contrast: S.oC, prioritat: OPC.prioritat, passiu: OPC.mov === 'brisa' };
   const r = F.dissenya(S, obj);
-  const claus = ['h_form', 'h_creu', 'D_ap', 'aR', 'f1', 'f2', 'db1', 'db2', 'phi', 'npols', 'n_inj', 'swirl', 'kdir', 'h_src', 'elev', 'az_eix', 'dT0', 'sx_off', 'so', 'turb', 'aer'];
+  const claus = ['D_ap', 'aR', 'f1', 'f2', 'db1', 'db2', 'phi', 'npols', 'n_inj', 'swirl', 'kdir', 'h_src', 'elev', 'az_eix', 'dT0', 'sx_off', 'so', 'turb', 'aer'];
   claus.forEach(k => setParam(k, r.cfg[k], true));
   if (!silenciós) { reinicia(); canviParams(); }
   const conf = r.conflicte > 1.05;

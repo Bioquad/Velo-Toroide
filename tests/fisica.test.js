@@ -166,10 +166,11 @@ t('assaig real 1:10 amb fum blanc (a 90 m): només fallen el color i la implosi�
   assert.ok(d.L < 120 && d.f < 20);   // infrasò i nivell assolible amb un pistó
 });
 /* Formació al punt mig entre S₁ i S₂ (l'anell no surt de cap font) */
-const MIG = amb(Object.assign({ dirW: 0, aot: 0.1, az_vis: sol.az - 3, form: 1, h_src: 5, h_form: 25, so: 27.5, sx_off: 0,
+const P25 = { x: 0, y: 25 };   // punt fix del pla mitjà per a les proves del camp
+const MIG = amb(Object.assign({ dirW: 0, aot: 0.1, az_vis: sol.az - 3, form: 1, h_src: 5, so: 27.5, sx_off: 0,
   f1: 0.07, f2: 0.07, db1: 178, db2: 178, phi: 0, D_ap: 20 }, ESC));
 t('punt mig: la pressió se suma en fase i s\'anul·la en antifase; la velocitat no s\'anul·la (direccions diferents)', () => {
-  const m0 = F.puntMig(MIG), m180 = F.puntMig(Object.assign({}, MIG, { phi: 180 }));
+  const m0 = F.puntMig(MIG, P25), m180 = F.puntMig(Object.assign({}, MIG, { phi: 180 }), P25);
   prop(m0.r[0], Math.hypot(13.75, 20), 1e-12, 'r');
   prop(m0.pM, m0.p[0] + m0.p[1], 1e-6, 'pressió en fase');
   assert.ok(m180.pM < 1e-6 * m0.pM);
@@ -178,29 +179,44 @@ t('punt mig: la pressió se suma en fase i s\'anul·la en antifase; la velocitat
   prop(m180.uM, 2 * m0.u[0] * Math.sin(mig), 1e-6, 'velocitat en antifase');
 });
 t('camp proper: en infrasò la velocitat d\'un monopol és p/(ρc)·√(1 + 1/(kr)²)', () => {
-  const m = F.puntMig(MIG), k = 2 * Math.PI * 0.07 / F.cSo(MIG), r = m.r[0];
+  const m = F.puntMig(MIG, P25), k = 2 * Math.PI * 0.07 / F.cSo(MIG), r = m.r[0];
   prop(m.u[0], m.p[0] / (F.rho(MIG) * F.cSo(MIG)) * Math.sqrt(1 + 1 / (k * r) ** 2), 1e-12, 'u');
 });
 t('la diferència de fase produeix la rotació: Δφ = −90° ↺, +90° ↻, 0° i 180° no giren', () => {
-  const eps = phi => F.puntMig(Object.assign({}, MIG, { phi })).eps;
-  const sinT = Math.sin(F.puntMig(MIG).angleCreu);
+  const eps = phi => F.puntMig(Object.assign({}, MIG, { phi }), P25).eps;
+  const sinT = Math.sin(F.puntMig(MIG, P25).angleCreu);
   prop(eps(-90), sinT, 1e-9, 'ε(−90°)'); prop(eps(90), -sinT, 1e-9, 'ε(+90°)');
   assert.ok(Math.abs(eps(0)) < 1e-12 && Math.abs(eps(180)) < 1e-12);
   const rot = phi => { const a = F.anellPrincipalFont(Object.assign({}, MIG, { phi })).an; return F.rotacioNodes(MIG, a).sentit; };
   assert.strictEqual(rot(-90), 1); assert.strictEqual(rot(90), -1);
 });
 t('freqüències diferents: Δφ avança al ritme del batec, el gir s\'inverteix (de mitjana zero) i es forma un anell per batec', () => {
-  const m = F.puntMig(Object.assign({}, MIG, { f2: 0.08 }));
+  const m = F.puntMig(Object.assign({}, MIG, { f2: 0.08 }), P25);
   prop(m.fBat, 0.01, 1e-9, 'batec'); prop(m.ritme, 0.01, 1e-9, 'ritme');
   assert.strictEqual(m.eps, 0);
   prop(m.pM, m.p[0] + m.p[1], 1e-12, 'màxim de pressió');
 });
-t('disseny al punt mig: S₁ i S₂ a ~153 dB desfasades −90° fan un anell antihorari a x = 0 i 25 m; el gir de 7 s és impossible', () => {
+t('on neix l\'anell ho decideix la física: dues fonts iguals → sobre el punt mig, a (separació/2)/√3 en camp proper i /√2 en camp llunyà', () => {
+  const base = Object.assign({}, MIG, { db1: 153, db2: 153, phi: -90 });
+  const p = F.posicioFormacio(base);
+  assert.ok(p.valid && Math.abs(p.x) < 0.05, JSON.stringify(p));
+  prop(p.y - 5, 13.75 / Math.sqrt(3), 0.005, 'camp proper');
+  const ll = F.millorPuntFormacio(Object.assign({}, base, { f1: 2000, f2: 2000 }));
+  prop(ll.y - 5, 13.75 / Math.SQRT2, 0.005, 'camp llunyà');
+  // una font més feble desplaça el punt cap a ella; separar les fonts l'apuja
+  assert.ok(F.posicioFormacio(Object.assign({}, base, { db2: 147 })).x > 2);
+  assert.ok(F.millorPuntFormacio(Object.assign({}, base, { so: 60 })).y > p.y + 5);
+  // si al màxim no s'hi arriba, es forma al punt següent més favorable on sí
+  const lluny = F.posicioFormacio(Object.assign({}, base, { so: 60 }));
+  assert.ok(lluny.valid && lluny.rank > 0);
+});
+t('disseny entre els feixos: la física situa l\'anell a 25 m amb les fonts a ~69 m; ~161 dB desfasades −90° el fan antihorari; el gir de 7 s és impossible', () => {
   const d = F.dissenya(MIG, Object.assign({ prioritat: 'deriva' }, OBJ));
   const pr = F.anellPrincipalFont(d.cfg);
-  assert.ok(pr.src.mig && pr.src.x === 0 && pr.src.y === 25 && pr.an.es_forma);
+  assert.ok(pr.src.mig && Math.abs(pr.src.x) < 0.05 && Math.abs(pr.src.y - 25) < 0.3 && pr.an.es_forma, JSON.stringify(pr.src));
   assert.strictEqual(d.cfg.db1, d.cfg.db2); assert.strictEqual(d.cfg.phi, -90);
-  assert.ok(Math.abs(d.L - 152.8) < 0.5 && d.viable, String(d.L));
+  assert.ok(Math.abs(d.cfg.so - 69.3) < 1, String(d.cfg.so));
+  assert.ok(Math.abs(d.L - 161.2) < 0.5 && d.viable, String(d.L));
   assert.strictEqual(F.rotacioNodes(d.cfg, pr.an).sentit, 1);
   const ev = F.avaluaObservacio(d.cfg);
   assert.ok(ok(ev, 'anell format') && ok(ev, 'sentit antihorari') && ok(ev, 'creix una mica (0–1.5 min)') && ok(ev, 'deriva lenta (U < 1.67 m/s)'));
@@ -208,7 +224,7 @@ t('disseny al punt mig: S₁ i S₂ a ~153 dB desfasades −90° fan un anell an
   assert.ok(r.L > F.dbMax(MIG) && !r.viable, String(r.L));
 });
 t('camp a la posició de l\'anell: a M és el mateix que al punt mig i s\'afebleix quan el vent l\'allunya', () => {
-  const m0 = F.puntMig(MIG), mM = F.puntMig(MIG, { x: 0, y: 25, z: 0 }), m30 = F.puntMig(MIG, { x: 0, y: 25, z: 30 });
+  const m0 = F.puntMig(MIG, P25), mM = F.puntMig(MIG, { x: 0, y: 25, z: 0 }), m30 = F.puntMig(MIG, { x: 0, y: 25, z: 30 });
   prop(mM.uM, m0.uM, 1e-12, 'mateix punt');
   assert.ok(m30.uM < 0.5 * m0.uM, String(m30.uM / m0.uM));
   // amb el nivell just del disseny, a 30 m ja no compleix el criteri: l'anell queda lliure
