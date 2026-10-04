@@ -207,6 +207,15 @@ t('disseny al punt mig: S₁ i S₂ a ~153 dB desfasades −90° fan un anell an
   const r = F.dissenya(MIG, Object.assign({ prioritat: 'rotacio' }, OBJ));
   assert.ok(r.L > F.dbMax(MIG) && !r.viable, String(r.L));
 });
+t('camp a la posició de l\'anell: a M és el mateix que al punt mig i s\'afebleix quan el vent l\'allunya', () => {
+  const m0 = F.puntMig(MIG), mM = F.puntMig(MIG, { x: 0, y: 25, z: 0 }), m30 = F.puntMig(MIG, { x: 0, y: 25, z: 30 });
+  prop(mM.uM, m0.uM, 1e-12, 'mateix punt');
+  assert.ok(m30.uM < 0.5 * m0.uM, String(m30.uM / m0.uM));
+  // amb el nivell just del disseny, a 30 m ja no compleix el criteri: l'anell queda lliure
+  const d = F.dissenya(MIG, Object.assign({ prioritat: 'deriva' }, OBJ));
+  const viu = z => { const m = F.puntMig(d.cfg, { x: 0, y: 25, z }); return F.anellVelocitat(d.cfg, m.f, m.uM).es_forma; };
+  assert.ok(viu(0) && !viu(30));
+});
 /* Paràmetres dels generadors recuperats de la versió original */
 t('forma del senyal: el fonamental porta el 100 % (sinus), ~81 % (quadrada) i ~99 % (triangular) de l\'energia', () => {
   const fr = (forma, nharm) => F.formaOna({ forma, nharm }).frac ** 2;

@@ -267,22 +267,26 @@ function anellVelocitat(s, f, u) {
  * Hipòtesi oberta: al punt mig no hi ha cap vora; el mecanisme no lineal que hi
  * generaria la vorticitat (corrent acústic) no es calcula.
  */
-function puntMig(s) {
-  const fs = fonts(s), x = s.sx_off, y = s.h_form == null ? s.h_src : s.h_form, c = cSo(s);
+/** Camp de les dues fonts al punt de formació M o, si es dona, a un punt qualsevol
+ *  (x, y, z): serveix per saber si les ones encara arriben a l'anell on és ara */
+function puntMig(s, punt) {
+  const fs = fonts(s), c = cSo(s);
+  const x = punt ? punt.x : s.sx_off, y = punt ? punt.y : (s.h_form == null ? s.h_src : s.h_form), z = punt ? punt.z || 0 : 0;
   const yC = s.h_creu == null ? y : s.h_creu;
   const d = fs.map(q => {
-    const dx = x - q.x, dy = y - q.y, r = Math.max(Math.hypot(dx, dy), 0.5);
+    const dx = x - q.x, dy = y - q.y, r = Math.max(Math.hypot(dx, dy, z), 0.5);
     const k = 2 * Math.PI * Math.max(q.f, 1e-9) / c, p = q.L > 0 ? pAmpDeDb(q.L) / r : 0;
     const u = p / (rho(s) * c) * Math.sqrt(1 + 1 / Math.pow(k * r, 2));
     const fp = q.ph - k * r;                                  // fase de la pressió a M
-    return { r, e: [dx / r, dy / r], p, u, fp, fu: fp - Math.atan(1 / (k * r)) };
+    return { r, e: [dx / r, dy / r, z / r], p, u, fp, fu: fp - Math.atan(1 / (k * r)) };
   });
   const iguals = Math.abs(fs[0].f - fs[1].f) < 1e-9;
   // El·lipse de la velocitat per a un desfasament Δφ de les velocitats
   const elipse = df => {
     const A = d[0].e.map(v => v * d[0].u), B = d[1].e.map(v => v * d[1].u);
-    const P = [A[0] + B[0] * Math.cos(df), A[1] + B[1] * Math.cos(df)], Q = [B[0] * Math.sin(df), B[1] * Math.sin(df)];
-    const pp = P[0] * P[0] + P[1] * P[1], qq = Q[0] * Q[0] + Q[1] * Q[1], pq = P[0] * Q[0] + P[1] * Q[1];
+    const P = A.map((a, i) => a + B[i] * Math.cos(df)), Q = B.map(b => b * Math.sin(df));
+    const dt3 = (u, v) => u[0] * v[0] + u[1] * v[1] + u[2] * v[2];
+    const pp = dt3(P, P), qq = dt3(Q, Q), pq = dt3(P, Q);
     const rad = Math.sqrt(Math.pow((pp - qq) / 2, 2) + pq * pq);
     const AxB = A[0] * B[1] - A[1] * B[0], uu = d[0].u * d[0].u + d[1].u * d[1].u;
     // u × du/dt = −ω·(P × Q) = −ω·(A × B)·sin Δφ ; ε > 0: gir antihorari vist pel testimoni
@@ -302,7 +306,7 @@ function puntMig(s) {
   const e1 = d[0].e, e2 = d[1].e;
   return { x, y, yC, d, r: d.map(q => q.r), p: d.map(q => q.p), u: d.map(q => q.u), dphi, dfu, iguals, pM, el,
     uM: el.max, eps: el.eps, swirl: K.SWIRL_MAX * el.eps,
-    angleCreu: Math.acos(Math.min(1, Math.max(-1, e1[0] * e2[0] + e1[1] * e2[1]))), f, fBat,
+    angleCreu: Math.acos(Math.min(1, Math.max(-1, e1[0] * e2[0] + e1[1] * e2[1] + e1[2] * e2[2]))), f, fBat,
     Lm: pM > 0 ? 20 * Math.log10(pM / (Math.SQRT2 * K.P_REF)) : 0,
     ritme: fBat > 0 ? fBat : f };             // anells per segon: un per cicle, o un per batec
 }

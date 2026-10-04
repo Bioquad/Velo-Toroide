@@ -16,6 +16,8 @@ canvas#cv:active{cursor:grabbing}
 .vistes .vt.on{border-color:#60a0f0;color:#a8d0ff}
 .pnl{width:300px;flex-shrink:0;overflow-y:auto;display:flex;flex-direction:column;gap:3px;padding-bottom:6px}
 .pnl::-webkit-scrollbar{width:3px}.pnl::-webkit-scrollbar-thumb{background:var(--bd);border-radius:2px}
+.sec.inactiva{opacity:.5}
+.sec.inactiva:hover{opacity:.85}
 .sec{border:.5px solid var(--bd);border-radius:5px;padding:6px 8px;flex-shrink:0}
 details.sec>summary.sec-t{cursor:pointer;list-style:none;margin-bottom:0}
 details.sec>summary.sec-t::before{content:'▸ ';}
