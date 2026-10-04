@@ -87,6 +87,7 @@ const DEF = {
   nharm: [1, 25, 1, 9, 'harmònics de la forma (N)', '', 0],
   // Riu, pont i línies
   a_riu: [5, 500, 1, 30, 'amplada del riu', 'm', 0],
+  refl:  [0, 1, 0.01, 1, 'reflexió del so a l\'aigua (1 = mirall, 0 = sense)', '', 2],
   h_pont:[0.5, 50, 0.1, 5, 'alçada del pont (testimoni a +1.6 m)', 'm', 1],
   so:    [0, 100, 0.1, 10, 'separació S₁↔S₂', 'm', 1],
   sx_off:[-30, 30, 0.1, 0, 'posició lateral de S₁S₂', 'm', 1],
@@ -128,7 +129,7 @@ const VIS = { w: true, e: true, n: false, lb: true, sol: true };
 const AMB_SEGRE = { T: 35, P: 1013, H: 30, W: 3, dirW: 0, turb: 0.2, aer: 0, trac: 0, aot: 0.1, vis: 40,
   mes: 9, dia: 18, hora: 18, tz: 2, lat: 41.6142, lon: 0.6222, az_vis: 232, d_obs: 900, v_obs: 5, t_cam: 90,
   hmt: 18, hcat: 11, sl: 24, vmt: 25, vcat: 25, ph: 90, f_mt: 50, rc: 0.9, tau: 0, lin_or: 0,
-  a_riu: 30, h_pont: 5, h_src: 5, so: 10, sx_off: 0, D_ap: 0.5, aR: 0.12, elev: 0, az_eix: 0, form: 1, h_form: 25, h_creu: 25, feix: 180, forma: 0, nharm: 9, IR: 0, beta: 1.2,
+  a_riu: 30, h_pont: 5, h_src: 5, so: 10, sx_off: 0, D_ap: 0.5, aR: 0.12, elev: 0, az_eix: 0, form: 1, h_form: 25, h_creu: 25, feix: 180, refl: 1, forma: 0, nharm: 9, IR: 0, beta: 1.2,
   npols: 0, n_inj: 0, swirl: 0, kdir: 1, dT0: 0,
   f1: 3.5714, f2: 3.0, db1: 100, db2: 100, phi: 0, spd: 0, model: 0,
   e_n: 4, e_D: 25, e_cap: 3, e_T: 7, e_sent: 1, e_tau: 1.3, e_P: 1.5, e_tipus: 1, e_Temp: 2000, e_h: 25, e_vida: 150, e_ext: 30, e_impl: 1,
@@ -222,7 +223,8 @@ function construeixPanell() {
   h += seccio('⚡ línies elèctriques', `<div class="pr-l" style="margin:2px 0">orientació respecte a l'anell</div>${grup('g-linor', [[0, '∥ paral·leles a l\'anell'], [1, '⊥ al llarg de la mirada']])}` +
     ['hmt', 'hcat', 'sl', 'vmt', 'vcat', 'ph', 'f_mt', 'rc', 'tau'].map(filaSlider).join('') +
     `<button class="bn opt" data-act="tauopt" style="width:100%">🎯 τ òptim</button>` + fm('fc-em'));
-  h += seccio('🌊 riu i pont', ['a_riu', 'h_pont'].map(filaSlider).join(''));
+  h += seccio('🌊 riu i pont', ['a_riu', 'h_pont', 'refl'].map(filaSlider).join('') +
+    `<div class="nota">L'aigua reflecteix el so com si cada font tingués una imatge sota la superfície: ona directa i reflectida se sumen amb les seves fases.</div>`);
   h += seccio('👁 traçador i visibilitat', grup('g-trac', [[0, 'pols'], [1, 'fum'], [2, 'boira'], [3, 'fum taronja']]) + filaSlider('aer') + fm('fc-vis'), '', '0');
   // 3. Eines i observació (plegades)
   h += seccio('🎯 disseny invers: reproduir un anell',
@@ -519,6 +521,16 @@ function refreshInfo() {
     `E_pic = ${c('v', fmtE(rr.E))} · E_ruptura = ${c('v', fmtE(rr.Ebd))}<br>` +
     `E/E_rup = ${c(rr.X >= 1 ? 'g' : 'r', rr.X.toExponential(2))}` + (rr.X < 1 && rr.X > 0 ? ` → caldrien ~${c('r', (vMax / rr.X / 1000).toFixed(0) + ' MV')} a les línies` : '') + `<br>` +
     d.corona.map(k => `${k.nom}: superfície ${c('v', fmtE(k.Es))} / Peek ${fmtE(k.Ec)} ${k.actiu ? c('o', '⚡ CORONA') : c('g', 'sense corona')}`).join('<br>') +
+    `<br>` + (() => {
+      // Soroll de les línies (efecte corona): a 1 m i al testimoni
+      const dT = Math.hypot(S.d_obs, Math.max(S.hmt, S.hcat));
+      const n1 = F.sorollCorona(S, 1), nT = F.sorollCorona(S, dT), act = n1.filter(k => k.actiu);
+      if (!act.length) return `🔊 soroll de les línies: ${c('g', 'cap espetec de corona')} (camp per sota del llindar); només el brunzit magnètic dels transformadors, lluny`;
+      return act.map(k => { const kt = nT.find(q => q.nom === k.nom);
+        return `🔊 ${k.nom}: corona ${c('o', k.AN.toFixed(0) + ' dB(A)')} a 1 m amb pluja (${(k.AN - 25).toFixed(0)} sec) · al testimoni ${c('v', kt.AN.toFixed(0) + ' dB(A)')} · espetec de kHz + brunzit de ${k.brunzit} Hz` +
+          (k.valida ? '' : c('w', ' (fora del rang de la fórmula)')); }).join('<br>') +
+        `<br>per formar l'anell amb so caldrien ${c('r', '~133–165 dB')} a cada font: el soroll de corona hi queda ${c('r', 'molt lluny')}`;
+    })() +
     `<div class="nota">MT modelada com un sol conductor a tensió de fase: és una cota superior.</div>`);
   refreshVis(); refreshEmissors();
 }
@@ -963,6 +975,11 @@ function draw() {
       }
     }
     brillantor(c, 0.5, on ? cc : '90,90,90', 0.95, 4 * f);
+    if (S.refl > 0 && mig) {                                           // font imatge (reflex a l'aigua)
+      const im = v3(src.x, -src.y, 0);
+      linia(v3(src.x, 0, 0), im, `rgba(${cc},.15)`, f, [2 * f, 3 * f]);
+      brillantor(im, 0.4, cc, 0.25 * S.refl, 3 * f);
+    }
     const lam = F.lambda(S, src.f), fase = 2 * Math.PI * src.f * tS + src.ph;
     text3(c, `${i ? 'S₂' : 'S₁'} ${src.f < 1 ? src.f.toFixed(3) : src.f.toFixed(2)} Hz · ${src.Ltot.toFixed(0)} dB · φ ${(src.ph * 180 / Math.PI).toFixed(0)}°`, 'rgba(210,210,210,.85)', 16 + 12 * i);
     // Fasor: un cercle amb l'agulla que gira a la freqüència del so

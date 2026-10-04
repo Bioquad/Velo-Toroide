@@ -264,10 +264,10 @@ t('pressió de radiació sobre el contrast: el fum o l\'aire calent de l\'anell 
   const alt = F.correntAcustic(Object.assign({}, b, { aer: 0, dT0: 10, f1: 714, f2: 714 }), { x: 0, y: 25 });
   assert.ok(alt.Fcon > calent.Fcon, String(alt.Fcon / calent.Fcon));
 });
-t('d\'on surt el gir: en infrasò, el so dona una Γ ~10⁶ vegades massa petita', () => {
+t('d\'on surt el gir: en infrasò, el so dona una Γ ~10⁴–10⁶ vegades massa petita', () => {
   const d = F.dissenya(MIG, Object.assign({ prioritat: 'deriva' }, OBJ));
   const an = F.anellPrincipalFont(d.cfg).an, ca = F.correntAcustic(d.cfg, null, an.Gamma);
-  assert.ok(!ca.suficient && ca.factor > 1e5 && ca.factor < 1e7, String(ca.factor));
+  assert.ok(!ca.suficient && ca.factor > 1e4 && ca.factor < 1e7, String(ca.factor));
   const ev = F.avaluaObservacio(d.cfg);
   assert.strictEqual(ok(ev, 'el so empeny prou l\'aire per fer el gir'), false);
   // la part d'absorció creix com f²: a 2 kHz el mateix nivell empeny ~10⁸ vegades més
@@ -283,9 +283,26 @@ t('freqüència òptima per empènyer: ~kHz; l\'ultrasò de 40 kHz s\'absorbeix 
 t('a kHz l\'anell es forma per l\'empenta estable del so, entre les ones (5 kHz, 170 dB, fum)', () => {
   const b = Object.assign({}, MIG, { so: 69.2, phi: -90, aer: 500, trac: 1, feix: 180, h_creu: 25, n_inj: 4, f1: 5000, f2: 5000 });
   const p = F.anellPrincipalFont(Object.assign({}, b, { db1: 170, db2: 170 }));
-  assert.ok(p.an.es_forma && p.an.mecanisme === 'empenta del so' && Math.abs(p.src.x) < 0.5, JSON.stringify(p.src));
+  assert.ok(p.an.es_forma && p.an.mecanisme === 'empenta del so' && Math.abs(p.src.x) < 1.5, JSON.stringify(p.src));
   assert.ok(Math.min(...p.mig.u) >= Math.max(...p.mig.u) / 3);
   assert.ok(!F.anellPrincipalFont(Object.assign({}, b, { db1: 155, db2: 155 })).an.es_forma);
+});
+t('reflex de l\'aigua: la font imatge (x, −h) dobla el camp a prop de l\'aigua en infrasò i abaixa el nivell necessari', () => {
+  const b = Object.assign({}, MIG, { so: 69.2, phi: -90, n_inj: 4, f1: 0.07, f2: 0.07, db1: 150, db2: 150 });
+  const sense = F.fasorsFonts(Object.assign({}, b, { refl: 0 }), 0, 1, 0)[0], amb_ = F.fasorsFonts(Object.assign({}, b, { refl: 1 }), 0, 1, 0)[0];
+  assert.ok(amb_.p / sense.p > 1.8 && amb_.p / sense.p < 2.05, String(amb_.p / sense.p));   // directa + reflectida gairebé en fase
+  assert.ok(!F.anellPrincipalFont(Object.assign({}, b, { refl: 0 })).an.es_forma);
+  assert.ok(F.anellPrincipalFont(Object.assign({}, b, { refl: 1 })).an.es_forma);
+  // sense reflex (refl = 0) el resultat és el de sempre
+  prop(F.fasorsFonts(Object.assign({}, b, { refl: 0 }), 0, 25, 0)[0].u, F.puntMig(Object.assign({}, b, { refl: 0 }), { x: 0, y: 25 }).u[0], 1e-12, 'u');
+});
+t('soroll de les línies: a 25 kV no hi ha corona (cap espetec); a 400 kV amb un conductor prim sí', () => {
+  const b = amb({ vmt: 25, vcat: 25 });
+  assert.ok(F.sorollCorona(b, 1).every(k => !k.actiu));
+  const c = F.sorollCorona(amb({ vmt: 400, vcat: 0, hmt: 12 }), 1)[0];
+  assert.ok(c.actiu && c.AN > 60 && c.brunzit === 100, JSON.stringify(c));
+  // BPA: −11.4 dB per dècada de distància
+  prop(F.sorollCorona(amb({ vmt: 400, vcat: 0, hmt: 12 }), 10)[0].AN, c.AN - 11.4, 1e-9, 'distància');
 });
 /* Paràmetres dels generadors recuperats de la versió original */
 t('forma del senyal: el fonamental porta el 100 % (sinus), ~81 % (quadrada) i ~99 % (triangular) de l\'energia', () => {

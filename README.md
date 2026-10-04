@@ -136,7 +136,7 @@ El simulador (carpeta `simulation/v041/`, versió V042) fa servir només **físi
 
 ### Escombrat de configuracions
 
-Taules de on i amb quines freqüències es formaria el toroide (freqüència, nivell, forma del senyal i harmònics, separació, feix, fase i contingut de l'aire): [`simulation/v041/RESULTATS_ESCOMBRAT.md`](simulation/v041/RESULTATS_ESCOMBRAT.md). Es regeneren amb `node tests/escombrat.js`.
+Taules de on i amb quines freqüències es formaria el toroide (freqüència, nivell, forma del senyal i harmònics, separació, feix, fase, contingut de l'aire, reflex de l'aigua i soroll de les línies). Resultat principal: hi ha dues finestres compatibles amb que el testimoni no sentís res, l'infrasò molt greu (0.02–0.07 Hz, ~129–150 dB per font, per oscil·lació) i ~10–20 kHz (~159–169 dB, per empenta del so, absorbit abans d'arribar a 900 m). Les línies de 25 kV no fan corona i, per tant, no fan soroll de descàrrega: [`simulation/v041/RESULTATS_ESCOMBRAT.md`](simulation/v041/RESULTATS_ESCOMBRAT.md). Es regeneren amb `node tests/escombrat.js`.
 
 ### Execució de les proves
 
