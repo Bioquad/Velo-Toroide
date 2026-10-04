@@ -12,7 +12,7 @@ const BASE = { T: 35, P: 1013, H: 30, W: 3, dirW: 0, turb: 0.2, aot: 0.1, vis: 4
   mes: 9, dia: 18, hora: 18, tz: 2, lat: 41.6142, lon: 0.6222, az_vis: 232, h_pont: 5, a_riu: 30,
   hmt: 18, hcat: 11, sl: 24, vmt: 25, vcat: 25, ph: 90, rc: 0.9, f_mt: 50, lin_or: 0,
   form: 1, h_src: 5, so: 69.2, sx_off: 0, D_ap: 20, aR: 0.12, n_inj: 4, npols: 1, kdir: 1, swirl: 0, dT0: 0,
-  aer: 500, trac: 1, feix: 180, h_creu: 25, phi: -90, forma: 0, nharm: 9, beta: 1.2, IR: 0,
+  aer: 500, trac: 1, feix: 180, h_creu: 25, phi: -90, forma: 0, nharm: 9, beta: 1.2, IR: 0, refl: 1,
   f1: 1, f2: 1, db1: 150, db2: 150, elev: 0, az_eix: 0 };
 const cfg = o => Object.assign({}, BASE, o);
 const NOM_FORMA = ['sinus', 'quadrada', 'triangular'];
@@ -28,6 +28,10 @@ function analitza(s) {
   }
   const aud = F.harmonicsAudibles(s);
   out.audible = aud.length ? aud[0].f : 0;
+  // nivell del fonamental al testimoni (punt més proper), amb l'absorció del camí
+  const o = F.posicioTestimoni(s, Infinity), dT = Math.hypot(o.z, o.y - s.h_src);
+  out.Ltest = s.db1 - 20 * Math.log10(dT) - F.alfaAbs(s.f1, s) * 8.686 * dT;
+  out.llindar = F.llindarPercepcio(s.f1);
   out.xoc = F.distanciaXoc(s, s.f1, s.db1);
   out.rM = m ? Math.min(...m.r) : NaN;
   out.eps = m ? m.eps : 0;
@@ -48,13 +52,13 @@ const dbMax = F.dbMax(BASE);
 let md = `# Escombrat: on i amb quines freqüències es formaria el toroide\n\n` +
   `Generat amb \`node tests/escombrat.js\` (mateix motor físic que el simulador). Escena del Segre: fonts a 5 m d'alçada, ` +
   `separades 69.2 m, zona de formació de 20 m, fum (500 mg/m³), turbulència σ_w = 0.2 m/s, testimoni a 900 m. ` +
-  `Si no es diu el contrari: senyal sinusoïdal, φ = −90° (gir ↺), feix de 180° (altaveu convencional) creuant-se a 25 m.\n\n` +
+  `Si no es diu el contrari: **senyal sinusoïdal**, φ = −90° (gir ↺), feix de 180° (altaveu convencional) creuant-se a 25 m, i **reflex del so a l'aigua** (font imatge sota la superfície, coeficient 1).\n\n` +
   `Límit físic del nivell (la rarefacció arriba al buit): **${dbMax.toFixed(0)} dB**. Per sobre, la configuració és impossible.\n\n`;
 
 // ── Taula 1: nivell mínim per freqüència i forma del senyal
 const FREQS = [0.02, 0.07, 0.5, 3.57, 13.7, 50, 200, 1000, 2000, 5000, 10000, 20000, 40000];
 md += `## 1. Nivell mínim per formar l'anell, segons la freqüència i la forma del senyal\n\n` +
-  `| freqüència | nivell mínim sinus | via | on neix (x, h) | Γ (m²/s) | avança | 1 volta | quadrada (N = 9) | triangular | audible al testimoni (sinus) | xoc abans d'arribar |\n|---|---|---|---|---|---|---|---|---|---|---|\n`;
+  `| freqüència | **sinusoïdal**: nivell mínim | via | on neix (x, h) | Γ (m²/s) | avança | 1 volta | quadrada (N = 9) | triangular | so al testimoni (sinus) | xoc abans d'arribar |\n|---|---|---|---|---|---|---|---|---|---|---|\n`;
 const resum = [];
 for (const f of FREQS) {
   const Ls = nivellMinim({ f1: f, f2: f, forma: 0 });
@@ -69,7 +73,7 @@ for (const f of FREQS) {
     const a = analitza(cfg({ f1: f, f2: f, db1: Ls + 0.5, db2: Ls + 0.5 }));
     resum.push({ f, L: Ls, a });
     fila += `| ${a.mec} | (${a.x.toFixed(1)}, ${a.h.toFixed(1)}) m | ${a.G.toFixed(1)} | ${a.U.toFixed(2)} m/s | ${fmtT(a.T)} ${a.sentit > 0 ? '↺' : a.sentit < 0 ? '↻' : ''} `;
-    fila += `| ${fq(Lq)}${audQ ? ' ♪' : ''} | ${fq(Lt)}${audT ? ' ♪' : ''} | ${a.audible ? '♪ sí (' + fHz(+a.audible.toFixed(0)) + ')' : 'no'} | ${a.xoc < a.rM ? '⚠ a ' + (a.xoc >= 1 ? a.xoc.toFixed(1) + ' m' : (a.xoc * 100).toFixed(0) + ' cm') : 'no'} |\n`;
+    fila += `| ${fq(Lq)}${audQ ? ' ♪' : ''} | ${fq(Lt)}${audT ? ' ♪' : ''} | ${a.Ltest < 0 ? 'absorbit pel camí' : a.Ltest.toFixed(0) + ' dB'} ${a.Ltest < 0 ? '' : a.Ltest > a.llindar ? '(se sentiria' + (a.s1 = '') + (a.audible ? '' : ', infrasò') + ')' : '(per sota del llindar)'} | ${a.xoc < a.rM ? '⚠ a ' + (a.xoc >= 1 ? a.xoc.toFixed(1) + ' m' : (a.xoc * 100).toFixed(0) + ' cm') : 'no'} |\n`;
   } else fila += `| — | — | — | — | — | ${fq(Lq)}${audQ ? ' ♪' : ''} | ${fq(Lt)}${audT ? ' ♪' : ''} | — | — |\n`;
   md += fila;
   process.stdout.write('.');
@@ -121,16 +125,37 @@ for (const [nom, o] of [['aire net', { aer: 0, dT0: 0 }], ['fum 500 mg/m³', { a
   process.stdout.write('.');
 }
 
+// ── Taula 7: amb i sense reflex de l'aigua
+md += `\n## 7. Reflex de l'aigua (sinusoïdal)\n\n| freqüència | sense reflex | amb reflex (aigua) | on neix amb reflex (x, h) |\n|---|---|---|---|\n`;
+for (const f of [0.02, 0.07, 1000, 5000, 10000]) {
+  const L0 = nivellMinim({ f1: f, f2: f, refl: 0 }), L1 = nivellMinim({ f1: f, f2: f, refl: 1 });
+  const a = L1 != null ? analitza(cfg({ f1: f, f2: f, refl: 1, db1: L1 + 0.5, db2: L1 + 0.5 })) : null;
+  md += `| ${fHz(f)} | ${fmtL(L0)} | ${fmtL(L1)} | ${a ? `(${a.x.toFixed(1)}, ${a.h.toFixed(1)}) m` : '—'} |\n`;
+  process.stdout.write('.');
+}
+// ── Taula 8: soroll de les línies (efecte corona)
+md += `\n## 8. Soroll de les línies (efecte corona, fórmula BPA amb pluja)\n\n| línia | gradient al conductor | corona | soroll a 1 m | al testimoni (900 m) |\n|---|---|---|---|---|\n`;
+for (const [nom, o] of [['MT 25 kV (Segre)', { vmt: 25, vcat: 25 }], ['MT 66 kV', { vmt: 66, vcat: 0 }], ['AT 132 kV', { vmt: 132, vcat: 0 }], ['MAT 400 kV, un conductor', { vmt: 400, vcat: 0, hmt: 12 }]]) {
+  const sc = cfg(o), n1 = F.sorollCorona(sc, 1)[0], nT = F.sorollCorona(sc, 900)[0];
+  md += `| ${nom} | ${n1.g.toFixed(1)} kV/cm | ${n1.actiu ? 'sí' : 'no'} | ${n1.actiu ? n1.AN.toFixed(0) + ' dB(A)' + (n1.valida ? '' : ' *') : '—'} | ${nT.actiu ? nT.AN.toFixed(0) + ' dB(A)' : '—'} |\n`;
+}
+md += `\n\\* fora del rang de validesa de la fórmula (10–25 kV/cm): orientatiu. Amb temps sec, uns 25 dB menys.\n`;
+
 // ── Conclusions automàtiques
 const possibles = resum.filter(r => r.L <= dbMax);
 const inaudibles = possibles.filter(r => !r.a.audible);
 md += `\n## Què en surt\n\n`;
 md += `- Freqüències on l'anell és **físicament possible** (≤ ${dbMax.toFixed(0)} dB): ${possibles.map(r => fHz(r.f) + ' (' + r.L.toFixed(0) + ' dB, ' + r.a.mec + ')').join(', ') || 'cap'}.\n`;
-md += `- D'aquestes, **inaudibles** per al testimoni (com es va observar): ${inaudibles.map(r => fHz(r.f)).join(', ') || 'cap'}.\n`;
+md += `- Com hauria sonat al testimoni (a ~900 m): ${possibles.map(r => fHz(r.f) + ' → ' + (r.a.Ltest < 0 ? 'absorbit pel camí' : r.a.Ltest.toFixed(0) + ' dB') + (r.a.Ltest < 0 ? '' : r.a.Ltest > r.a.llindar ? (r.a.audible ? ' (se sentiria)' : ' (infrasò perceptible)') : ' (per sota del llindar)')).join(', ')}.\n`;
+const silenciosos = possibles.filter(r => r.a.Ltest < r.a.llindar && !r.a.audible);
+md += `- **Compatibles amb «no vaig sentir res»** (formen l'anell i al testimoni no arriben per sobre del llindar): ${silenciosos.map(r => fHz(r.f) + ' (' + r.L.toFixed(0) + ' dB, ' + r.a.mec + ')').join(', ') || 'cap'}. ` +
+  `Són dues finestres: l'infrasò molt greu, que l'oïda no capta, i els ~10–20 kHz, que l'aire absorbeix en els ~900 m fins al testimoni (a prop de les fonts, però, seria un so fortíssim i perillós).\n`;
 const best = possibles.slice().sort((a, b) => a.L - b.L)[0];
 if (best) md += `- El nivell més baix: **${fHz(best.f)} a ${best.L.toFixed(1)} dB** per font, neix a (${best.a.x.toFixed(1)}, ${best.a.h.toFixed(1)}) m per ${best.a.mec}${best.a.audible ? ', però és audible' : ''}.\n`;
-md += `- Les columnes «quadrada» i «triangular» marquen amb ♪ quan algun harmònic (3f, 5f…) seria audible per al testimoni. Ratllat = per sobre del límit físic.\n`;
+md += `- Les columnes «quadrada» i «triangular» marquen amb ♪ quan algun harmònic (3f, 5f…) arribaria audible al testimoni. Ratllat = per sobre del límit físic.\n`;
+md += `- **Soroll de les línies:** a 25 kV el camp al conductor (2–4 kV/cm) és molt lluny del llindar de corona (~30 kV/cm): no fan espetec. Fins i tot línies que sí fan corona en fan d'un ordre de 50–100 dB(A) a 1 m, molt per sota dels 133–165 dB que caldrien a cada font per formar l'anell amb so.\n`;
 md += `- **Sentit de gir a kHz:** amb λ de pocs centímetres, la fase amb què arriba cada ona depèn del punt exacte on neix l'anell; fora del centre el sentit pot sortir invertit. Només en infrasò el desfasament φ controla el sentit de manera robusta.\n`;
+md += `- **L'anell ha de cabre per sobre de l'aigua:** neix com a mínim a l'alçada del seu radi (12 m per a un anell de 25 m).\n`;
 md += `- **Al llindar, l'anell neix més avall i desplaçat** (un dels dos punts simètrics): al màxim de l'energia del gir encara no hi arriba prou; amb uns quants dB més, neix al centre (taula 2).\n`;
 md += `- **Aire més calent dins la zona de formació** abaixa molt el nivell necessari a kHz (pressió de radiació sobre el contrast); fum o boira, en canvi, gairebé no hi influeixen.\n`;
 fs.writeFileSync(__dirname + '/../simulation/v041/RESULTATS_ESCOMBRAT.md', md);

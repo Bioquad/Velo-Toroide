@@ -152,7 +152,7 @@ function harmonicsAudibles(s) {
     if (q.Ltot <= 0) return;
     const d = Math.max(Math.hypot(q.x - o.x, q.y - o.y, o.z), 1);
     fo.harm.forEach(h => {
-      const f = h.k * q.f, L = q.Ltot + 20 * Math.log10(Math.abs(h.a) / fo.norma) - 20 * Math.log10(d);
+      const f = h.k * q.f, L = q.Ltot + 20 * Math.log10(Math.abs(h.a) / fo.norma) - 20 * Math.log10(d) - alfaAbs(f, s) * 8.686 * d;   // amb l'absorció del camí
       if (f >= 20 && f <= 20000 && L > llindarPercepcio(f)) out.push({ font: i, k: h.k, f, L });   // > 20 kHz: ultrasò
     });
   });
@@ -320,13 +320,44 @@ function guanyFeix(s, q, x, y, z) {
 }
 /** Mida de boca necessària per a un feix d'obertura `feix` a la freqüència f */
 function bocaFeix(s, f) { const a = s.feix == null ? 180 : s.feix / 2; return a >= 90 ? 0 : 0.51 * lambda(s, f) / Math.sin(Math.max(a, 0.25) * D2R); }
-function campFonts(s, x, y) {
-  const c = cSo(s);
+/**
+ * Camp de cada font en un punt, com a fasors (amplitud i fase), amb el REFLEX DE
+ * L'AIGUA: la superfície del riu (y = 0) reflecteix el so com si hi hagués una
+ * font imatge a (x, −h) amb coeficient `refl` (aigua ≈ 1, mirall gairebé perfecte;
+ * 0 = sense reflex). Ona directa i reflectida se sumen amb les seves fases reals
+ * (camí, camp proper, absorció i feix). Retorna, per font: pressió complexa, vector
+ * velocitat complex (V = Vr + i·Vi; u(t) = Vr·cos ωt − Vi·sin ωt) i l'eix major de
+ * la seva el·lipse.
+ */
+function fasorsFonts(s, x, y, z) {
+  const c = cSo(s), rh = rho(s), Rw = s.refl == null ? 0 : Math.min(Math.max(s.refl, 0), 1), zz = z || 0;
   return fonts(s).map(q => {
-    const dx = x - q.x, dy = y - q.y, r = Math.max(Math.hypot(dx, dy), 0.5), k = 2 * Math.PI * Math.max(q.f, 1e-9) / c;
-    const u = q.L > 0 ? guanyFeix(s, q, x, y, 0) * pAmpDeDb(q.L) * Math.exp(-alfaAbs(q.f, s) * r) / r / (rho(s) * c) * Math.sqrt(1 + 1 / Math.pow(k * r, 2)) : 0;
-    return { u, ex: dx / r, ey: dy / r };
+    const k = 2 * Math.PI * Math.max(q.f, 1e-9) / c, al = alfaAbs(q.f, s), A0 = q.L > 0 ? pAmpDeDb(q.L) : 0;
+    let pr = 0, pi = 0, rD = 0.5, eD = [0, 1, 0];
+    const Vr = [0, 0, 0], Vi = [0, 0, 0];
+    for (const [ys, coef, yGuany, directa] of [[q.y, 1, y, true], [-q.y, Rw, -y, false]]) {
+      if (coef <= 0) continue;
+      const dx = x - q.x, dy = y - ys, r = Math.max(Math.hypot(dx, dy, zz), 0.5), e = [dx / r, dy / r, zz / r];
+      if (directa) { rD = r; eD = e; }
+      const p = coef * guanyFeix(s, q, x, yGuany, zz) * A0 * Math.exp(-al * r) / r;   // la imatge surt pel feix reflectit
+      const u = p / (rh * c) * Math.sqrt(1 + 1 / Math.pow(k * r, 2));
+      const fp = q.ph - k * r, fu = fp - Math.atan(1 / (k * r));
+      pr += p * Math.cos(fp); pi += p * Math.sin(fp);
+      for (let i = 0; i < 3; i++) { Vr[i] += u * e[i] * Math.cos(fu); Vi[i] += u * e[i] * Math.sin(fu); }
+    }
+    // eix major de l'el·lipse d'aquesta font (sense reflex, és la direcció font → punt)
+    let umaj = 0, emaj = eD;
+    for (let j = 0; j < 16; j++) {
+      const t = j / 16 * Math.PI, v = Vr.map((a, i) => a * Math.cos(t) - Vi[i] * Math.sin(t)), m = Math.hypot(v[0], v[1], v[2]);
+      if (m > umaj) { umaj = m; emaj = v.map(a => a / (m || 1)); }
+    }
+    const vr = Vr[0] * eD[0] + Vr[1] * eD[1] + Vr[2] * eD[2], vi = Vi[0] * eD[0] + Vi[1] * eD[1] + Vi[2] * eD[2];
+    return { r: rD, e: eD, p: Math.hypot(pr, pi), pr, pi, fp: Math.atan2(pi, pr), Vr, Vi,
+      u: Math.sqrt(Vr.reduce((t, a) => t + a * a, 0) + Vi.reduce((t, a) => t + a * a, 0)), umaj, emaj, fu: Math.atan2(vi, vr) };
   });
+}
+function campFonts(s, x, y) {
+  return fasorsFonts(s, x, y, 0).map(q => ({ u: q.umaj, ex: q.emaj[0], ey: q.emaj[1] }));
 }
 function puntuacioFormacio(s, x, y) {
   // Energia de la part del moviment que gira: |A×B|·ε = 2|A×B|²/(|A|²+|B|²).
@@ -382,7 +413,7 @@ function candidatsFormacio(s) {
 /** Posició on la física situa l'anell (i si s'hi pot formar). Es memoritza: depèn
  *  només de les fonts, de l'aire i de la zona de formació */
 const CAU_FORMACIO = new Map();
-const CLAUS_FORMACIO = ['f1', 'f2', 'db1', 'db2', 'phi', 'so', 'sx_off', 'h_src', 'D_ap', 'aR', 'n_inj', 'T', 'P', 'H', 'forma', 'nharm', 'turb', 'feix', 'h_creu', 'aer', 'trac', 'dT0', 'form'];
+const CLAUS_FORMACIO = ['f1', 'f2', 'db1', 'db2', 'phi', 'so', 'sx_off', 'h_src', 'D_ap', 'aR', 'n_inj', 'T', 'P', 'H', 'forma', 'nharm', 'turb', 'feix', 'h_creu', 'aer', 'trac', 'dT0', 'form', 'refl'];
 function posicioFormacio(s) {
   const clau = CLAUS_FORMACIO.map(k => s[k]).join('|');
   if (CAU_FORMACIO.has(clau)) return CAU_FORMACIO.get(clau);
@@ -394,7 +425,9 @@ function posicioFormacio(s) {
 function posicioFormacioCalc(s) {
   // Només entre les ones: les dues fonts hi han d'arribar comparables (cap no pot
   // aportar menys d'un terç de l'altra); si no, seria un anell d'una sola font
-  const forma = P => { const r = anellAlPunt(s, P), u = r.m.u; return r.an.es_forma && Math.min(u[0], u[1]) >= Math.max(u[0], u[1]) / 3; };
+  // i l'anell hi ha de cabre: el seu radi R per sobre de l'aigua
+  const Rring = K.R_SOBRE_D * Math.max(s.D_ap, 0.02);
+  const forma = P => { if (P.y < Rring) return false; const r = anellAlPunt(s, P), u = r.m.u; return r.an.es_forma && Math.min(u[0], u[1]) >= Math.max(u[0], u[1]) / 3; };
   const millor = millorPuntFormacio(s);
   if (forma(millor)) return { x: millor.x, y: millor.y, valid: true, rank: 0, millor };
   // Al màxim no arriba: el punt següent més favorable on sí que es compleix el criteri
@@ -410,33 +443,29 @@ function puntMig(s, punt) {
   const pos = punt ? null : posicioFormacio(s);
   const x = punt ? punt.x : pos.x, y = punt ? punt.y : pos.y, z = punt ? punt.z || 0 : 0;
   const yC = s.h_creu == null ? y : s.h_creu, xC = s.sx_off;
-  const d = fs.map(q => {
-    const dx = x - q.x, dy = y - q.y, r = Math.max(Math.hypot(dx, dy, z), 0.5);
-    const k = 2 * Math.PI * Math.max(q.f, 1e-9) / c, p = q.L > 0 ? guanyFeix(s, q, x, y, z) * pAmpDeDb(q.L) * Math.exp(-alfaAbs(q.f, s) * r) / r : 0;
-    const u = p / (rho(s) * c) * Math.sqrt(1 + 1 / Math.pow(k * r, 2));
-    const fp = q.ph - k * r;                                  // fase de la pressió a M
-    return { r, e: [dx / r, dy / r, z / r], p, u, fp, fu: fp - Math.atan(1 / (k * r)) };
-  });
+  const d = fasorsFonts(s, x, y, z);
   const iguals = Math.abs(fs[0].f - fs[1].f) < 1e-9;
-  // El·lipse de la velocitat per a un desfasament Δφ de les velocitats
-  const elipse = df => {
-    const A = d[0].e.map(v => v * d[0].u), B = d[1].e.map(v => v * d[1].u);
-    const P = A.map((a, i) => a + B[i] * Math.cos(df)), Q = B.map(b => b * Math.sin(df));
+  const uu = d[0].u * d[0].u + d[1].u * d[1].u;
+  // El·lipse de la velocitat total V = V₁ + V₂·e^{iψ}: u(t) = P·cos ωt − Q·sin ωt
+  const elipse = psi => {
+    const c2 = Math.cos(psi), s2 = Math.sin(psi);
+    const P = [0, 1, 2].map(i => d[0].Vr[i] + d[1].Vr[i] * c2 - d[1].Vi[i] * s2);
+    const Q = [0, 1, 2].map(i => d[0].Vi[i] + d[1].Vr[i] * s2 + d[1].Vi[i] * c2);
     const dt3 = (u, v) => u[0] * v[0] + u[1] * v[1] + u[2] * v[2];
     const pp = dt3(P, P), qq = dt3(Q, Q), pq = dt3(P, Q);
     const rad = Math.sqrt(Math.pow((pp - qq) / 2, 2) + pq * pq);
-    const AxB = A[0] * B[1] - A[1] * B[0], uu = d[0].u * d[0].u + d[1].u * d[1].u;
-    // u × du/dt = −ω·(P × Q) = −ω·(A × B)·sin Δφ ; ε > 0: gir antihorari vist pel testimoni
-    return { P, Q, max: Math.sqrt(Math.max((pp + qq) / 2 + rad, 0)), min: Math.sqrt(Math.max((pp + qq) / 2 - rad, 0)),
-      eps: uu > 0 ? -2 * AxB * Math.sin(df) / uu : 0 };
+    const PxQ = P[0] * Q[1] - P[1] * Q[0];
+    // u × du/dt = −ω·(P × Q); ε > 0: gir antihorari vist pel testimoni
+    return { P, Q, PxQ, max: Math.sqrt(Math.max((pp + qq) / 2 + rad, 0)), min: Math.sqrt(Math.max((pp + qq) / 2 - rad, 0)),
+      eps: uu > 0 ? -2 * PxQ / uu : 0 };
   };
   const dphi = d[1].fp - d[0].fp, dfu = d[1].fu - d[0].fu;
   let pM, el;
-  if (iguals) { pM = Math.sqrt(Math.max(d[0].p * d[0].p + d[1].p * d[1].p + 2 * d[0].p * d[1].p * Math.cos(dphi), 0)); el = elipse(dfu); }
+  if (iguals) { pM = Math.hypot(d[0].pr + d[1].pr, d[0].pi + d[1].pi); el = elipse(0); }
   else {
     pM = d[0].p + d[1].p; el = { max: 0, min: 0 };
     for (let j = 0; j < 72; j++) { const e = elipse(j / 72 * 2 * Math.PI); if (e.max > el.max) el = e; }
-    el = Object.assign({}, el, { eps: 0 });                   // el gir s'inverteix cada mig batec
+    el = Object.assign({}, el, { eps: 0, PxQ: 0 });           // el gir s'inverteix cada mig batec
   }
   const f = d[0].p + d[1].p > 0 ? (d[0].p * fs[0].f + d[1].p * fs[1].f) / (d[0].p + d[1].p) : fs[0].f;
   const fBat = iguals ? 0 : Math.abs(fs[0].f - fs[1].f);
@@ -452,7 +481,7 @@ function puntMig(s, punt) {
  * QUÈ EMPENY I FA GIRAR L'AIRE ON NEIX L'ANELL (forces estables del so)
  *  1. Absorció (corrent acústic d'Eckart): l'ona que s'absorbeix cedeix la seva
  *     quantitat de moviment, F = 2α·I/c per font, i el seu moment angular,
- *     τ = 2α·c·s (s = ρ·|A×B|·sin Δφ/(2ω), espín de les ones creuades).
+ *     τ = 2α·c·s (s = ρ·(P×Q)/ω, densitat d'espín de les ones creuades).
  *  2. Contrast (pressió de radiació, Gor'kov): on hi ha alguna cosa diferent de
  *     l'aire —gotes, fum, una bombolla, aire més calent— el so l'empeny
  *     directament, F ≈ Φ·E·max(k, 1/r) (E, densitat d'energia acústica; Φ, contrast: ~0.8×
@@ -484,8 +513,8 @@ function correntAcustic(s, punt, Gnecessaria) {
     });
   });
   const Fabs = Math.hypot(Fx, Fy);
-  const AxB = A.u * B.u * Math.abs(A.e[0] * B.e[1] - A.e[1] * B.e[0]);
-  const spin = m.iguals ? rh * AxB * Math.abs(Math.sin(m.dfu)) / (2 * w) : 0;
+  // densitat d'espín acústic S = (ρ/2ω)·Im(V*×V) = ρ·(P×Q)/ω (amb el reflex inclòs)
+  const spin = m.iguals ? rh * Math.abs(m.el.PxQ || 0) / w : 0;
   const tau = 2 * alfaAbs(m.f, s) * c * spin;
   // 2. contrast del contingut de l'anell (traçador i excés de temperatura)
   const tr = tracador(s), phiP = Math.max(s.aer || 0, 0) * 1e-6 / tr.rho;   // fracció de volum de partícules
@@ -610,6 +639,24 @@ function corona(s) {
   return conductors(s).map(c => {
     const Es = c.y > rc ? c.V / (rc * Math.log(2 * c.y / rc)) : 0;
     return { nom: c.nom, Es, Ec, ratio: Es / Ec, actiu: Es >= Ec };
+  });
+}
+
+/**
+ * Soroll audible de l'efecte corona de les línies (fórmula empírica de la Bonneville
+ * Power Administration, amb pluja, nivell L50):
+ *   AN = 120·log g + 55·log d − 11.4·log D − 115.4   [dB(A)]
+ * g: gradient superficial eficaç del conductor [kV/cm]; d: diàmetre [mm]; D: distància
+ * [m]. Amb temps sec, uns 25 dB menys. És un espetec de banda ampla (kHz) més el
+ * brunzit a 2·f_xarxa. Sense corona (per sota del llindar de Peek) no hi ha soroll
+ * de descàrrega. Vàlida per a g ≈ 10–25 kV/cm; fora d'aquest rang és orientativa.
+ */
+function sorollCorona(s, D, sec) {
+  return corona(s).map(k => {
+    const g = k.Es / Math.SQRT2 / 1e5, d = 20 * s.rc;
+    if (!k.actiu) return { nom: k.nom, actiu: false, AN: -Infinity, g };
+    const AN = 120 * Math.log10(g) + 55 * Math.log10(d) - 11.4 * Math.log10(Math.max(D, 1)) - 115.4 - (sec ? 25 : 0);
+    return { nom: k.nom, actiu: true, AN, g, d, brunzit: 2 * s.f_mt, valida: g >= 10 && g <= 25 };
   });
 }
 
@@ -862,7 +909,10 @@ function geometriaVisio(s, x, y, z, t) {
 function anellPrincipalFont(s) {
   const fs = fonts(s);
   if (s.form === 1) {
-    const pos = posicioFormacio(s), r = anellAlPunt(s, pos), m = r.m, an = r.an;
+    const pos = posicioFormacio(s), r = anellAlPunt(s, pos), m = r.m;
+    // si enlloc es compleixen totes les condicions (criteri, les dues ones comparables,
+    // l'anell cap per sobre de l'aigua), no es forma
+    const an = pos.valid ? r.an : Object.assign({}, r.an, { es_forma: false, Gamma: 0, Uself: 0 });
     m.pos = pos;
     an.viable = fs.every(q => pAmpDeDb(q.L) < pAtm(s));
     // La rotació la dona la diferència de fase: swirl i sentit de l'ona de Kelvin
@@ -1272,10 +1322,10 @@ const API = {
   K, Tk, pAtm, rho, cSo, muSuth, nuAir, nDens, puntRosada, vent,
   ventXZ, pAmpDeDb, dbMax, lambda, alfaAbs, hNodePressio, hNodeVelocitat, fonts, fasorFont, pAcPunt,
   distanciaXoc, fBat, sentitBat, velocitatObertura, dbPerVelocitat, anellFont, nuEfectiva,
-  vidaAnell, nucliTermo, tracador, profOptica, levitacio, conductors, campEPic, corona, campRuptura,
+  vidaAnell, nucliTermo, tracador, profOptica, levitacio, conductors, campEPic, corona, sorollCorona, campRuptura,
   sincronisme, ratiRuptura, plasma, dTdt, colorCosNegre,
   evolucio, vidaAnell2, rotacioNodes, cuaNodes, posicioSol, massaAire, transSol, iluminanciaSol,
-  luminanciaCel, faseHG, aparenca, geometriaVisio, posicioTestimoni, factorRadiEmissors, anellPrincipalFont, anellAlPunt, puntMig, correntAcustic, guanyFeix, bocaFeix, posicioFormacio, millorPuntFormacio, candidatsFormacio, puntuacioFormacio, anellVelocitat, formaOna, harmonicsAudibles, velocitatAnell,
+  luminanciaCel, faseHG, aparenca, geometriaVisio, posicioTestimoni, factorRadiEmissors, anellPrincipalFont, anellAlPunt, puntMig, fasorsFonts, correntAcustic, guanyFeix, bocaFeix, posicioFormacio, millorPuntFormacio, candidatsFormacio, puntuacioFormacio, anellVelocitat, formaOna, harmonicsAudibles, velocitatAnell,
   rhoSat, llindarPercepcio, patroAcustic, avaluaPatro,
   gammaSRGB, eficaciaEmissio, colorEmissio, emissors, posicioEmissors, envolupantEmissors, avaluaEmissors, esTaronja, toHue,
   trajectoria, estatAnell, tauPunt, corbaContrast, OBS, avaluaObservacio, dissenya,
