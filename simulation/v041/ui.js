@@ -66,7 +66,7 @@ const DEF = {
   // h_form, h_creu i θ ja no són paràmetres: on neix l'anell ho decideix la física
   h_form:[1, 200, 0.5, 25, '(obsolet)', 'm', 1],
   h_creu:[1, 300, 0.5, 25, 'alçada on es creuen els feixos C', 'm', 1],
-  feix:  [5, 180, 1, 180, 'semiamplada dels feixos α½ (180° = omnidireccional)', '°', 0],
+  feix:  [0, 180, 1, 180, 'obertura dels feixos (0° tancat · 180° altaveu convencional)', '°', 0],
   form:  [0, 1, 1, 1, 'on es forma l\'anell', '', 0],
   aR:    [0.02, 0.8, 0.01, 0.12, 'gruix del nucli a/R', '', 2],
   elev:  [-90, 90, 1, 0, 'elevació de l\'eix d\'emissió', '°', 0],
@@ -77,8 +77,9 @@ const DEF = {
   kdir:  [-1, 1, 2, 1, 'sentit de l\'ona de Kelvin', '', 0],
   dT0:   [-10, 300, 0.5, 0, 'excés de temperatura de l\'aire emès', 'K', 1],
   // Fonts
-  f1:    [0.0005, 400, 0.0001, 3.5714, 'freqüència S₁', 'Hz', 4],
-  f2:    [0.0005, 400, 0.0001, 3.0, 'freqüència S₂', 'Hz', 4],
+  // freqüència: control logarítmic, de 0.0005 Hz a 40 kHz (infrasò, audible i ultrasò)
+  f1:    [0.0005, 40000, 0.0001, 3.5714, 'freqüència S₁', 'Hz', 4, 'log'],
+  f2:    [0.0005, 40000, 0.0001, 3.0, 'freqüència S₂', 'Hz', 4, 'log'],
   db1:   [0, 191, 0.5, 100, 'nivell S₁ (a 1 m)', 'dB', 1],
   db2:   [0, 191, 0.5, 100, 'nivell S₂ (a 1 m)', 'dB', 1],
   phi:   [-180, 180, 1, 0, 'desfasament S₁→S₂ φ (gir: −90° ↺, +90° ↻)', '°', 0],
@@ -127,7 +128,7 @@ const VIS = { w: true, e: true, n: false, lb: true, sol: true };
 const AMB_SEGRE = { T: 35, P: 1013, H: 30, W: 3, dirW: 0, turb: 0.2, aer: 0, trac: 0, aot: 0.1, vis: 40,
   mes: 9, dia: 18, hora: 18, tz: 2, lat: 41.6142, lon: 0.6222, az_vis: 232, d_obs: 900, v_obs: 5, t_cam: 90,
   hmt: 18, hcat: 11, sl: 24, vmt: 25, vcat: 25, ph: 90, f_mt: 50, rc: 0.9, tau: 0, lin_or: 0,
-  a_riu: 30, h_pont: 5, h_src: 5, so: 10, sx_off: 0, D_ap: 0.5, aR: 0.12, elev: 0, az_eix: 0, form: 1, h_form: 25, h_creu: 25, feix: 30, forma: 0, nharm: 9, IR: 0, beta: 1.2,
+  a_riu: 30, h_pont: 5, h_src: 5, so: 10, sx_off: 0, D_ap: 0.5, aR: 0.12, elev: 0, az_eix: 0, form: 1, h_form: 25, h_creu: 25, feix: 180, forma: 0, nharm: 9, IR: 0, beta: 1.2,
   npols: 0, n_inj: 0, swirl: 0, kdir: 1, dT0: 0,
   f1: 3.5714, f2: 3.0, db1: 100, db2: 100, phi: 0, spd: 0, model: 0,
   e_n: 4, e_D: 25, e_cap: 3, e_T: 7, e_sent: 1, e_tau: 1.3, e_P: 1.5, e_tipus: 1, e_Temp: 2000, e_h: 25, e_vida: 150, e_ext: 30, e_impl: 1,
@@ -165,8 +166,11 @@ const PRESETS = [
 ];
 
 /* ── Construcció dels panells ───────────────────────────────────────────── */
+const esLog = k => DEF[k] && DEF[k][7] === 'log';
+const aSlider = k => esLog(k) ? Math.log10(S[k]) : S[k];
 function filaSlider(k) {
-  const [mn, mx, st, , lab] = DEF[k];
+  let [mn, mx, st, , lab] = DEF[k];
+  if (esLog(k)) { mn = Math.log10(mn); mx = Math.log10(mx); st = 0.0005; }
   return `<div class="pr"><div class="pr-h"><span class="pr-l">${lab}</span><span class="pr-v" id="lv-${k}"></span></div>
   <div class="row"><div class="sp"><button class="sb" data-k="${k}" data-d="-1">−</button><button class="sb" data-k="${k}" data-d="1">+</button></div>
   <input type="range" id="sl-${k}" data-k="${k}" min="${mn}" max="${mx}" step="${st}"></div></div>`;
@@ -247,7 +251,7 @@ function setParam(k, v, silenciós) {
   const [mn, mx] = DEF[k];
   if (!Number.isFinite(v)) return;
   S[k] = Math.round(Math.min(mx, Math.max(mn, v)) * 1e6) / 1e6;   // sense arrodonir al pas
-  const sl = document.getElementById('sl-' + k); if (sl) sl.value = S[k];
+  const sl = document.getElementById('sl-' + k); if (sl) sl.value = aSlider(k);
   etiqueta(k);
   // Simulador: si toques les fonts o la geometria amb el so en marxa, és un intent nou
   if (!silenciós && sigOn && CLAUS_INTENT.includes(k)) { emesos[0] = emesos[1] = 0; }
@@ -267,6 +271,7 @@ function etiqueta(k) {
   const [, , , , , un, dec] = DEF[k];
   let txt = S[k].toFixed(dec) + (un ? ' ' + un : '');
   if (k === 'spd') txt = '×' + Math.pow(10, S.spd).toFixed(Math.pow(10, S.spd) < 0.1 ? 3 : 2);
+  if (k === 'f1' || k === 'f2') { const f = S[k]; txt = f >= 20000 ? (f / 1000).toFixed(2) + ' kHz (ultrasò)' : f >= 1000 ? (f / 1000).toFixed(3) + ' kHz' : f >= 20 ? f.toFixed(1) + ' Hz' : f.toFixed(f < 1 ? 4 : 3) + ' Hz (infrasò)'; }
   if (k === 'npols' && S.npols === 0) txt = 'continu';
   if (k === 'n_inj' && S.n_inj === 0) txt = 'espontanis';
   if ((k === 'db1' || k === 'db2') && S[k] > F.dbMax(S)) txt += ' ⚠';
@@ -274,7 +279,7 @@ function etiqueta(k) {
   el.textContent = txt;
 }
 function totesEtiquetes() {
-  Object.keys(DEF).forEach(k => { const sl = document.getElementById('sl-' + k); if (sl) sl.value = S[k]; etiqueta(k); });
+  Object.keys(DEF).forEach(k => { const sl = document.getElementById('sl-' + k); if (sl) sl.value = aSlider(k); etiqueta(k); });
   marcaGrup('g-dir', OPC.dir); marcaGrup('g-prio', OPC.prioritat); marcaGrup('g-mov', OPC.mov);
 }
 
@@ -346,7 +351,7 @@ function updatePhysics(dt) {
     // allunyat), queda lliure: creix, es dispersa i s'extingeix.
     let alim = false;
     if (sigOn && derivat.mig && !r.ev.disp) {
-      const m = F.puntMig(S, { x: r.x, y: r.y, z: r.z }), anv = F.anellVelocitat(S, m.f, m.uM);
+      const ra = F.anellAlPunt(S, { x: r.x, y: r.y, z: r.z }), m = ra.m, anv = ra.an;
       if (anv.es_forma) {
         alim = true;
         const k = 1 - Math.exp(-dt * Math.max(m.f, 0.02));
@@ -416,7 +421,8 @@ function visibilitat(r) {
 
 /* ── Panells d'informació ───────────────────────────────────────────────── */
 function c(cls, txt) { return `<span class="${cls}">${txt}</span>`; }
-function fmtT(s) { if (!isFinite(s)) return '∞'; if (s >= 3600) return (s / 3600).toFixed(1) + ' h'; if (s >= 60) return (s / 60).toFixed(1) + ' min'; if (s >= 1) return s.toFixed(1) + ' s'; return (s * 1000).toFixed(0) + ' ms'; }
+function fmtT(s) { if (!isFinite(s)) return '∞'; if (s >= 3600) return (s / 3600).toFixed(1) + ' h'; if (s >= 60) return (s / 60).toFixed(1) + ' min'; if (s >= 1) return s.toFixed(1) + ' s'; if (s >= 0.01) return (s * 1000).toFixed(0) + ' ms'; return (s * 1e6).toFixed(0) + ' µs'; }
+function fmtL(m) { return m >= 1 ? m.toFixed(1) + ' m' : m >= 0.01 ? (m * 100).toFixed(1) + ' cm' : (m * 1000).toFixed(1) + ' mm'; }
 function fmtE(v) { return v >= 1e6 ? (v / 1e6).toFixed(2) + ' MV/m' : v >= 1e3 ? (v / 1e3).toFixed(2) + ' kV/m' : v.toFixed(1) + ' V/m'; }
 function set(id, txt) { const e = document.getElementById(id); if (e) e.textContent = txt; }
 function setH(id, html) { const e = document.getElementById(id); if (e) e.innerHTML = html; }
@@ -447,9 +453,9 @@ function refreshInfo() {
   const xs1 = F.distanciaXoc(S, S.f1, S.db1);
   const hAud = F.harmonicsAudibles(S), audible = hAud.length > 0, fo = F.formaOna(S);
   const fb = S.f1 !== S.f2 ? Math.abs(S.f1 - S.f2) : 0;
-  setH('fc-ac', `λ₁ = ${c('v', F.lambda(S, S.f1).toFixed(1) + ' m')} · període ${c('v', fmtT(1 / S.f1))}<br>` +
-    `node de pressió λ₁/4 = ${c('v', F.hNodePressio(S, S.f1).toFixed(1) + ' m')} · trampa λ₁/2 = ${c('v', F.hNodeVelocitat(S, S.f1).toFixed(1) + ' m')}<br>` +
-    `xoc de S₁ a ${c(xs1 > 50 ? 'g' : 'r', isFinite(xs1) ? xs1.toFixed(0) + ' m' : '∞')} · nivell màxim físic ${F.dbMax(S).toFixed(0)} dB<br>` +
+  setH('fc-ac', `λ₁ = ${c('v', fmtL(F.lambda(S, S.f1)))} · període ${c('v', fmtT(1 / S.f1))} · absorció ${c('v', (F.alfaAbs(S.f1, S) * 8.686).toExponential(1) + ' dB/m')}<br>` +
+    `node de pressió λ₁/4 = ${c('v', fmtL(F.hNodePressio(S, S.f1)))} · trampa λ₁/2 = ${c('v', fmtL(F.hNodeVelocitat(S, S.f1)))}<br>` +
+    `xoc de S₁ a ${c(xs1 > 50 ? 'g' : 'r', isFinite(xs1) ? fmtL(xs1) : '∞')} · nivell màxim físic ${F.dbMax(S).toFixed(0)} dB<br>` +
     `${fb > 0 ? `batec |f₁ − f₂| = ${c('v', fb.toFixed(3) + ' Hz')} (període ${fmtT(1 / fb)})<br>` : ''}` +
     `forma ${c('v', ['sinusoïdal', 'quadrada', 'triangular'][fo.tipus])}${fo.tipus ? ` · ${fo.harm.length} harmònics fins a ${c('v', (fo.harm[fo.harm.length - 1].k * Math.max(S.f1, S.f2)).toFixed(1) + ' Hz')} · el fonamental porta el ${c('v', (fo.frac * fo.frac * 100).toFixed(0) + ' %')} de l'energia` : ''}<br>` +
     `${audible ? c('w', `⚠ audible al testimoni: ${hAud[0].f.toFixed(0)} Hz (harmònic ${hAud[0].k}, ${hAud[0].L.toFixed(0)} dB) — el testimoni no va sentir res`) : c('g', '✓ inaudible per al testimoni (infrasò o harmònics per sota del llindar)')}`);
@@ -460,7 +466,9 @@ function refreshInfo() {
       ` (${(Math.abs(dh) / Math.max(a2, 1e-9)).toFixed(2)} × separació/2 per sobre de les fonts)<br>` +
       `és on les dues velocitats es creuen amb més força i angle (màxim de l'energia del gir)<br>` +
       `els feixos es creuen a C: ${c('v', 'h = ' + S.h_creu.toFixed(1) + ' m')} · convergència θ = ${c('v', (Math.atan2(a2, Math.max(S.h_creu - S.h_src, 1e-6)) * 180 / Math.PI).toFixed(1) + '°')}` +
-      (S.feix >= 180 ? ' · fonts omnidireccionals (C no hi influeix)<br>' : (() => { const bo = F.bocaFeix(S, Math.max(S.f1, S.f2)); return ` · feix de ±${S.feix}°: caldria una boca de ${c(bo > 50 ? 'r' : 'g', bo >= 1000 ? (bo / 1000).toFixed(1) + ' km' : bo.toFixed(1) + ' m')} a ${Math.max(S.f1, S.f2).toFixed(3)} Hz<br>`; })()) +
+      (S.feix >= 180 ? ' · feix d\'altaveu convencional (180°)<br>' : (() => { const fm_ = Math.max(S.f1, S.f2), bo = F.bocaFeix(S, fm_);
+        const tx = bo >= 1000 ? (bo / 1000).toFixed(1) + ' km' : bo >= 1 ? bo.toFixed(1) + ' m' : (bo * 100).toFixed(1) + ' cm';
+        return ` · feix de ${S.feix}°: caldria una boca de ${c(bo > 50 ? 'r' : 'g', tx)} a ${fm_ < 1 ? fm_.toFixed(3) : fm_.toFixed(0)} Hz<br>`; })()) +
       (Math.abs(m.x - S.sx_off) > 0.5 && S.f1 === S.f2 && S.db1 === S.db2 ? c('w', '(fonts simètriques: hi ha un punt equivalent a l\'altre costat)') + '<br>' : '') +
       (ps && ps.valid ? (ps.rank === 0 ? c('g', '✓ al punt més favorable es compleix el criteri de formació')
         : c('w', `al punt més favorable (h = ${ps.millor.y.toFixed(1)} m) les ones no hi arriben prou: es forma al següent punt on sí`))
@@ -480,9 +488,12 @@ function refreshInfo() {
         : c('w', 'oscil·la sense girar (Δφ = 0° o 180°): cap rotació per fase'))
         : c('w', 'el gir s\'inverteix cada mig batec (de mitjana, zero)')) + `<br>` +
       `p_M = ${c('o', m.pM.toFixed(1) + ' Pa')} (${m.Lm.toFixed(0)} dB) · u_M = ${c('v', a.u.toFixed(2) + ' m/s')} · L₀/D = ${c('v', a.F.toFixed(2))} · ` +
-      `Holman ${c(a.es_forma ? 'g' : 'r', a.holman.toFixed(3) + (a.es_forma ? ' ✓' : ' < 0.16 ✗'))}<br>` +
-      (() => { const ca = F.correntAcustic(S, null, a.Gamma); return `<b>d'on surt el gir?</b> l'absorció de les ones (α = ${ca.alfa.toExponential(1)} /m) dona una força de ${c('v', ca.F.toExponential(1) + ' N/m³')} i un parell de ${c('v', ca.tau.toExponential(1) + ' N/m²')} → ` +
-        `el so sol pot sostenir Γ ≈ ${c(ca.suficient ? 'g' : 'r', ca.G.toExponential(1) + ' m²/s')}` + (a.Gamma > 0 ? ` de ${a.Gamma.toFixed(1)} que cal ${ca.suficient ? c('g', '✓') : c('r', '(falta ×' + ca.factor.toExponential(0) + ')')}` : '') + `<br>`; })();
+      `Holman ${c(a.holman > 0.16 ? 'g' : 'r', a.holman.toFixed(3) + (a.holman > 0.16 ? ' ✓' : ' < 0.16 ✗'))}` +
+      (a.es_forma ? ` · es forma per ${c('o', a.mecanisme)}` : '') + `<br>` +
+      (() => { const ca = F.correntAcustic(S, null, a.Gamma); return `<b>què empeny l'aire?</b> absorció de les ones (α = ${(ca.alfa * 8.686).toExponential(1)} dB/m): ${c('v', ca.Fabs.toExponential(1) + ' N/m³')} · ` +
+        `pressió de radiació sobre el contingut de l'anell (fum, gotes, aire calent; contrast ${ca.Phi.toExponential(1)}): ${c('v', ca.Fcon.toExponential(1) + ' N/m³')} · parell de l'espín ${c('v', ca.tau.toExponential(1) + ' N/m²')} → ` +
+        `poden sostenir Γ ≈ ${c(ca.suficient ? 'g' : 'r', ca.G.toExponential(1) + ' m²/s')}` + (a.Gamma > 0 ? ` de ${a.Gamma.toFixed(1)} que cal ${ca.suficient ? c('g', '✓') : c('r', '(falta ×' + ca.factor.toExponential(0) + ')')}` : '') + `<br>` +
+        (() => { const xs = F.distanciaXoc(S, m.f, Math.max(S.db1, S.db2)); return xs < Math.min(...m.r) ? c('w', `⚠ el so fa xoc a ${fmtL(xs)} de la font, abans d'arribar a M: el model lineal no compta la dissipació del xoc (incerta, normalment més empenta a prop de les fonts i menys so a M)`) + '<br>' : ''; })(); })();
   } else d.anells.forEach((a, i) => {
     if (d.fs[i].L <= 0) { ha += `${i ? 'S₂' : 'S₁'}: ${c('r', 'apagada')}<br>`; return; }
     ha += `${i ? 'S₂' : 'S₁'}: u = ${c('v', a.u.toFixed(2) + ' m/s')} (Mach ${a.mach.toFixed(3)}) · L₀/D = ${c('v', a.F.toFixed(2))} · ` +
@@ -974,8 +985,8 @@ function draw() {
     }
     polilinia(pts, `rgba(${cc},${sigOn ? 0.95 : 0.4})`, 2 * f);
     linia(c, fi, `rgba(${cc},.18)`, f, [3 * f, 5 * f]);                 // eix del feix
-    if (S.feix < 180) {                                                 // vores del feix (±α½)
-      const ang = S.feix * Math.PI / 180, Lv = L * 1.1;
+    if (S.feix < 180) {                                                 // vores del feix (±obertura/2)
+      const ang = S.feix / 2 * Math.PI / 180, Lv = L * 1.1;
       [-1, 1].forEach(sg => { const ca_ = Math.cos(sg * ang), sa = Math.sin(sg * ang);
         linia(c, add(c, mul(v3(u[0] * ca_ - u[1] * sa, u[0] * sa + u[1] * ca_, 0), Lv)), `rgba(${cc},.12)`, f); });
     }
@@ -1263,7 +1274,7 @@ function updateOsc() {
 let audioCtx = null;
 const audioNodes = {};
 function fBase(id) { return id === 's1' ? S.f1 : id === 's2' ? S.f2 : S.f_mt; }
-function freqAudio(id) { let f = Math.max(fBase(id), 0.005); while (f < 20) f *= 10; return f; }   // infrasò: ×10 fins que és audible
+function freqAudio(id) { let f = Math.max(fBase(id), 0.005); while (f < 20) f *= 10; while (f > 18000) f /= 10; return f; }   // infrasò ×10, ultrasò ÷10 fins que és audible
 function toggleAudio(id) {
   if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
   const btn = document.getElementById('spk-' + id);
@@ -1277,8 +1288,8 @@ function toggleAudio(id) {
     if (id === 's1' || id === 's2') osc.type = ['sine', 'square', 'triangle'][S.forma || 0];
     osc.connect(g); g.connect(audioCtx.destination); osc.start();
     audioNodes[id] = { osc, g };
-    const k = Math.round(freqAudio(id) / fBase(id));
-    btn.textContent = k > 1 ? '♦×' + k : '■';
+    const k = freqAudio(id) / fBase(id);
+    btn.textContent = k > 1.5 ? '♦×' + Math.round(k) : k < 0.67 ? '♦÷' + Math.round(1 / k) : '■';
     btn.style.color = '#40e080';
   }).catch(() => {});
 }
@@ -1326,13 +1337,13 @@ function cfgRefreshList() {
 function initEvents() {
   document.body.addEventListener('input', e => {
     const k = e.target.dataset && e.target.dataset.k;
-    if (k && e.target.type === 'range') setParam(k, +e.target.value);
+    if (k && e.target.type === 'range') setParam(k, esLog(k) ? Math.pow(10, +e.target.value) : +e.target.value);
   });
   document.body.addEventListener('click', e => {
     const t = e.target.closest('[data-k],[data-preset],[data-act],[data-vis],[data-grup],[data-audio],[data-vista]');
     if (!t) return;
     if (t.dataset.vista) { posaVista(t.dataset.vista); return; }
-    if (t.dataset.k && t.dataset.d) { const k = t.dataset.k; setParam(k, S[k] + (+t.dataset.d) * DEF[k][2]); return; }
+    if (t.dataset.k && t.dataset.d) { const k = t.dataset.k; setParam(k, esLog(k) ? S[k] * Math.pow(1.01, +t.dataset.d) : S[k] + (+t.dataset.d) * DEF[k][2]); return; }   // log: ±1 %
     if (t.dataset.preset) { loadPreset(+t.dataset.preset); return; }
     if (t.dataset.vis) { const k = t.dataset.vis; VIS[k] = !VIS[k]; t.classList.toggle('on', VIS[k]); return; }
     if (t.dataset.audio) { toggleAudio(t.dataset.audio); return; }
