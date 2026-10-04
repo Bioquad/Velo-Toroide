@@ -196,6 +196,13 @@ function distanciaXoc(s, f, L) {
   return rho(s) * Math.pow(cSo(s), 3) / ((s.beta || 1.2) * 2 * Math.PI * f * p);   // β: coeficient de no-linealitat (aire 1.2)
 }
 
+/** Distància de xoc d'una ona esfèrica des d'una font de radi r₀: σ = 1 a r = r₀·exp(ρc³/(βωp₁)) */
+function distanciaXocEsferica(s, f, L) {
+  const p1 = pAmpDeDb(L); if (p1 <= 0) return Infinity;
+  const r0 = Math.max(s.rfont || 0.3, 0.005), x = rho(s) * Math.pow(cSo(s), 3) / ((s.beta || 1.2) * 2 * Math.PI * f * p1);
+  return x > 50 ? Infinity : r0 * Math.exp(x);
+}
+
 /** Freqüència de batement i sentit de desplaçament de les franges */
 function fBat(s) { return Math.abs(s.f1 - s.f2); }
 function sentitBat(s) { return s.f1 === s.f2 ? 0 : (s.f1 > s.f2 ? 1 : -1); }
@@ -333,13 +340,20 @@ function fasorsFonts(s, x, y, z) {
   const c = cSo(s), rh = rho(s), Rw = s.refl == null ? 0 : Math.min(Math.max(s.refl, 0), 1), zz = z || 0;
   return fonts(s).map(q => {
     const k = 2 * Math.PI * Math.max(q.f, 1e-9) / c, al = alfaAbs(q.f, s), A0 = q.L > 0 ? pAmpDeDb(q.L) : 0;
-    let pr = 0, pi = 0, rD = 0.5, eD = [0, 1, 0];
+    const r0 = Math.max(s.rfont || 0.3, 0.005), cNL = (s.beta || 1.2) * k * A0 / (rho(s) * c * c);   // βωp₁/(ρc³), p₁ a 1 m
+    let pr = 0, pi = 0, rD = 0.5, eD = [0, 1, 0], sigD = 0, aNL = 0;
     const Vr = [0, 0, 0], Vi = [0, 0, 0];
     for (const [ys, coef, yGuany, directa] of [[q.y, 1, y, true], [-q.y, Rw, -y, false]]) {
       if (coef <= 0) continue;
       const dx = x - q.x, dy = y - ys, r = Math.max(Math.hypot(dx, dy, zz), 0.5), e = [dx / r, dy / r, zz / r];
-      if (directa) { rD = r; eD = e; }
-      const p = coef * guanyFeix(s, q, x, yGuany, zz) * A0 * Math.exp(-al * r) / r;   // la imatge surt pel feix reflectit
+      // saturació no lineal (ona esfèrica, Fubini–Fay / Blackstock): σ = βωp₁·ln(r/r₀)/(ρc³).
+      // Abans del xoc (σ < 1) l'ona es deforma sense perdre energia (passa als harmònics);
+      // després, dent de serra que es dissipa i l'amplitud ja no creix amb el nivell de la font:
+      // p = p_lineal/√(1+σ²) → ρc³/(βω·r·ln(r/r₀)) quan σ ≫ 1
+      const sig = cNL * Math.log(Math.max(r / r0, 1));
+      const p = coef * guanyFeix(s, q, x, yGuany, zz) * A0 * Math.exp(-al * r) / r / Math.sqrt(1 + sig * sig);   // la imatge surt pel feix reflectit
+      // absorció del xoc (només un cop format, σ ≥ 1): α_NL = −d ln p/dr = σ'·σ/(1+σ²), σ' = βωp₁/(ρc³·r)
+      if (directa) { rD = r; eD = e; sigD = sig; aNL = sig >= 1 ? cNL / r * sig / (1 + sig * sig) : 0; }
       const u = p / (rh * c) * Math.sqrt(1 + 1 / Math.pow(k * r, 2));
       const fp = q.ph - k * r, fu = fp - Math.atan(1 / (k * r));
       pr += p * Math.cos(fp); pi += p * Math.sin(fp);
@@ -352,7 +366,7 @@ function fasorsFonts(s, x, y, z) {
       if (m > umaj) { umaj = m; emaj = v.map(a => a / (m || 1)); }
     }
     const vr = Vr[0] * eD[0] + Vr[1] * eD[1] + Vr[2] * eD[2], vi = Vi[0] * eD[0] + Vi[1] * eD[1] + Vi[2] * eD[2];
-    return { r: rD, e: eD, p: Math.hypot(pr, pi), pr, pi, fp: Math.atan2(pi, pr), Vr, Vi,
+    return { r: rD, e: eD, sigma: sigD, alfaNL: aNL, p: Math.hypot(pr, pi), pr, pi, fp: Math.atan2(pi, pr), Vr, Vi,
       u: Math.sqrt(Vr.reduce((t, a) => t + a * a, 0) + Vi.reduce((t, a) => t + a * a, 0)), umaj, emaj, fu: Math.atan2(vi, vr) };
   });
 }
@@ -397,14 +411,14 @@ function millorPuntFormacio(s) {
 }
 /** Punts candidats del pla de les fonts, del més favorable al menys */
 function candidatsFormacio(s) {
-  const z = zonaFormacio(s), N = 48, L = [];
+  const z = zonaFormacio(s), N = s._rapid ? 20 : 48, L = [];
   for (let i = 0; i <= N; i++) for (let j = 0; j <= N; j++) {
     const x = z.x0 + (z.x1 - z.x0) * i / N, y = z.y0 + (z.y1 - z.y0) * j / N;
     L.push({ x, y, sc: puntuacioFormacio(s, x, y) });
   }
   // la vertical del punt mig de les fonts, més fina
   const xm = (fonts(s)[0].x + fonts(s)[1].x) / 2;
-  for (let j = 0; j <= 4 * N; j++) { const y = z.y0 + (z.y1 - z.y0) * j / (4 * N); L.push({ x: xm, y, sc: puntuacioFormacio(s, xm, y) }); }
+  for (let j = 0; j <= (s._rapid ? 2 : 4) * N; j++) { const y = z.y0 + (z.y1 - z.y0) * j / (4 * N); L.push({ x: xm, y, sc: puntuacioFormacio(s, xm, y) }); }
   // de més a menys favorable; en empat (simetria), primer el més centrat
   L.sort((a, b) => Math.abs(b.sc - a.sc) > 1e-3 * Math.max(a.sc, b.sc) ? b.sc - a.sc : Math.abs(a.x - xm) - Math.abs(b.x - xm));
   L.unshift(millorPuntFormacio(s));
@@ -413,7 +427,7 @@ function candidatsFormacio(s) {
 /** Posició on la física situa l'anell (i si s'hi pot formar). Es memoritza: depèn
  *  només de les fonts, de l'aire i de la zona de formació */
 const CAU_FORMACIO = new Map();
-const CLAUS_FORMACIO = ['f1', 'f2', 'db1', 'db2', 'phi', 'so', 'sx_off', 'h_src', 'D_ap', 'aR', 'n_inj', 'T', 'P', 'H', 'forma', 'nharm', 'turb', 'feix', 'h_creu', 'aer', 'trac', 'dT0', 'form', 'refl'];
+const CLAUS_FORMACIO = ['_rapid', 'rfont', 'beta', 'f1', 'f2', 'db1', 'db2', 'phi', 'so', 'sx_off', 'h_src', 'D_ap', 'aR', 'n_inj', 'T', 'P', 'H', 'forma', 'nharm', 'turb', 'feix', 'h_creu', 'aer', 'trac', 'dT0', 'form', 'refl'];
 function posicioFormacio(s) {
   const clau = CLAUS_FORMACIO.map(k => s[k]).join('|');
   if (CAU_FORMACIO.has(clau)) return CAU_FORMACIO.get(clau);
@@ -429,10 +443,24 @@ function posicioFormacioCalc(s) {
   const Rring = K.R_SOBRE_D * Math.max(s.D_ap, 0.02);
   const forma = P => { if (P.y < Rring) return false; const r = anellAlPunt(s, P), u = r.m.u; return r.an.es_forma && Math.min(u[0], u[1]) >= Math.max(u[0], u[1]) / 3; };
   const millor = millorPuntFormacio(s);
-  if (forma(millor)) return { x: millor.x, y: millor.y, valid: true, rank: 0, millor };
+  if (forma(millor)) return { x: Math.round(millor.x * 100) / 100, y: Math.round(millor.y * 100) / 100, valid: true, rank: 0, millor };
   // Al màxim no arriba: el punt següent més favorable on sí que es compleix el criteri
   const L = candidatsFormacio(s);
-  for (let i = 1; i < Math.min(L.length, 800); i++) if (forma(L[i])) return { x: L[i].x, y: L[i].y, valid: true, rank: i, millor };
+  for (let i = 1; i < Math.min(L.length, s._rapid ? 100 : 800); i++) if (forma(L[i])) {
+    // afinament fins al centímetre: cap al punt més favorable que encara compleix totes les condicions
+    let P = { x: L[i].x, y: L[i].y, sc: puntuacioFormacio(s, L[i].x, L[i].y) }, h = 2;
+    const dirs = [[1, 0], [-1, 0], [0, 1], [0, -1], [0.7071, 0.7071], [-0.7071, 0.7071], [0.7071, -0.7071], [-0.7071, -0.7071]];
+    for (let it = 0; it < 400 && h >= (s._rapid ? 0.5 : 0.01); it++) {
+      let mou = false;
+      for (const [dx, dy] of dirs) {
+        const Q = { x: P.x + dx * h, y: P.y + dy * h };
+        const sc = puntuacioFormacio(s, Q.x, Q.y);
+        if (sc > P.sc && forma(Q)) { P = Object.assign(Q, { sc }); mou = true; break; }
+      }
+      if (!mou) h /= 2;
+    }
+    return { x: Math.round(P.x * 100) / 100, y: Math.round(P.y * 100) / 100, valid: true, rank: i, millor };
+  }
   return { x: millor.x, y: millor.y, valid: false, rank: 0, millor };
 }
 /** Camp de les dues fonts al punt de formació (el que situa la física) o, si es
@@ -502,7 +530,8 @@ function correntAcustic(s, punt, Gnecessaria) {
   m.d.forEach((q, i) => {
     const a1 = alfaAbs(fs[i].f, s);
     fo.harm.forEach(h => {
-      const fk = h.k * fs[i].f, ak = alfaAbs(fk, s);
+      // absorció lineal + la del xoc (només per al fonamental: és el que es dissipa en la dent de serra)
+      const fk = h.k * fs[i].f, ak = alfaAbs(fk, s) + (h.k === 1 ? q.alfaNL || 0 : 0);
       const pk = q.p * Math.abs(h.a) / fo.harm[0].a * Math.exp(-(ak - a1) * q.r);
       const uk = h.k === 1 ? q.u : pk / (rh * c) * Math.sqrt(1 + 1 / Math.pow(2 * Math.PI * fk / c * q.r, 2));
       const I = pk * pk / (2 * rh * c), Fk = 2 * ak * I / c;
@@ -515,7 +544,7 @@ function correntAcustic(s, punt, Gnecessaria) {
   const Fabs = Math.hypot(Fx, Fy);
   // densitat d'espín acústic S = (ρ/2ω)·Im(V*×V) = ρ·(P×Q)/ω (amb el reflex inclòs)
   const spin = m.iguals ? rh * Math.abs(m.el.PxQ || 0) / w : 0;
-  const tau = 2 * alfaAbs(m.f, s) * c * spin;
+  const tau = 2 * (alfaAbs(m.f, s) + Math.max(m.d[0].alfaNL || 0, m.d[1].alfaNL || 0)) * c * spin;
   // 2. contrast del contingut de l'anell (traçador i excés de temperatura)
   const tr = tracador(s), phiP = Math.max(s.aer || 0, 0) * 1e-6 / tr.rho;   // fracció de volum de partícules
   const Phi = 0.83 * phiP + Math.abs(s.dT0 || 0) / (3 * Tk(s));
@@ -540,13 +569,69 @@ function anellAlPunt(s, punt) {
   const m = puntMig(s, punt);
   let an = anellVelocitat(s, m.f, m.uM);
   an.mecanisme = 'oscil·lació';
+  // Al lloc on neix no hi ha cap vora que protegeixi l'aire: l'anell ha de ser
+  // més fort que l'entorn. (a) Coherència: la seva velocitat Γ/(4πR) ha de
+  // superar la turbulència σ_w, o es desfà mentre es forma. (b) Vent creuat:
+  // el corrent que el forma (u, o el corrent estable U) ha de superar la brisa
+  // (relació de velocitats ≥ 1); si no, la brisa s'emporta l'aire abans que s'enrotlli.
+  const sw = Math.max(s.turb || 0, 1e-3), vw = vent(s);
+  const coherent = G => G / (4 * Math.PI * an.R) > sw;
+  an.motiu = !an.es_forma ? 'criteri de formació' : !coherent(an.Gamma) ? 'turbulència' : m.uM < vw ? 'vent' : '';
+  if (an.motiu) an = Object.assign({}, an, { es_forma: false });
   const ca = correntAcustic(s, punt);
-  if (ca.G > an.Gamma && ca.G / (4 * Math.PI * an.R) > Math.max(s.turb || 0, 1e-3)) {
+  if (ca.G > (an.es_forma ? an.Gamma : 0) && coherent(ca.G) && ca.U >= vw) {
     const lg = Math.log(8 * an.R / an.a) - 0.25;
-    an = Object.assign({}, an, { Gamma: ca.G, es_forma: true, Uself: ca.G / (4 * Math.PI * an.R) * lg, ReG: ca.G / nuAir(s), mecanisme: 'empenta del so' });
+    an = Object.assign({}, an, { Gamma: ca.G, es_forma: true, motiu: '', Uself: ca.G / (4 * Math.PI * an.R) * lg, ReG: ca.G / nuAir(s), mecanisme: 'empenta del so' });
   }
   return { an, m, ca };
 }
+
+/**
+ * Soroll de l'anell en girar (so de vòrtex, Lighthill): la turbulència del nucli
+ * radia com a quadrupol, W ≈ K·ρ·v⁸·a²/c⁵ (K ~ 10⁻⁴, incert ×10), amb v la
+ * velocitat al nucli Γ/(2πa). Nivell a la distància d (radiació esfèrica).
+ */
+function sorollAnell(s, Gamma, a, d) {
+  const v = Gamma / (2 * Math.PI * Math.max(a, 1e-3)), c = cSo(s);
+  const W = 1e-4 * rho(s) * Math.pow(v, 8) * a * a / Math.pow(c, 5);
+  const I = W / (4 * Math.PI * Math.max(d, 1) * Math.max(d, 1));
+  return { v, W, L: I > 0 ? 10 * Math.log10(I / 1e-12) : -Infinity, L1: W > 0 ? 10 * Math.log10(W / (4 * Math.PI) / 1e-12) : -Infinity };
+}
+/**
+ * Electricitat estàtica de l'anell (ordre de magnitud, com als remolins de pols):
+ * les partícules del traçador xoquen dins el nucli turbulent (taxa de
+ * Saffman–Turner, N = 1.29·d³·n²·√(ε/ν)) i s'intercanvien càrrega per fricció
+ * (~10⁻¹⁵ C per xoc per a partícules d'1 µm, ∝ àrea; calibrat amb els 1–100 kV/m
+ * mesurats als remolins de pols). Les càrregues només se separen si les partícules
+ * es desplacen entre elles: per sedimentació (Stokes, v_s = 2r²ρ_p·g/(9μ)), com als
+ * núvols de tempesta; f_sep = 0.1·min(1, v_s·t/a). La conductivitat de l'aire (σ ≈ 2·10⁻¹⁴ S/m) la
+ * descarrega en τ = ε₀/σ ≈ 7 min. Camp al tub E ≈ ρ_q·a/(2ε₀). Si E no arriba a la
+ * ruptura de l'aire, no hi ha espurnes: la «estàtica» és silenciosa. Constants
+ * incertes en un factor ~10–100; serveix per saber si és plausible un espetec.
+ */
+function estaticaAnell(s, Gamma, a, edat) {
+  const tr = tracador(s), cm = Math.max(s.aer || 0, 0) * 1e-6;          // kg/m³
+  const mp = 4 / 3 * Math.PI * Math.pow(tr.r, 3) * tr.rho, n = cm > 0 ? cm / mp : 0;
+  const v = Gamma / (2 * Math.PI * Math.max(a, 1e-3)), eps = Math.pow(v, 3) / Math.max(a, 1e-3);   // dissipació turbulenta
+  const Nc = 1.29 * Math.pow(2 * tr.r, 3) * n * n * Math.sqrt(eps / nuAir(s));                     // xocs /m³/s
+  const mu = nuAir(s) * rho(s), vs = 2 * tr.r * tr.r * tr.rho * K.G / (9 * mu);                       // sedimentació
+  const dq = 1e-15 * Math.pow(tr.r / 1e-6, 2), fsep = 0.1 * Math.min(1, vs * Math.max(edat || 0, 1) / Math.max(a, 1e-3)), sigAir = 2e-14, e0 = 8.854e-12;
+  const J = fsep * dq * Nc, tau = e0 / sigAir;
+  const rhoq = J * tau * (1 - Math.exp(-Math.max(edat || 0, 0) / tau));
+  const E = rhoq * a / (2 * e0), Ebd = campRuptura(s, 0).Ebd;
+  return { n, Nc, J, tau, rhoq, E, V: E * a, Ebd, ratio: E / Ebd, espurnes: E >= Ebd, vs, fsep,
+    soroll: E >= Ebd ? 'espetec de microdescàrregues' : 'cap (camp molt per sota de la ruptura)' };
+}
+/**
+ * Mapa de viabilitat: per a la geometria actual, en quines freqüències i nivells
+ * es forma l'anell i a quina alçada (cerca ràpida, resolució de ~1 m en posició).
+ */
+function viabilitat(s, f, L) {
+  const p = anellPrincipalFont(Object.assign({}, s, { f1: f, f2: f, db1: L, db2: L, _rapid: true }));
+  return { forma: p.an.es_forma && L <= dbMax(s), mec: p.an.mecanisme, h: p.src.y, x: p.src.x, impossible: L > dbMax(s) };
+}
+/** Volum d'aire que ha de desplaçar cada font per cicle (monopol): 2·Q/ω, Q = 4π·p₁·(1 m)/(ρω) */
+function volumFont(s, f, L) { const w = 2 * Math.PI * Math.max(f, 1e-9), p1 = pAmpDeDb(L); return 2 * 4 * Math.PI * p1 / (rho(s) * w) / w; }
 
 /** Viscositat turbulenta efectiva a l'escala de l'anell [m²/s] */
 function nuEfectiva(s, R) {
@@ -1325,7 +1410,7 @@ const API = {
   vidaAnell, nucliTermo, tracador, profOptica, levitacio, conductors, campEPic, corona, sorollCorona, campRuptura,
   sincronisme, ratiRuptura, plasma, dTdt, colorCosNegre,
   evolucio, vidaAnell2, rotacioNodes, cuaNodes, posicioSol, massaAire, transSol, iluminanciaSol,
-  luminanciaCel, faseHG, aparenca, geometriaVisio, posicioTestimoni, factorRadiEmissors, anellPrincipalFont, anellAlPunt, puntMig, fasorsFonts, correntAcustic, guanyFeix, bocaFeix, posicioFormacio, millorPuntFormacio, candidatsFormacio, puntuacioFormacio, anellVelocitat, formaOna, harmonicsAudibles, velocitatAnell,
+  luminanciaCel, faseHG, aparenca, geometriaVisio, posicioTestimoni, factorRadiEmissors, anellPrincipalFont, viabilitat, anellAlPunt, puntMig, fasorsFonts, distanciaXocEsferica, sorollAnell, estaticaAnell, volumFont, correntAcustic, guanyFeix, bocaFeix, posicioFormacio, millorPuntFormacio, candidatsFormacio, puntuacioFormacio, anellVelocitat, formaOna, harmonicsAudibles, velocitatAnell,
   rhoSat, llindarPercepcio, patroAcustic, avaluaPatro,
   gammaSRGB, eficaciaEmissio, colorEmissio, emissors, posicioEmissors, envolupantEmissors, avaluaEmissors, esTaronja, toHue,
   trajectoria, estatAnell, tauPunt, corbaContrast, OBS, avaluaObservacio, dissenya,
