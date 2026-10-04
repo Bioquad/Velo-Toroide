@@ -134,6 +134,10 @@ El simulador (carpeta `simulation/v041/`, versió V042) fa servir només **físi
 
 **Reproducció real:** la configuració «🧪 Assaig real a escala 1:10» (anell de 2.5 m, fum blanc, sol de costat, emissor a 3 m) vist a 90 m compleix tots els objectius escalats menys dos, inclòs el gir de 7 s, perquè els anells petits giren més ràpid. Les excepcions són el color (el fum blanc no és taronja, i el fum taronja de senyalització és més fosc que el cel de dia) i l'encongiment final.
 
+### Escombrat de configuracions
+
+Taules de on i amb quines freqüències es formaria el toroide (freqüència, nivell, forma del senyal i harmònics, separació, feix, fase i contingut de l'aire): [`simulation/v041/RESULTATS_ESCOMBRAT.md`](simulation/v041/RESULTATS_ESCOMBRAT.md). Es regeneren amb `node tests/escombrat.js`.
+
 ### Execució de les proves
 
 ```

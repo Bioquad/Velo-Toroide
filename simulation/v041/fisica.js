@@ -382,7 +382,7 @@ function candidatsFormacio(s) {
 /** Posició on la física situa l'anell (i si s'hi pot formar). Es memoritza: depèn
  *  només de les fonts, de l'aire i de la zona de formació */
 const CAU_FORMACIO = new Map();
-const CLAUS_FORMACIO = ['f1', 'f2', 'db1', 'db2', 'phi', 'so', 'sx_off', 'h_src', 'D_ap', 'aR', 'n_inj', 'T', 'P', 'H', 'forma', 'nharm', 'turb', 'feix', 'h_creu'];
+const CLAUS_FORMACIO = ['f1', 'f2', 'db1', 'db2', 'phi', 'so', 'sx_off', 'h_src', 'D_ap', 'aR', 'n_inj', 'T', 'P', 'H', 'forma', 'nharm', 'turb', 'feix', 'h_creu', 'aer', 'trac', 'dT0', 'form'];
 function posicioFormacio(s) {
   const clau = CLAUS_FORMACIO.map(k => s[k]).join('|');
   if (CAU_FORMACIO.has(clau)) return CAU_FORMACIO.get(clau);
@@ -466,15 +466,24 @@ function puntMig(s, punt) {
 function correntAcustic(s, punt, Gnecessaria) {
   const m = puntMig(s, punt), c = cSo(s), rh = rho(s), fs = fonts(s);
   const W = Math.max(s.D_ap, 0.1), R = K.R_SOBRE_D * W, nuT = nuEfectiva(s, R);
-  // 1. absorció
-  let Fx = 0, Fy = 0, E = 0;
+  // 1. absorció, del fonamental i de cada harmònic k·f de la forma del senyal
+  //    (cada harmònic arriba amb el seu pes a_k i s'absorbeix amb α(k·f) pel camí)
+  const fo = formaOna(s), w = 2 * Math.PI * Math.max(m.f, 1e-9), A = m.d[0], B = m.d[1];
+  let Fx = 0, Fy = 0, E = 0, Fh = 0, kE = 0;
   m.d.forEach((q, i) => {
-    const a = alfaAbs(fs[i].f, s), I = q.p * q.p / (2 * rh * c);
-    Fx += 2 * a * I / c * q.e[0]; Fy += 2 * a * I / c * q.e[1];
-    E += q.p * q.p / (2 * rh * c * c) + rh * q.u * q.u / 4;          // energia (potencial + cinètica, mitjana)
+    const a1 = alfaAbs(fs[i].f, s);
+    fo.harm.forEach(h => {
+      const fk = h.k * fs[i].f, ak = alfaAbs(fk, s);
+      const pk = q.p * Math.abs(h.a) / fo.harm[0].a * Math.exp(-(ak - a1) * q.r);
+      const uk = h.k === 1 ? q.u : pk / (rh * c) * Math.sqrt(1 + 1 / Math.pow(2 * Math.PI * fk / c * q.r, 2));
+      const I = pk * pk / (2 * rh * c), Fk = 2 * ak * I / c;
+      Fx += Fk * q.e[0]; Fy += Fk * q.e[1];
+      if (h.k > 1) Fh += Fk;
+      const Ek = pk * pk / (2 * rh * c * c) + rh * uk * uk / 4;           // energia (potencial + cinètica, mitjana)
+      E += Ek; kE += Ek * Math.max(2 * Math.PI * fk / c, 1 / q.r);
+    });
   });
   const Fabs = Math.hypot(Fx, Fy);
-  const w = 2 * Math.PI * Math.max(m.f, 1e-9), A = m.d[0], B = m.d[1];
   const AxB = A.u * B.u * Math.abs(A.e[0] * B.e[1] - A.e[1] * B.e[0]);
   const spin = m.iguals ? rh * AxB * Math.abs(Math.sin(m.dfu)) / (2 * w) : 0;
   const tau = 2 * alfaAbs(m.f, s) * c * spin;
@@ -482,12 +491,12 @@ function correntAcustic(s, punt, Gnecessaria) {
   const tr = tracador(s), phiP = Math.max(s.aer || 0, 0) * 1e-6 / tr.rho;   // fracció de volum de partícules
   const Phi = 0.83 * phiP + Math.abs(s.dT0 || 0) / (3 * Tk(s));
   // el camp varia en una distància ~1/k (ona) o ~r (camp proper, ∝ 1/r²): el gradient més fort mana
-  const Fcon = Phi * Math.max(w / c, 1 / Math.min(A.r, B.r)) * E;
+  const Fcon = Phi * kE;
   const F = Fabs + Fcon;
   const U = F * W * W / (rh * nuT), Omega = tau / (rh * nuT);
   const G = U * W + Omega * W * W;
   const Gn = Gnecessaria || 0;
-  return { F, Fabs, Fcon, Phi, E, tau, spin, U, Omega, G, nuT, W, alfa: alfaAbs(m.f, s), Gn,
+  return { F, Fabs, Fharm: Fh, Fcon, Phi, E, tau, spin, U, Omega, G, nuT, W, alfa: alfaAbs(m.f, s), Gn,
     factor: Gn > 0 && G > 0 ? Gn / G : Infinity, suficient: G >= Gn && Gn > 0 };
 }
 
