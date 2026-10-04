@@ -202,7 +202,7 @@ t('on neix l\'anell ho decideix la física: dues fonts iguals → sobre el punt 
   assert.ok(p.valid && Math.abs(p.x) < 0.05, JSON.stringify(p));
   prop(p.y - 5, 13.75 / Math.sqrt(3), 0.005, 'camp proper');
   const ll = F.millorPuntFormacio(Object.assign({}, base, { f1: 2000, f2: 2000 }));
-  prop(ll.y - 5, 13.75 / Math.SQRT2, 0.005, 'camp llunyà');
+  prop(ll.y - 5, 13.75 / Math.SQRT2, 0.01, 'camp llunyà');   // l'absorció del camí el desplaça una mica
   // una font més feble desplaça el punt cap a ella; separar les fonts l'apuja
   assert.ok(F.posicioFormacio(Object.assign({}, base, { db2: 147 })).x > 2);
   assert.ok(F.millorPuntFormacio(Object.assign({}, base, { so: 60 })).y > p.y + 5);
@@ -232,27 +232,60 @@ t('camp a la posició de l\'anell: a M és el mateix que al punt mig i s\'afeble
   const viu = z => { const m = F.puntMig(d.cfg, { x: 0, y: 25, z }); return F.anellVelocitat(d.cfg, m.f, m.uM).es_forma; };
   assert.ok(viu(0) && !viu(30));
 });
-t('feixos direccionals: l\'alçada on es creuen mou el punt on neix l\'anell; omnidireccionals, no hi influeix', () => {
+t('feixos: obertura de 0° (tancat) a 180° (altaveu convencional); l\'alçada on es creuen mou el punt on neix l\'anell', () => {
   const b = Object.assign({}, MIG, { so: 69.2, f1: 0.0714, f2: 0.0714, db1: 161.2, db2: 161.2, phi: -90, n_inj: 4 });
   const y = (feix, h_creu) => F.posicioFormacio(Object.assign({}, b, { feix, h_creu })).y;
-  prop(y(180, 25), y(180, 60), 1e-9, 'omni');
-  assert.ok(y(30, 60) > y(30, 25) + 3);
-  // fora de l'eix el feix cau a la meitat a α½
-  const q = F.fonts(b)[0], g = F.guanyFeix(Object.assign({}, b, { feix: 30, h_creu: 25 }), q, q.x + 100 * Math.sin(Math.atan2(34.6, 20) + 30 * Math.PI / 180), q.y + 100 * Math.cos(Math.atan2(34.6, 20) + 30 * Math.PI / 180), 0);
-  prop(g, 0.5, 1e-3, 'g(α½)');
-  // un feix de ±30° a 0.07 Hz demana una boca de quilòmetres
-  assert.ok(F.bocaFeix(Object.assign({}, b, { feix: 30 }), 0.0714) > 4000);
+  // sense feix definit (font puntual omnidireccional) C no hi influeix
+  prop(F.posicioFormacio(Object.assign({}, b, { h_creu: 25 })).y, F.posicioFormacio(Object.assign({}, b, { h_creu: 60 })).y, 1e-9, 'omni');
+  assert.ok(y(60, 60) > y(60, 25) + 3);
+  // a α = obertura/2 de l'eix el feix cau a la meitat (−6 dB)
+  const bb = Object.assign({}, b, { feix: 60, h_creu: 25 }), q = F.fonts(bb)[0];
+  const eix = Math.atan2(34.6, 20), al = eix + 30 * Math.PI / 180;
+  prop(F.guanyFeix(bb, q, q.x + 100 * Math.sin(al), q.y + 100 * Math.cos(al), 0), 0.5, 1e-3, 'g(α½)');
+  // boca necessària: ~5 km per ±30° a 0.07 Hz; ~1 cm a 40 kHz
+  assert.ok(F.bocaFeix(bb, 0.0714) > 4000 && F.bocaFeix(bb, 40000) < 0.02);
 });
-t('d\'on surt el gir: en infrasò, l\'absorció de les ones dona una Γ ~10⁶ vegades massa petita', () => {
+t('absorció atmosfèrica ISO 9613-1: ~0.005 dB/m a 1 kHz i ~1.3 dB/m a 40 kHz (20 °C, 50 %)', () => {
+  const a = f => F.alfaAbs(f, { T: 20, H: 50, P: 1013.25 }) * 8.686;
+  assert.ok(Math.abs(a(1000) - 0.0047) < 0.0008, String(a(1000)));
+  assert.ok(Math.abs(a(40000) - 1.32) < 0.15, String(a(40000)));
+});
+t('l\'ultrasò (> 20 kHz) no és audible', () => {
+  const b = amb({ f1: 30000, f2: 30000, db1: 140, db2: 140, d_obs: 60 });
+  assert.strictEqual(F.harmonicsAudibles(b).length, 0);
+  assert.ok(F.harmonicsAudibles(Object.assign({}, b, { f1: 5000, f2: 5000 })).length > 0);
+});
+t('pressió de radiació sobre el contrast: el fum o l\'aire calent de l\'anell reben empenta directa, que creix amb la freqüència', () => {
+  const b = Object.assign({}, MIG, { so: 69.2, f1: 0.0714, f2: 0.0714, db1: 161.2, db2: 161.2, phi: -90 });
+  const net = F.correntAcustic(Object.assign({}, b, { aer: 0, dT0: 0 }), { x: 0, y: 25 });
+  const fum = F.correntAcustic(Object.assign({}, b, { aer: 500, trac: 1, dT0: 0 }), { x: 0, y: 25 });
+  const calent = F.correntAcustic(Object.assign({}, b, { aer: 0, dT0: 10 }), { x: 0, y: 25 });
+  assert.strictEqual(net.Fcon, 0); assert.ok(fum.Fcon > 0 && calent.Fcon > fum.Fcon);
+  const alt = F.correntAcustic(Object.assign({}, b, { aer: 0, dT0: 10, f1: 714, f2: 714 }), { x: 0, y: 25 });
+  assert.ok(alt.Fcon > calent.Fcon, String(alt.Fcon / calent.Fcon));
+});
+t('d\'on surt el gir: en infrasò, el so dona una Γ ~10⁶ vegades massa petita', () => {
   const d = F.dissenya(MIG, Object.assign({ prioritat: 'deriva' }, OBJ));
   const an = F.anellPrincipalFont(d.cfg).an, ca = F.correntAcustic(d.cfg, null, an.Gamma);
   assert.ok(!ca.suficient && ca.factor > 1e5 && ca.factor < 1e7, String(ca.factor));
   const ev = F.avaluaObservacio(d.cfg);
-  assert.strictEqual(ok(ev, 'el so mateix crea el gir (corrent acústic)'), false);
-  // la força creix amb f² (absorció): a 2 kHz el mateix nivell empeny ~10⁹ vegades més
-  const a = F.correntAcustic(Object.assign({}, d.cfg, { f1: 0.07, f2: 0.07 }), { x: 0, y: 25 }).F;
-  const bF = F.correntAcustic(Object.assign({}, d.cfg, { f1: 2000, f2: 2000 }), { x: 0, y: 25 }).F;
-  assert.ok(bF / a > 1e8, String(bF / a));
+  assert.strictEqual(ok(ev, 'el so empeny prou l\'aire per fer el gir'), false);
+  // la part d'absorció creix com f²: a 2 kHz el mateix nivell empeny ~10⁸ vegades més
+  const a = F.correntAcustic(Object.assign({}, d.cfg, { f1: 0.07, f2: 0.07 }), { x: 0, y: 25 }).Fabs;
+  const bF = F.correntAcustic(Object.assign({}, d.cfg, { f1: 2000, f2: 2000 }), { x: 0, y: 25 }).Fabs;
+  assert.ok(bF / a > 1e7, String(bF / a));
+});
+t('freqüència òptima per empènyer: ~kHz; l\'ultrasò de 40 kHz s\'absorbeix pel camí abans d\'arribar', () => {
+  const b = Object.assign({}, MIG, { so: 69.2, db1: 161.2, db2: 161.2, phi: -90, aer: 500, trac: 1, feix: 180, h_creu: 25 });
+  const G = f => F.correntAcustic(Object.assign({}, b, { f1: f, f2: f }), { x: 0, y: 25 }, 40).G;
+  assert.ok(G(5000) > 100 * G(0.0714) && G(5000) > 100 * G(40000));
+});
+t('a kHz l\'anell es forma per l\'empenta estable del so, entre les ones (5 kHz, 170 dB, fum)', () => {
+  const b = Object.assign({}, MIG, { so: 69.2, phi: -90, aer: 500, trac: 1, feix: 180, h_creu: 25, n_inj: 4, f1: 5000, f2: 5000 });
+  const p = F.anellPrincipalFont(Object.assign({}, b, { db1: 170, db2: 170 }));
+  assert.ok(p.an.es_forma && p.an.mecanisme === 'empenta del so' && Math.abs(p.src.x) < 0.5, JSON.stringify(p.src));
+  assert.ok(Math.min(...p.mig.u) >= Math.max(...p.mig.u) / 3);
+  assert.ok(!F.anellPrincipalFont(Object.assign({}, b, { db1: 155, db2: 155 })).an.es_forma);
 });
 /* Paràmetres dels generadors recuperats de la versió original */
 t('forma del senyal: el fonamental porta el 100 % (sinus), ~81 % (quadrada) i ~99 % (triangular) de l\'energia', () => {

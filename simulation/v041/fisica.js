@@ -90,7 +90,23 @@ function pAmpDeDb(L) { return Math.SQRT2 * K.P_REF * Math.pow(10, L / 20); }
 function dbMax(s) { return 20 * Math.log10(pAtm(s) / (Math.SQRT2 * K.P_REF)); }
 function lambda(s, f) { return cSo(s) / Math.max(f, 1e-6); }
 /** Absorció atmosfèrica aproximada (clàssica + relaxació, humitat mitjana) [Np/m] */
-function alfaAbs(f) { return 5.8e-10 * f * f; }
+/**
+ * Absorció atmosfèrica [Np/m], ISO 9613-1: clàssica + relaxació de l'oxigen i del
+ * nitrogen, segons la temperatura, la humitat i la pressió. Sense `s`, aire a
+ * 20 °C, 50 % i 1013 hPa. (A 1 kHz ~0.005 dB/m; a 40 kHz ~1.3 dB/m.)
+ */
+function alfaAbs(f, s) {
+  const T = (s && s.T != null ? s.T : 20) + 273.15, RH = s && s.H != null ? s.H : 50, pa = (s && s.P ? s.P : 1013.25) / 1013.25;
+  const T0 = 293.15, T01 = 273.16;
+  const psat = Math.pow(10, -6.8346 * Math.pow(T01 / T, 1.261) + 4.6151);
+  const h = RH * psat / pa;                                       // concentració molar de vapor (%)
+  const frO = pa * (24 + 4.04e4 * h * (0.02 + h) / (0.391 + h));
+  const frN = pa * Math.pow(T / T0, -0.5) * (9 + 280 * h * Math.exp(-4.170 * (Math.pow(T / T0, -1 / 3) - 1)));
+  const f2 = f * f;
+  const aDb = 8.686 * f2 * (1.84e-11 / pa * Math.sqrt(T / T0) + Math.pow(T / T0, -2.5) *
+    (0.01275 * Math.exp(-2239.1 / T) / (frO + f2 / frO) + 0.1068 * Math.exp(-3352 / T) / (frN + f2 / frN)));
+  return aDb / 8.686;
+}
 
 /** Altura del primer node de pressió sobre una superfície rígida (aigua): λ/4 */
 function hNodePressio(s, f) { return lambda(s, f) / 4; }
@@ -137,7 +153,7 @@ function harmonicsAudibles(s) {
     const d = Math.max(Math.hypot(q.x - o.x, q.y - o.y, o.z), 1);
     fo.harm.forEach(h => {
       const f = h.k * q.f, L = q.Ltot + 20 * Math.log10(Math.abs(h.a) / fo.norma) - 20 * Math.log10(d);
-      if (f >= 20 && L > llindarPercepcio(f)) out.push({ font: i, k: h.k, f, L });
+      if (f >= 20 && f <= 20000 && L > llindarPercepcio(f)) out.push({ font: i, k: h.k, f, L });   // > 20 kHz: ultrasò
     });
   });
   return out;
@@ -151,7 +167,7 @@ function harmonicsAudibles(s) {
  */
 function fasorFont(s, src, x, y) {
   const p1 = pAmpDeDb(src.L);
-  const k = 2 * Math.PI * src.f / cSo(s), al = alfaAbs(src.f);
+  const k = 2 * Math.PI * src.f / cSo(s), al = alfaAbs(src.f, s);
   let re = 0, im = 0;
   for (const yy of [src.y, -src.y]) {
     const r = Math.max(Math.hypot(x - src.x, y - yy), 0.5);
@@ -286,28 +302,29 @@ function anellVelocitat(s, f, u) {
  * el punt es desplaça cap a la més feble.
  */
 /**
- * Feixos direccionals: cada font apunta el seu feix al punt de creuament
- * C = (x mig de les fonts, h_creu). L'amplitud fora de l'eix cau com
- * g(α) = 2^−(α/α½)², amb α½ = semiamplada del feix (a −6 dB); α½ ≥ 180° és una
- * font omnidireccional. El nivell en dB és el de l'eix a 1 m. Per fer de debò un
- * feix d'amplada α½ cal una boca de mida D ≈ 0.51·λ/sin α½ (pistó): en infrasò,
- * quilòmetres. El simulador ho mostra.
+ * Feixos: cada font apunta el seu feix al punt de creuament C = (x mig de les
+ * fonts, h_creu). `feix` és l'obertura total del feix, de 0° (tancat, un pinzell)
+ * a 180° (com un altaveu convencional, que radia cap endavant en mig espai). Fora
+ * de l'eix l'amplitud cau com g(α) = 2^−(α/α½)², amb α½ = feix/2 (a −6 dB); el
+ * que surt cap enrere queda molt atenuat. El nivell en dB és el de l'eix a 1 m.
+ * Fer de debò un feix d'obertura `feix` demana una boca D ≈ 0.51·λ/sin(feix/2):
+ * en infrasò quilòmetres, en ultrasò centímetres. El so sempre surt de la font.
  */
 function guanyFeix(s, q, x, y, z) {
-  const a = s.feix == null ? 180 : s.feix;
-  if (a >= 180) return 1;
+  if (s.feix == null) return 1;                                  // sense dada: font omnidireccional
+  const a = Math.max(s.feix / 2, 0.25);
   const ax = s.sx_off - q.x, ay = (s.h_creu == null ? q.y + 10 : s.h_creu) - q.y, la = Math.hypot(ax, ay) || 1;
   const dx = x - q.x, dy = y - q.y, dz = z || 0, r = Math.hypot(dx, dy, dz) || 1;
   const alfa = Math.acos(Math.min(1, Math.max(-1, (ax * dx + ay * dy) / (la * r)))) * R2D;
-  return Math.pow(2, -Math.pow(alfa / Math.max(a, 0.5), 2));
+  return Math.pow(2, -Math.pow(alfa / a, 2));
 }
-/** Mida de boca necessària per a un feix de semiamplada α½ a la freqüència f */
-function bocaFeix(s, f) { const a = s.feix == null ? 180 : s.feix; return a >= 90 ? 0 : 0.51 * lambda(s, f) / Math.sin(a * D2R); }
+/** Mida de boca necessària per a un feix d'obertura `feix` a la freqüència f */
+function bocaFeix(s, f) { const a = s.feix == null ? 180 : s.feix / 2; return a >= 90 ? 0 : 0.51 * lambda(s, f) / Math.sin(Math.max(a, 0.25) * D2R); }
 function campFonts(s, x, y) {
   const c = cSo(s);
   return fonts(s).map(q => {
     const dx = x - q.x, dy = y - q.y, r = Math.max(Math.hypot(dx, dy), 0.5), k = 2 * Math.PI * Math.max(q.f, 1e-9) / c;
-    const u = q.L > 0 ? guanyFeix(s, q, x, y, 0) * pAmpDeDb(q.L) / r / (rho(s) * c) * Math.sqrt(1 + 1 / Math.pow(k * r, 2)) : 0;
+    const u = q.L > 0 ? guanyFeix(s, q, x, y, 0) * pAmpDeDb(q.L) * Math.exp(-alfaAbs(q.f, s) * r) / r / (rho(s) * c) * Math.sqrt(1 + 1 / Math.pow(k * r, 2)) : 0;
     return { u, ex: dx / r, ey: dy / r };
   });
 }
@@ -375,7 +392,9 @@ function posicioFormacio(s) {
   return r;
 }
 function posicioFormacioCalc(s) {
-  const forma = P => { const m = puntMig(s, P); return anellVelocitat(s, m.f, m.uM).es_forma; };
+  // Només entre les ones: les dues fonts hi han d'arribar comparables (cap no pot
+  // aportar menys d'un terç de l'altra); si no, seria un anell d'una sola font
+  const forma = P => { const r = anellAlPunt(s, P), u = r.m.u; return r.an.es_forma && Math.min(u[0], u[1]) >= Math.max(u[0], u[1]) / 3; };
   const millor = millorPuntFormacio(s);
   if (forma(millor)) return { x: millor.x, y: millor.y, valid: true, rank: 0, millor };
   // Al màxim no arriba: el punt següent més favorable on sí que es compleix el criteri
@@ -393,7 +412,7 @@ function puntMig(s, punt) {
   const yC = s.h_creu == null ? y : s.h_creu, xC = s.sx_off;
   const d = fs.map(q => {
     const dx = x - q.x, dy = y - q.y, r = Math.max(Math.hypot(dx, dy, z), 0.5);
-    const k = 2 * Math.PI * Math.max(q.f, 1e-9) / c, p = q.L > 0 ? guanyFeix(s, q, x, y, z) * pAmpDeDb(q.L) / r : 0;
+    const k = 2 * Math.PI * Math.max(q.f, 1e-9) / c, p = q.L > 0 ? guanyFeix(s, q, x, y, z) * pAmpDeDb(q.L) * Math.exp(-alfaAbs(q.f, s) * r) / r : 0;
     const u = p / (rho(s) * c) * Math.sqrt(1 + 1 / Math.pow(k * r, 2));
     const fp = q.ph - k * r;                                  // fase de la pressió a M
     return { r, e: [dx / r, dy / r, z / r], p, u, fp, fu: fp - Math.atan(1 / (k * r)) };
@@ -430,34 +449,65 @@ function puntMig(s, punt) {
 }
 
 /**
- * D'ON SURT EL GIR EN AIRE LLIURE? (corrent acústic i espín absorbit)
- * Una ona lineal no crea vorticitat. L'única via coneguda sense vores és
- * l'absorció: l'ona que s'absorbeix cedeix a l'aire
- *   · quantitat de moviment: força F = 2α·I/c per font (corrent d'Eckart);
- *   · moment angular: parell τ = 2α·c·s, amb s = ρ·|A×B|·sin Δφ/(2ω) la
- *     densitat d'espín de les dues ones creuades.
- * α és l'absorció atmosfèrica (∝ f²). Amb la turbulència de l'aire (ν_t) el
- * corrent arriba a un estat estable U ≈ F·W²/(ρ·ν_t) en una zona W, amb una
- * circulació Γ ≈ U·W. Es compara amb la Γ que necessita l'anell.
+ * QUÈ EMPENY I FA GIRAR L'AIRE ON NEIX L'ANELL (forces estables del so)
+ *  1. Absorció (corrent acústic d'Eckart): l'ona que s'absorbeix cedeix la seva
+ *     quantitat de moviment, F = 2α·I/c per font, i el seu moment angular,
+ *     τ = 2α·c·s (s = ρ·|A×B|·sin Δφ/(2ω), espín de les ones creuades).
+ *  2. Contrast (pressió de radiació, Gor'kov): on hi ha alguna cosa diferent de
+ *     l'aire —gotes, fum, una bombolla, aire més calent— el so l'empeny
+ *     directament, F ≈ Φ·E·max(k, 1/r) (E, densitat d'energia acústica; Φ, contrast: ~0.8×
+ *     la fracció de volum de partícules denses, més ~ΔT/(3T) per a l'aire calent).
+ *     Si un costat rep més empenta que l'altre, gira (com una bombolla de sabó).
+ * Amb la viscositat turbulenta de l'aire (ν_t), una força per volum F sobre una
+ * zona W sosté un corrent U ≈ F·W²/(ρ·ν_t) i una circulació Γ ≈ U·W; el parell
+ * hi afegeix Ω·W² amb Ω = τ/(ρ·ν_t). Totes dues creixen amb la freqüència:
+ * l'absorció com f² (fins a la relaxació), el contrast com f.
  */
 function correntAcustic(s, punt, Gnecessaria) {
   const m = puntMig(s, punt), c = cSo(s), rh = rho(s), fs = fonts(s);
   const W = Math.max(s.D_ap, 0.1), R = K.R_SOBRE_D * W, nuT = nuEfectiva(s, R);
-  let Fx = 0, Fy = 0;
+  // 1. absorció
+  let Fx = 0, Fy = 0, E = 0;
   m.d.forEach((q, i) => {
-    const a = alfaAbs(fs[i].f), I = q.p * q.p / (2 * rh * c);      // intensitat activa (ona que s'endu energia)
+    const a = alfaAbs(fs[i].f, s), I = q.p * q.p / (2 * rh * c);
     Fx += 2 * a * I / c * q.e[0]; Fy += 2 * a * I / c * q.e[1];
+    E += q.p * q.p / (2 * rh * c * c) + rh * q.u * q.u / 4;          // energia (potencial + cinètica, mitjana)
   });
-  const F = Math.hypot(Fx, Fy);
+  const Fabs = Math.hypot(Fx, Fy);
   const w = 2 * Math.PI * Math.max(m.f, 1e-9), A = m.d[0], B = m.d[1];
   const AxB = A.u * B.u * Math.abs(A.e[0] * B.e[1] - A.e[1] * B.e[0]);
-  const spin = m.iguals ? rh * AxB * Math.abs(Math.sin(m.dfu)) / (2 * w) : 0;  // densitat d'espín [kg/(m·s)]
-  const tau = 2 * alfaAbs(m.f) * c * spin;                                     // parell per volum [N/m²]
-  const U = F * W * W / (rh * nuT);                                           // corrent estable
-  const Omega = tau / (rh * nuT);                                             // gir estable del parell [rad/s]
-  const G = U * W + Omega * W * W;                                            // Γ que el so pot sostenir (força + parell)
+  const spin = m.iguals ? rh * AxB * Math.abs(Math.sin(m.dfu)) / (2 * w) : 0;
+  const tau = 2 * alfaAbs(m.f, s) * c * spin;
+  // 2. contrast del contingut de l'anell (traçador i excés de temperatura)
+  const tr = tracador(s), phiP = Math.max(s.aer || 0, 0) * 1e-6 / tr.rho;   // fracció de volum de partícules
+  const Phi = 0.83 * phiP + Math.abs(s.dT0 || 0) / (3 * Tk(s));
+  // el camp varia en una distància ~1/k (ona) o ~r (camp proper, ∝ 1/r²): el gradient més fort mana
+  const Fcon = Phi * Math.max(w / c, 1 / Math.min(A.r, B.r)) * E;
+  const F = Fabs + Fcon;
+  const U = F * W * W / (rh * nuT), Omega = tau / (rh * nuT);
+  const G = U * W + Omega * W * W;
   const Gn = Gnecessaria || 0;
-  return { F, tau, spin, U, Omega, G, nuT, W, alfa: alfaAbs(m.f), Gn, factor: Gn > 0 && G > 0 ? Gn / G : Infinity, suficient: G >= Gn && Gn > 0 };
+  return { F, Fabs, Fcon, Phi, E, tau, spin, U, Omega, G, nuT, W, alfa: alfaAbs(m.f, s), Gn,
+    factor: Gn > 0 && G > 0 ? Gn / G : Infinity, suficient: G >= Gn && Gn > 0 };
+}
+
+/**
+ * Anell que les ones poden formar en un punt, per dues vies:
+ *  · oscil·lació (model de «slug» + criteri de Holman): domina en infrasò;
+ *  · empenta estable del so (absorció + pressió de radiació): domina a kHz.
+ *    Hi ha anell si la circulació que sosté resisteix la turbulència de l'aire,
+ *    Γ/(4πR) > σ_w.
+ */
+function anellAlPunt(s, punt) {
+  const m = puntMig(s, punt);
+  let an = anellVelocitat(s, m.f, m.uM);
+  an.mecanisme = 'oscil·lació';
+  const ca = correntAcustic(s, punt);
+  if (ca.G > an.Gamma && ca.G / (4 * Math.PI * an.R) > Math.max(s.turb || 0, 1e-3)) {
+    const lg = Math.log(8 * an.R / an.a) - 0.25;
+    an = Object.assign({}, an, { Gamma: ca.G, es_forma: true, Uself: ca.G / (4 * Math.PI * an.R) * lg, ReG: ca.G / nuAir(s), mecanisme: 'empenta del so' });
+  }
+  return { an, m, ca };
 }
 
 /** Viscositat turbulenta efectiva a l'escala de l'anell [m²/s] */
@@ -803,7 +853,8 @@ function geometriaVisio(s, x, y, z, t) {
 function anellPrincipalFont(s) {
   const fs = fonts(s);
   if (s.form === 1) {
-    const m = puntMig(s), an = anellVelocitat(s, m.f, m.uM);
+    const pos = posicioFormacio(s), r = anellAlPunt(s, pos), m = r.m, an = r.an;
+    m.pos = pos;
     an.viable = fs.every(q => pAmpDeDb(q.L) < pAtm(s));
     // La rotació la dona la diferència de fase: swirl i sentit de l'ona de Kelvin
     an.swirl = m.swirl;
@@ -933,7 +984,7 @@ function avaluaObservacio(s, objectiu) {
   fila('forat amb un to diferent', (dh * 100).toFixed(1) + ' %', dh >= 0.01 && dh <= 0.3);
   if (s.form === 1) {
     const ca = correntAcustic(s, null, an.Gamma);
-    fila('el so mateix crea el gir (corrent acústic)', ca.G > 0 ? `Γ ${ca.G.toExponential(1)} de ${an.Gamma.toFixed(0)} m²/s (falta ×${ca.factor.toExponential(0)})` : 'cap', ca.suficient);
+    fila('el so empeny prou l\'aire per fer el gir', ca.G > 0 ? `Γ ${ca.G.toExponential(1)} de ${an.Gamma.toFixed(0)} m²/s (falta ×${ca.factor.toExponential(0)})` : 'cap', ca.suficient);
   }
   const hAud = harmonicsAudibles(s), audible = hAud.length > 0;
   fila('sense so audible', audible ? `audible: ${hAud[0].f.toFixed(0)} Hz (harmònic ${hAud[0].k})` : 'infrasò', !audible);
@@ -1215,7 +1266,7 @@ const API = {
   vidaAnell, nucliTermo, tracador, profOptica, levitacio, conductors, campEPic, corona, campRuptura,
   sincronisme, ratiRuptura, plasma, dTdt, colorCosNegre,
   evolucio, vidaAnell2, rotacioNodes, cuaNodes, posicioSol, massaAire, transSol, iluminanciaSol,
-  luminanciaCel, faseHG, aparenca, geometriaVisio, posicioTestimoni, factorRadiEmissors, anellPrincipalFont, puntMig, correntAcustic, guanyFeix, bocaFeix, posicioFormacio, millorPuntFormacio, candidatsFormacio, puntuacioFormacio, anellVelocitat, formaOna, harmonicsAudibles, velocitatAnell,
+  luminanciaCel, faseHG, aparenca, geometriaVisio, posicioTestimoni, factorRadiEmissors, anellPrincipalFont, anellAlPunt, puntMig, correntAcustic, guanyFeix, bocaFeix, posicioFormacio, millorPuntFormacio, candidatsFormacio, puntuacioFormacio, anellVelocitat, formaOna, harmonicsAudibles, velocitatAnell,
   rhoSat, llindarPercepcio, patroAcustic, avaluaPatro,
   gammaSRGB, eficaciaEmissio, colorEmissio, emissors, posicioEmissors, envolupantEmissors, avaluaEmissors, esTaronja, toHue,
   trajectoria, estatAnell, tauPunt, corbaContrast, OBS, avaluaObservacio, dissenya,
