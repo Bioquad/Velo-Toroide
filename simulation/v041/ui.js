@@ -90,7 +90,7 @@ const DEF = {
   a_riu: [5, 500, 0.01, 30, 'amplada del riu', 'm', 2],
   refl:  [0, 1, 0.01, 1, 'reflexió del so a l\'aigua (1 = mirall, 0 = sense)', '', 2],
   h_pont:[0.5, 50, 0.01, 5, 'alçada del pont (testimoni a +1.6 m)', 'm', 2],
-  so:    [0, 300, 0.01, 10, 'separació S₁↔S₂', 'm', 2],
+  so:    [0, 66, 0.01, 10, 'separació S₁↔S₂', 'm', 2],
   sx_off:[-30, 30, 0.01, 0, 'posició lateral de S₁S₂', 'm', 2],
   theta: [0.5, 89, 0.5, 34.5, 'convergència θ dels feixos (respecte a la vertical)', '°', 1],
   hmt:   [0.5, 80, 0.01, 18, 'alçada MT sobre el riu', 'm', 2],

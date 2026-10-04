@@ -9,7 +9,7 @@ const fs = require('fs');
 const BASE = { T: 35, P: 1013, H: 30, W: 3, dirW: 0, turb: 0.2, aot: 0.1, vis: 40, d_obs: 900, v_obs: 5, t_cam: 90,
   mes: 9, dia: 18, hora: 18, tz: 2, lat: 41.6142, lon: 0.6222, az_vis: 232, h_pont: 5, a_riu: 30,
   hmt: 18, hcat: 11, sl: 24, vmt: 25, vcat: 25, ph: 90, rc: 0.9, f_mt: 50, lin_or: 0,
-  form: 1, h_src: 5, so: 69.2, sx_off: 0, D_ap: 20, aR: 0.12, n_inj: 4, npols: 1, kdir: 1, swirl: 0, dT0: 0,
+  form: 1, h_src: 5, so: 66, sx_off: 0, D_ap: 20, aR: 0.12, n_inj: 4, npols: 1, kdir: 1, swirl: 0, dT0: 0,
   aer: 500, trac: 1, feix: 180, h_creu: 25, phi: -90, forma: 0, nharm: 9, beta: 1.2, IR: 0, refl: 1, rfont: 0.3,
   f1: 1, f2: 1, db1: 150, db2: 150, elev: 0, az_eix: 0 };
 const cfg = o => Object.assign({}, BASE, o);
@@ -41,7 +41,7 @@ const fmtV = V => V >= 1e3 ? V.toExponential(1).replace('e+', '·10^') + ' m³' 
 
 const FREQS = [0.07, 12.6, 20, 31.6, 50.1, 79.4, 125.9, 199.5, 316.2, 501.2, 794.3, 1258.9, 1995.3];
 const GEOM = [];
-for (const h_src of [5, 25, 50, 100]) for (const so of [50, 100, 150, 200, 300, 400]) {
+for (const h_src of [5, 25, 50, 100]) for (const so of [5, 10, 20, 30, 40, 50, 66]) {
   GEOM.push({ h_src, so, feix: 180, h_creu: 25 });
   for (const feix of [60, 30]) for (const h_creu of [50, 100, 150, 200]) if (h_creu > h_src) GEOM.push({ h_src, so, feix, h_creu });
 }
@@ -83,7 +83,7 @@ for (const [a, b] of FR) {
 
 // 3. Què mou l'alçada
 md += `\n## 3. Què fixa l'alçada (199.5 Hz, nivell mínim de cada cas)\n\n| fonts a | separació | feix 180.0° | feix 60.0° → 100.00 m | feix 30.0° → 200.00 m |\n|---|---|---|---|---|\n`;
-for (const h_src of [5, 25, 50, 100]) for (const so of [50, 150, 300]) {
+for (const h_src of [5, 25, 50, 100]) for (const so of [10, 30, 66]) {
   const cel = [[180, 25], [60, 100], [30, 200]].map(([feix, h_creu]) => {
     const r = res.find(q => q.h_src === h_src && q.so === so && q.feix === feix && q.h_creu === h_creu && q.f === 199.5);
     return !r ? '—' : r.L == null ? 'no es forma' : `${cm(r.d.h)} (${r.L.toFixed(1)} dB${r.cl === 'improbable' ? ' 🔴' : ''})`;

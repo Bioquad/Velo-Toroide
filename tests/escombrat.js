@@ -14,7 +14,7 @@ const fs = require('fs');
 const BASE = { T: 35, P: 1013, H: 30, W: 3, dirW: 0, turb: 0.2, aot: 0.1, vis: 40, d_obs: 900, v_obs: 5, t_cam: 90,
   mes: 9, dia: 18, hora: 18, tz: 2, lat: 41.6142, lon: 0.6222, az_vis: 232, h_pont: 5, a_riu: 30,
   hmt: 18, hcat: 11, sl: 24, vmt: 25, vcat: 25, ph: 90, rc: 0.9, f_mt: 50, lin_or: 0,
-  form: 1, h_src: 5, so: 69.2, sx_off: 0, D_ap: 20, aR: 0.12, n_inj: 4, npols: 1, kdir: 1, swirl: 0, dT0: 0,
+  form: 1, h_src: 5, so: 66, sx_off: 0, D_ap: 20, aR: 0.12, n_inj: 4, npols: 1, kdir: 1, swirl: 0, dT0: 0,
   aer: 500, trac: 1, feix: 180, h_creu: 25, phi: -90, forma: 0, nharm: 9, beta: 1.2, IR: 0, refl: 1, rfont: 0.3,
   f1: 1, f2: 1, db1: 150, db2: 150, elev: 0, az_eix: 0 };
 const cfg = o => Object.assign({}, BASE, o);
@@ -96,7 +96,7 @@ let md = `# Escombrat: on, a quina alçada i amb quins valors es forma el toroid
   `(2) les dues ones arriben comparables (cap per sota d'1/3 de l'altra); (3) l'anell cap per sobre de l'aigua (alçada ≥ radi).\n\n`;
 
 // ── 1. Bandes per separació de les fonts (feix d'altaveu, 180.0°)
-const SEPS = [10, 27.5, 50, 69.2, 100];
+const SEPS = [5, 10, 20, 27.5, 40, 50, 66];
 const files = [];
 md += `## 1. Bandes de freqüència que formen l'anell, per separació de les fonts (feix 180.0°)\n\n` +
   `| separació | banda (≤ ${LMAX} dB) | freqüència | nivell mínim | on neix x · **alçada** | amb +6.0 dB: x · alçada | via | 1 volta (4 nodes) | volum/cicle per font | emissor | estàtica (3 min) | soroll del gir a 1 m |\n|---|---|---|---|---|---|---|---|---|---|---|---|\n`;
@@ -123,7 +123,7 @@ md += `\nNo es forma (amb cap nivell ≤ ${LMAX} dB) fora de les bandes llistade
   `En infrasò, el nivell en dB a 1 m enganya: el que costa és el volum d'aire que s'ha de moure.\n`;
 
 // ── 1b. Per què no es forma fora de les bandes
-md += `\n### Per què no es forma fora de les bandes (separació 69.20 m, al límit de ${LMAX} dB, al punt més favorable)\n\n| freqüència | motiu |\n|---|---|\n`;
+md += `\n### Per què no es forma fora de les bandes (separació 66.00 m, al límit de ${LMAX} dB, al punt més favorable)\n\n| freqüència | motiu |\n|---|---|\n`;
 for (const f of [1, 3.5, 7, 1000, 2000, 5000, 10000, 20000, 40000]) {
   const s = cfg({ f1: f, f2: f, db1: LMAX, db2: LMAX });
   if (F.anellPrincipalFont(s).an.es_forma) { md += `| ${fmtF(f)} | (es forma) |\n`; continue; }
@@ -136,7 +136,7 @@ for (const f of [1, 3.5, 7, 1000, 2000, 5000, 10000, 20000, 40000]) {
 }
 
 // ── 2. Obertura del feix i alçada de creuament
-md += `\n## 2. Obertura del feix i alçada on es creuen (separació 69.20 m)\n\n` +
+md += `\n## 2. Obertura del feix i alçada on es creuen (separació 66.00 m)\n\n` +
   `| feix | creuament | banda | freqüència | nivell mínim | on neix x · **alçada** | via |\n|---|---|---|---|---|---|---|\n`;
 for (const feix of [180, 120, 90, 60, 45.5, 30]) for (const h_creu of (feix === 180 ? [25] : [15, 25, 40])) {
   const o = { feix, h_creu };
@@ -151,14 +151,14 @@ for (const feix of [180, 120, 90, 60, 45.5, 30]) for (const h_creu of (feix === 
 }
 
 // ── 3. Alçada de les fonts sobre l'aigua
-md += `\n## 3. Alçada de les fonts sobre l'aigua (separació 69.20 m, 199.1 Hz)\n\n| alçada fonts | nivell mínim | on neix x · **alçada** |\n|---|---|---|\n`;
+md += `\n## 3. Alçada de les fonts sobre l'aigua (separació 66.00 m, 199.1 Hz)\n\n| alçada fonts | nivell mínim | on neix x · **alçada** |\n|---|---|---|\n`;
 for (const h_src of [0.5, 2, 5, 10, 20]) {
   const o = { h_src, f1: 199.1, f2: 199.1 }, L = nivellMinim(o), d = L != null ? detall(o, L) : null;
   md += `| ${cm(h_src)} | ${L != null ? L.toFixed(1) + ' dB' : 'no es forma'} | ${d ? d.x.toFixed(2) + ' · **' + cm(d.h) + '**' : '—'} |\n`;
 }
 
 // ── 4. Desfasament: el gir
-md += `\n## 4. Desfasament S₁→S₂ (199.1 Hz, 69.20 m): sentit i període de gir\n\n| φ | nivell mínim | sentit dels nodes | 1 volta |\n|---|---|---|---|\n`;
+md += `\n## 4. Desfasament S₁→S₂ (199.1 Hz, 66.00 m): sentit i període de gir\n\n| φ | nivell mínim | sentit dels nodes | 1 volta |\n|---|---|---|---|\n`;
 for (const phi of [0, -45, -90, -135, 180, 90]) {
   const o = { phi, f1: 199.1, f2: 199.1 }, L = nivellMinim(o), d = L != null ? detall(o, L) : null;
   md += `| ${phi.toFixed(1)}° | ${L != null ? L.toFixed(1) + ' dB' : 'no es forma'} | ${d ? (d.sentit > 0 ? '↺ antihorari' : d.sentit < 0 ? '↻ horari' : '—') : '—'} | ${d ? fmtT(d.T) : '—'} |\n`;

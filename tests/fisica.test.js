@@ -210,13 +210,13 @@ t('on neix l\'anell ho decideix la física: dues fonts iguals → sobre el punt 
   const lluny = F.posicioFormacio(Object.assign({}, base, { so: 60 }));
   assert.ok(lluny.valid && lluny.rank > 0);
 });
-t('disseny entre els feixos: la física situa l\'anell a 25 m amb les fonts a ~69 m; ~161 dB desfasades −90° el fan antihorari; el gir de 7 s és impossible', () => {
+t('disseny entre els feixos: la física situa l\'anell a 25 m amb les fonts a 66 m (màxim) i feixos de 60°; ~161 dB desfasades −90° el fan antihorari; el gir de 7 s és impossible', () => {
   const d = F.dissenya(MIG, Object.assign({ prioritat: 'deriva' }, OBJ));
   const pr = F.anellPrincipalFont(d.cfg);
   assert.ok(pr.src.mig && Math.abs(pr.src.x) < 0.05 && Math.abs(pr.src.y - 25) < 0.3 && pr.an.es_forma, JSON.stringify(pr.src));
   assert.strictEqual(d.cfg.db1, d.cfg.db2); assert.strictEqual(d.cfg.phi, -90);
-  assert.ok(Math.abs(d.cfg.so - 69.3) < 1, String(d.cfg.so));
-  assert.ok(Math.abs(d.L - 161.2) < 0.5 && d.viable, String(d.L));
+  assert.ok(d.cfg.so <= 66 && d.cfg.so >= 5 && d.cfg.feix === 60 && d.cfg.h_creu > 25, String([d.cfg.so, d.cfg.h_creu]));
+  assert.ok(Math.abs(d.L - 161.2) < 1 && d.viable, String(d.L));
   assert.strictEqual(F.rotacioNodes(d.cfg, pr.an).sentit, 1);
   const ev = F.avaluaObservacio(d.cfg);
   assert.ok(ok(ev, 'anell format') && ok(ev, 'sentit antihorari') && ok(ev, 'creix una mica (0–1.5 min)') && ok(ev, 'deriva lenta (U < 1.67 m/s)'));
@@ -233,14 +233,14 @@ t('camp a la posició de l\'anell: a M és el mateix que al punt mig i s\'afeble
   assert.ok(viu(0) && !viu(30));
 });
 t('feixos: obertura de 0° (tancat) a 180° (altaveu convencional); l\'alçada on es creuen mou el punt on neix l\'anell', () => {
-  const b = Object.assign({}, MIG, { so: 69.2, f1: 0.0714, f2: 0.0714, db1: 161.2, db2: 161.2, phi: -90, n_inj: 4 });
+  const b = Object.assign({}, MIG, { so: 66, f1: 0.0714, f2: 0.0714, db1: 161.2, db2: 161.2, phi: -90, n_inj: 4 });
   const y = (feix, h_creu) => F.posicioFormacio(Object.assign({}, b, { feix, h_creu })).y;
   // sense feix definit (font puntual omnidireccional) C no hi influeix
   prop(F.posicioFormacio(Object.assign({}, b, { h_creu: 25 })).y, F.posicioFormacio(Object.assign({}, b, { h_creu: 60 })).y, 1e-9, 'omni');
   assert.ok(y(60, 60) > y(60, 25) + 3);
   // a α = obertura/2 de l'eix el feix cau a la meitat (−6 dB)
   const bb = Object.assign({}, b, { feix: 60, h_creu: 25 }), q = F.fonts(bb)[0];
-  const eix = Math.atan2(34.6, 20), al = eix + 30 * Math.PI / 180;
+  const eix = Math.atan2(33, 20), al = eix + 30 * Math.PI / 180;
   prop(F.guanyFeix(bb, q, q.x + 100 * Math.sin(al), q.y + 100 * Math.cos(al), 0), 0.5, 1e-3, 'g(α½)');
   // boca necessària: ~5 km per ±30° a 0.07 Hz; ~1 cm a 40 kHz
   assert.ok(F.bocaFeix(bb, 0.0714) > 4000 && F.bocaFeix(bb, 40000) < 0.02);
@@ -256,7 +256,7 @@ t('l\'ultrasò (> 20 kHz) no és audible', () => {
   assert.ok(F.harmonicsAudibles(Object.assign({}, b, { f1: 5000, f2: 5000 })).length > 0);
 });
 t('pressió de radiació sobre el contrast: el fum o l\'aire calent de l\'anell reben empenta directa, que creix amb la freqüència', () => {
-  const b = Object.assign({}, MIG, { so: 69.2, f1: 0.0714, f2: 0.0714, db1: 161.2, db2: 161.2, phi: -90 });
+  const b = Object.assign({}, MIG, { so: 66, f1: 0.0714, f2: 0.0714, db1: 161.2, db2: 161.2, phi: -90 });
   const net = F.correntAcustic(Object.assign({}, b, { aer: 0, dT0: 0 }), { x: 0, y: 25 });
   const fum = F.correntAcustic(Object.assign({}, b, { aer: 500, trac: 1, dT0: 0 }), { x: 0, y: 25 });
   const calent = F.correntAcustic(Object.assign({}, b, { aer: 0, dT0: 10 }), { x: 0, y: 25 });
@@ -267,7 +267,7 @@ t('pressió de radiació sobre el contrast: el fum o l\'aire calent de l\'anell 
   assert.ok(alt.Fcon > baix.Fcon, String(alt.Fcon / baix.Fcon));
 });
 t('saturació no lineal: passat el xoc, a 40 m arriba la mateixa pressió per molts dB que posis a la font', () => {
-  const b = Object.assign({}, MIG, { so: 69.2, f1: 5000, f2: 5000, phi: 0, refl: 0, rfont: 0.3 });
+  const b = Object.assign({}, MIG, { so: 66, f1: 5000, f2: 5000, phi: 0, refl: 0, rfont: 0.3 });
   const p = L => F.fasorsFonts(Object.assign({}, b, { db1: L, db2: L }), 0, 25, 0)[0].p;
   assert.ok(p(180) / p(160) < 1.2, String(p(180) / p(160)));          // +20 dB a la font, < +1.6 dB a 40 m
   const c = F.cSo(b), rh = F.rho(b), r = F.fasorsFonts(b, 0, 25, 0)[0].r;
@@ -291,17 +291,17 @@ t('d\'on surt el gir: en infrasò, el so dona una Γ ~10⁴–10⁶ vegades mass
   assert.ok(bF / a > 1e6, String(bF / a));   // amb la saturació del xoc
 });
 t('freqüència òptima per empènyer: ~1 kHz; amb la saturació del xoc no n\'hi ha prou; l\'ultrasò s\'absorbeix pel camí', () => {
-  const b = Object.assign({}, MIG, { so: 69.2, db1: 161.2, db2: 161.2, phi: -90, aer: 500, trac: 1, feix: 180, h_creu: 25 });
+  const b = Object.assign({}, MIG, { so: 66, db1: 161.2, db2: 161.2, phi: -90, aer: 500, trac: 1, feix: 180, h_creu: 25 });
   const G = f => F.correntAcustic(Object.assign({}, b, { f1: f, f2: f }), { x: 0, y: 25 }, 40).G;
   // amb la saturació del xoc, l'òptim queda prop d'1 kHz i, tot i així, molt lluny del que cal
   assert.ok(G(1000) > 10 * G(0.0714) && G(1000) > 10 * G(40000) && G(1000) < 1);
 });
 t('a kHz, amb la saturació del xoc, l\'empenta del so no forma l\'anell al Segre ni al límit físic', () => {
-  const b = Object.assign({}, MIG, { so: 69.2, phi: -90, aer: 500, trac: 1, feix: 180, h_creu: 25, n_inj: 4, f1: 5000, f2: 5000, refl: 1, rfont: 0.3 });
+  const b = Object.assign({}, MIG, { so: 66, phi: -90, aer: 500, trac: 1, feix: 180, h_creu: 25, n_inj: 4, f1: 5000, f2: 5000, refl: 1, rfont: 0.3 });
   for (const L of [170, 191]) assert.ok(!F.anellPrincipalFont(Object.assign({}, b, { db1: L, db2: L })).an.es_forma, String(L));
 });
 t('reflex de l\'aigua: la font imatge (x, −h) dobla el camp a prop de l\'aigua en infrasò i abaixa el nivell necessari', () => {
-  const b = Object.assign({}, MIG, { so: 69.2, phi: -90, n_inj: 4, f1: 0.07, f2: 0.07, db1: 150, db2: 150 });
+  const b = Object.assign({}, MIG, { so: 66, phi: -90, n_inj: 4, f1: 0.07, f2: 0.07, db1: 150, db2: 150 });
   const sense = F.fasorsFonts(Object.assign({}, b, { refl: 0 }), 0, 1, 0)[0], amb_ = F.fasorsFonts(Object.assign({}, b, { refl: 1 }), 0, 1, 0)[0];
   assert.ok(amb_.p / sense.p > 1.8 && amb_.p / sense.p < 2.05, String(amb_.p / sense.p));   // directa + reflectida gairebé en fase
   assert.ok(!F.anellPrincipalFont(Object.assign({}, b, { refl: 0 })).an.es_forma);

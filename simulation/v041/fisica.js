@@ -56,6 +56,7 @@ const K = {
   R_SOBRE_D: 0.6,       // radi de l'anell / diàmetre de l'obertura
   KA_WIDNALL: 2.5,      // k·a del mode inestable de Widnall (nucli de Rankine)
   ALFA_ENT: 0.01,       // dR/dx d'un anell turbulent (Glezer & Coles 1990)
+  SO_MIN: 5, SO_MAX: 66, // separació dels generadors de so [m]
   SWIRL_MAX: 0.5,       // swirl màxim abans del trencament del vòrtex (~0.6)
   HOLMAN_DISSENY: 0.17, // marge de disseny just per sobre del criteri de Holman
   E_SOL_LUX: 128000,    // il·luminància solar extraterrestre [lux]
@@ -1191,8 +1192,16 @@ function dissenya(s, obj) {
       // es busca perquè el semieix major de l'el·lipse a M sigui u
       // La física situa l'anell: es busca la separació de les fonts perquè el punt més
       // favorable caigui a l'alçada observada, i després el nivell que hi forma l'anell
-      const yMax = so => millorPuntFormacio(Object.assign({}, cfg, { so, db1: 150, db2: 150, phi: 0 })).y;
-      cfg.so = bisecta(so => yMax(so) - obj.h, 0.5, 5000, 40);
+      // (separació limitada a 5–66 m; si amb 66 m no hi arriba, els feixos s'estrenyen
+      //  a 60° i s'apunten més amunt fins que l'anell neix a l'alçada observada)
+      const yMax = (so, o) => millorPuntFormacio(Object.assign({}, cfg, { so, db1: 150, db2: 150, phi: 0 }, o)).y;
+      //  (en una maqueta a escala, els límits s'escalen amb el diàmetre de l'anell)
+      const esc = Math.min(1, obj.D / 25), sMin = K.SO_MIN * esc, sMax = K.SO_MAX * esc;
+      if (yMax(sMax) >= obj.h) cfg.so = bisecta(so => yMax(so) - obj.h, sMin, sMax, 40);
+      else {
+        cfg.so = sMax; cfg.feix = 60;
+        cfg.h_creu = Math.round(bisecta(hc => yMax(sMax, { feix: 60, h_creu: hc }) - obj.h, obj.h, 10 * obj.h, 30) * 100) / 100;
+      }
       const P = millorPuntFormacio(Object.assign({}, cfg, { db1: 150, db2: 150 }));
       const mig = L => puntMig(Object.assign({}, cfg, { db1: L, db2: L }), P);
       cfg.phi = 0;
