@@ -2,10 +2,10 @@
 :root{--bg:#06080f;--pn:#0d1220;--bd:#1a2035;--bd2:#2a3045;--tx:#e8eaf0;--mu:#8892aa;--dim:#4a5468;--ok:#40c080;--wa:#e0a030;--ko:#e05050;--ac:#6450d8;--bl:#60a0f0;--or:#ff9030}
 html,body{height:100%}
 body{font-family:"Segoe UI",system-ui,sans-serif;font-size:12px;color:var(--tx);background:var(--bg);display:flex;flex-direction:column;height:100vh;overflow:hidden;padding:0 6px}
-.hdr{display:grid;grid-template-columns:repeat(8,1fr);gap:3px;padding:4px 0;flex-shrink:0}
+.hdr{display:grid;grid-template-columns:repeat(auto-fill,minmax(172px,1fr));gap:3px;padding:4px 0;flex-shrink:0}
 .hc{background:var(--pn);border-radius:5px;padding:3px 6px;border:.5px solid var(--bd);min-width:0}
 .hc-l{font-size:8px;color:var(--dim);text-transform:uppercase;letter-spacing:.04em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.hc-v{font-size:11px;font-weight:700;font-family:monospace;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hc-v{font-size:11px;font-weight:700;font-family:monospace;overflow-wrap:anywhere;line-height:1.25}
 .mid{display:flex;gap:8px;flex:1;min-height:0}
 .col{flex:1;min-width:0;min-height:0;display:flex;flex-direction:column;position:relative}
 .cvw{flex:1;min-height:0;min-width:0;position:relative;overflow:hidden;border-radius:6px}
@@ -69,7 +69,7 @@ canvas#cv:active{cursor:grabbing}
 #savecfg-panel .bts button{flex:1}
 @media (max-width:900px){
   body{overflow:auto;height:auto;padding:0 16px}
-  .hdr{grid-template-columns:repeat(4,1fr)}
+  .hdr{grid-template-columns:repeat(auto-fill,minmax(105px,1fr))}
   .mid{flex-direction:column}
   .col{flex:none}
   .cvw{height:auto;flex:none;overflow:visible}
