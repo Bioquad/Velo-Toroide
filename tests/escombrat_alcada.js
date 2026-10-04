@@ -83,6 +83,15 @@ for (const [a, b] of FR) {
   md += c ? `| ${a}–${b} m | **${cm(c.d.h)}** | ${geomTxt(c)} | ${fmtF(c.f)} | ${c.L.toFixed(1)} dB | ${ICONA[c.cl]} |\n` : `| ${a}–${b} m | cap | — | — | — | — |\n`;
 }
 
+// 2b. Fins on arriba segons l'alçada de les fonts
+md += `\n## 2b. Fins a quina alçada arriba l'anell segons l'alçada de les fonts\n\n| fonts a | 🟢 assolible: de · a | 🟠 extrem: fins a | exemple més alt 🟢 |\n|---|---|---|---|\n`;
+for (const h_src of [5, 25, 50, 100]) {
+  const v = ok.filter(r => r.h_src === h_src), g = v.filter(r => r.cl === 'assolible'), t = v.filter(r => r.cl === 'extrem');
+  const top = g.slice().sort((a, b) => b.d.h - a.d.h)[0], topT = t.slice().sort((a, b) => b.d.h - a.d.h)[0];
+  md += `| ${cm(h_src)} | ${g.length ? cm(Math.min(...g.map(r => r.d.h))) + ' · ' + cm(Math.max(...g.map(r => r.d.h))) : 'cap'} | ${topT ? cm(topT.d.h) + ` (${fmtF(topT.f)}, ${topT.L.toFixed(1)} dB)` : '—'} | ${top ? `${geomTxt(top)} · ${fmtF(top.f)} · ${top.L.toFixed(1)} dB` : '—'} |\n`;
+}
+md += `\nAmb emissors possibles, l'anell neix com a molt uns 25–30 m per sobre de les fonts. Per arribar a 150–200 m cal posar les fonts a ≥ 100 m o anar a nivells extrems (12–50 Hz, 178–191 dB).\n`;
+
 // 3. Què mou l'alçada
 md += `\n## 3. Què fixa l'alçada (199.5 Hz, nivell mínim de cada cas)\n\n| fonts a | separació | feix 180.0° | feix 60.0° → 100.00 m | feix 30.0° → 200.00 m |\n|---|---|---|---|---|\n`;
 for (const h_src of [5, 25, 50, 100]) for (const so of [10, 30, 66]) {
@@ -98,7 +107,7 @@ const tot = res.filter(r => r.L != null);
 const altes = tot.filter(r => r.d && r.d.h > H1).length, baixes = tot.filter(r => r.d && r.d.h < H0).length;
 const imp = res.filter(r => dins(r) && r.cl === 'improbable').length, cap = res.filter(r => r.L == null).length;
 md += `\n## 4. Què no funciona\n\n` +
-  `- De ${res.length} combinacions provades: ${cap} no formen l'anell ni a ${LMAX} dB; ${baixes} el formen per sota de ${H0} m; ${altes} per sobre de ${H1} m; ${imp} el formen a ${H0}–${H1} m però només amb infrasò (🔴, massa aire per cicle).\n`;
+  `- De ${res.length} combinacions provades: ${cap} no formen l'anell ni a ${LMAX} dB; ${baixes} el formen per sota de ${H0} m; ${altes} per sobre de ${H1} m; ${imp} el formen a ${H0}–${H1} m però amb un emissor improbable (🔴: massa aire per cicle, sobretot l'infrasò).\n`;
 const perF = FREQS.map(f => ({ f, n: ok.filter(r => r.f === f).length }));
 md += `- Freqüències que donen anells a ${H0}–${H1} m amb emissor possible: ${perF.filter(p => p.n).map(p => `${fmtF(p.f)} (${p.n})`).join(', ') || 'cap'}. Sense cap cas: ${perF.filter(p => !p.n).map(p => fmtF(p.f)).join(', ')}.\n`;
 fs.writeFileSync(__dirname + '/../simulation/v041/RESULTATS_ALCADA.md', md);
