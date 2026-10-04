@@ -216,37 +216,62 @@ function anellVelocitat(s, f, u) {
 }
 
 /**
- * Formació al PUNT MIG (s.form = 1): l'anell no surt de cap font. Les ones de
- * S₁ i S₂ (esfèriques, p ∝ 1/r) es troben al pla mitjà, al punt M = (x_mig,
- * h_form), on cadascuna arriba amb la seva fase φᵢ − kᵢ·rᵢ:
- *   · freqüències iguals: p_M = |p₁ + p₂·e^{iΔφ}| (interferència estacionària);
- *   · freqüències diferents: l'amplitud bat a |f₁ − f₂| i la formació es dona
- *     als màxims del batec (moment de sincronisme), amb p_M = p₁ + p₂.
- * La velocitat de l'aire és u_M = p_M/(ρc) (ona llunyana). Hipòtesi: aquesta
- * oscil·lació, sobre una zona de diàmetre D_ap, es comporta com l'ejecció d'una
- * obertura (mateix criteri de Holman). En aire lliure, sense cap vora, la
- * vorticitat hauria de néixer per un efecte no lineal (corrent acústic); el
- * model no el calcula: és la part oberta d'aquesta hipòtesi.
+ * Formació ENTRE ELS FEIXOS (s.form = 1): l'anell no surt de cap font. Els
+ * feixos de S₁ i S₂ es creuen al punt C = (x_mig, h_creu) i l'anell neix al punt
+ * M = (x_mig, h_form) del pla mitjà: a la punta on es creuen (h_form = h_creu)
+ * o més avall, entre els feixos. A M cada font hi arriba amb la seva fase i amb
+ * la velocitat d'un monopol, camp proper inclòs (en infrasò kr ≪ 1 i domina):
+ *   |u| = p/(ρc)·√(1 + 1/(kr)²),  direcció font → M.
+ * Les dues velocitats, en direccions diferents i desfasades Δφ, dibuixen una
+ * el·lipse u(t) = P·cos ωt − Q·sin ωt:
+ *   · el semieix major és la velocitat que forma l'anell (criteri de Holman);
+ *   · l'àrea amb signe és l'espín acústic: amb Δφ ≠ 0, 180° l'aire gira al
+ *     pla de l'anell, i el signe de Δφ en fixa el sentit. LA DIFERÈNCIA DE FASE
+ *     PRODUEIX LA ROTACIÓ: swirl = 0.5·ε, amb ε ∈ [−1, 1] l'el·lipticitat.
+ *   · amb freqüències diferents, Δφ avança al ritme del batec |f₁ − f₂|: el gir
+ *     canvia de sentit cada mig batec (de mitjana, zero) i l'anell es forma als
+ *     màxims del batec.
+ * Hipòtesi oberta: al punt mig no hi ha cap vora; el mecanisme no lineal que hi
+ * generaria la vorticitat (corrent acústic) no es calcula.
  */
 function puntMig(s) {
   const fs = fonts(s), x = s.sx_off, y = s.h_form == null ? s.h_src : s.h_form, c = cSo(s);
-  const r = fs.map(q => Math.max(Math.hypot(q.x - x, q.y - y), 0.5));
-  const p = fs.map((q, i) => q.L > 0 ? pAmpDeDb(q.L) / r[i] : 0);
-  const fase = fs.map((q, i) => q.ph - 2 * Math.PI * q.f / c * r[i]);
+  const yC = s.h_creu == null ? y : s.h_creu;
+  const d = fs.map(q => {
+    const dx = x - q.x, dy = y - q.y, r = Math.max(Math.hypot(dx, dy), 0.5);
+    const k = 2 * Math.PI * Math.max(q.f, 1e-9) / c, p = q.L > 0 ? pAmpDeDb(q.L) / r : 0;
+    const u = p / (rho(s) * c) * Math.sqrt(1 + 1 / Math.pow(k * r, 2));
+    const fp = q.ph - k * r;                                  // fase de la pressió a M
+    return { r, e: [dx / r, dy / r], p, u, fp, fu: fp - Math.atan(1 / (k * r)) };
+  });
   const iguals = Math.abs(fs[0].f - fs[1].f) < 1e-9;
-  const dphi = fase[1] - fase[0];
-  const pM = iguals ? Math.sqrt(Math.max(p[0] * p[0] + p[1] * p[1] + 2 * p[0] * p[1] * Math.cos(dphi), 0)) : p[0] + p[1];
-  const f = p[0] + p[1] > 0 ? (p[0] * fs[0].f + p[1] * fs[1].f) / (p[0] + p[1]) : fs[0].f;
+  // El·lipse de la velocitat per a un desfasament Δφ de les velocitats
+  const elipse = df => {
+    const A = d[0].e.map(v => v * d[0].u), B = d[1].e.map(v => v * d[1].u);
+    const P = [A[0] + B[0] * Math.cos(df), A[1] + B[1] * Math.cos(df)], Q = [B[0] * Math.sin(df), B[1] * Math.sin(df)];
+    const pp = P[0] * P[0] + P[1] * P[1], qq = Q[0] * Q[0] + Q[1] * Q[1], pq = P[0] * Q[0] + P[1] * Q[1];
+    const rad = Math.sqrt(Math.pow((pp - qq) / 2, 2) + pq * pq);
+    const AxB = A[0] * B[1] - A[1] * B[0], uu = d[0].u * d[0].u + d[1].u * d[1].u;
+    // u × du/dt = −ω·(P × Q) = −ω·(A × B)·sin Δφ ; ε > 0: gir antihorari vist pel testimoni
+    return { P, Q, max: Math.sqrt(Math.max((pp + qq) / 2 + rad, 0)), min: Math.sqrt(Math.max((pp + qq) / 2 - rad, 0)),
+      eps: uu > 0 ? -2 * AxB * Math.sin(df) / uu : 0 };
+  };
+  const dphi = d[1].fp - d[0].fp, dfu = d[1].fu - d[0].fu;
+  let pM, el;
+  if (iguals) { pM = Math.sqrt(Math.max(d[0].p * d[0].p + d[1].p * d[1].p + 2 * d[0].p * d[1].p * Math.cos(dphi), 0)); el = elipse(dfu); }
+  else {
+    pM = d[0].p + d[1].p; el = { max: 0, min: 0 };
+    for (let j = 0; j < 72; j++) { const e = elipse(j / 72 * 2 * Math.PI); if (e.max > el.max) el = e; }
+    el = Object.assign({}, el, { eps: 0 });                   // el gir s'inverteix cada mig batec
+  }
+  const f = d[0].p + d[1].p > 0 ? (d[0].p * fs[0].f + d[1].p * fs[1].f) / (d[0].p + d[1].p) : fs[0].f;
   const fBat = iguals ? 0 : Math.abs(fs[0].f - fs[1].f);
-  return { x, y, r, p, dphi, iguals, pM, uM: pM / (rho(s) * c), f, fBat,
+  const e1 = d[0].e, e2 = d[1].e;
+  return { x, y, yC, d, r: d.map(q => q.r), p: d.map(q => q.p), u: d.map(q => q.u), dphi, dfu, iguals, pM, el,
+    uM: el.max, eps: el.eps, swirl: K.SWIRL_MAX * el.eps,
+    angleCreu: Math.acos(Math.min(1, Math.max(-1, e1[0] * e2[0] + e1[1] * e2[1]))), f, fBat,
     Lm: pM > 0 ? 20 * Math.log10(pM / (Math.SQRT2 * K.P_REF)) : 0,
     ritme: fBat > 0 ? fBat : f };             // anells per segon: un per cicle, o un per batec
-}
-/** Nivell (dB a 1 m) de cada font perquè, juntes i en fase, donin u al punt mig */
-function dbPerMig(s, u) {
-  const fs = fonts(s), x = s.sx_off, y = s.h_form;
-  const r = Math.max(Math.hypot(fs[0].x - x, fs[0].y - y), 0.5);
-  return 20 * Math.log10(u * rho(s) * cSo(s) / 2 * r / (Math.SQRT2 * K.P_REF));
 }
 
 /** Viscositat turbulenta efectiva a l'escala de l'anell [m²/s] */
@@ -456,8 +481,9 @@ function rotacioNodes(s, an, ev) {
   const n = an.nodes, k = n / e.R;
   const LK = Math.max(Math.log(2 / (k * e.a)) - 0.5772 + 0.25, 0.05);
   const omK = n > 1 ? e.Gamma * k * k / (4 * Math.PI) * LK / n : 0;
-  const omS = (s.swirl || 0) * an.uE * (s.D_ap / 2) / (e.R * e.R);
-  const om = (s.kdir || 1) * omK + omS;
+  const sw = an.swirl != null ? an.swirl : (s.swirl || 0), kd = an.kdir != null ? an.kdir : (s.kdir || 1);
+  const omS = sw * an.uE * (s.D_ap / 2) / (e.R * e.R);
+  const om = kd * omK + omS;
   return { omK, omS, om, T: Math.abs(om) > 1e-9 ? 2 * Math.PI / Math.abs(om) : Infinity, sentit: Math.sign(om), LK };
 }
 
@@ -590,6 +616,9 @@ function anellPrincipalFont(s) {
   if (s.form === 1) {
     const m = puntMig(s), an = anellVelocitat(s, m.f, m.uM);
     an.viable = fs.every(q => pAmpDeDb(q.L) < pAtm(s));
+    // La rotació la dona la diferència de fase: swirl i sentit de l'ona de Kelvin
+    an.swirl = m.swirl;
+    an.kdir = m.eps > 1e-6 ? 1 : m.eps < -1e-6 ? -1 : (s.kdir || 1);
     return { an, src: { x: m.x, y: m.y, f: m.f, L: m.Lm, mig: true }, i: 0, ans: [an], fs, mig: m };
   }
   const ans = fs.map(f => anellFont(s, f.f, f.L));
@@ -762,14 +791,21 @@ function dissenya(s, obj) {
   // Formació al punt mig: S₁ i S₂ iguals i en fase, simètriques respecte a x = 0,
   // per sota del punt de formació; l'anell neix a x = 0 i a l'alçada observada.
   const alMig = s.form === 1;
-  if (alMig) Object.assign(base, { h_src: Math.min(s.h_src, 0.2 * obj.h), h_form: obj.h, sx_off: 0, so: SEP_S2 * obj.D });
+  if (alMig) Object.assign(base, { h_src: Math.min(s.h_src, 0.2 * obj.h), h_form: obj.h, h_creu: obj.h, sx_off: 0, so: SEP_S2 * obj.D });
   // Construeix la configuració per a una Γ donada (amb la terbolesa que dona la durada)
   function construeix(Gamma) {
     const D_ap = base.D_ap;
     const w = 4 * Gamma / (Math.pow(Math.PI, 3) * h * h * D_ap * D_ap);
     const f = w / (2 * Math.PI), u = h * Math.PI * w * D_ap;
     const cfg = Object.assign({}, base, { f1: f, f2: f });
-    if (alMig) cfg.db1 = cfg.db2 = dbPerMig(cfg, u);
+    if (alMig) {
+      // S₁ i S₂ iguals, desfasades ±90° (el signe que dona el sentit observat): el nivell
+      // es busca perquè el semieix major de l'el·lipse a M sigui u
+      const mig = L => puntMig(Object.assign({}, cfg, { db1: L, db2: L }));
+      cfg.phi = 0;
+      for (const ph of [90, -90]) { const t = Object.assign({}, cfg, { phi: ph, db1: 150, db2: 150 }); if (puntMig(t).eps * obj.sentit > 0) cfg.phi = ph; }
+      cfg.db1 = cfg.db2 = bisecta(L => mig(L).uM - u, 1, 400);
+    }
     else { cfg.db1 = dbPerVelocitat(cfg, f, u); cfg.db2 = cfg.db1 - DB_S2; }
     const an0 = anellPrincipalFont(cfg).an;
     // Es busca σ_w dins la branca coherent (σ_w < Γ/4πR): l'anell ha d'existir com a anell
@@ -981,7 +1017,7 @@ const API = {
   vidaAnell, nucliTermo, tracador, profOptica, levitacio, conductors, campEPic, corona, campRuptura,
   sincronisme, ratiRuptura, plasma, dTdt, colorCosNegre,
   evolucio, vidaAnell2, rotacioNodes, cuaNodes, posicioSol, massaAire, transSol, iluminanciaSol,
-  luminanciaCel, faseHG, aparenca, geometriaVisio, posicioTestimoni, factorRadiEmissors, anellPrincipalFont, puntMig, dbPerMig, anellVelocitat, velocitatAnell,
+  luminanciaCel, faseHG, aparenca, geometriaVisio, posicioTestimoni, factorRadiEmissors, anellPrincipalFont, puntMig, anellVelocitat, velocitatAnell,
   rhoSat, llindarPercepcio, patroAcustic, avaluaPatro,
   gammaSRGB, eficaciaEmissio, colorEmissio, emissors, posicioEmissors, envolupantEmissors, avaluaEmissors, esTaronja, toHue,
   trajectoria, estatAnell, tauPunt, corbaContrast, OBS, avaluaObservacio, dissenya,
