@@ -1415,6 +1415,17 @@ Generat amb `node tests/escombrat_alcada.js` (mateix motor físic que el simulad
 | 100–150 m | **103.94 m** | 100.00 m · 5.00 m · 60.0° → 200.00 m | 1.9953 kHz | 152.7 dB | 🟢 |
 | 150–200 m | **162.25 m** | 100.00 m · 30.00 m · 60.0° → 150.00 m | 50.1 Hz | 178.8 dB | 🟠 |
 
+## 2b. Fins a quina alçada arriba l'anell segons l'alçada de les fonts
+
+| fonts a | 🟢 assolible: de · a | 🟠 extrem: fins a | exemple més alt 🟢 |
+|---|---|---|---|
+| 5.00 m | 25.01 m · 32.00 m | 131.74 m (12.6 Hz, 189.7 dB) | 5.00 m · 20.00 m · 60.0° → 50.00 m · 199.5 Hz · 168.2 dB |
+| 25.00 m | 25.78 m · 52.03 m | 151.93 m (12.6 Hz, 189.7 dB) | 25.00 m · 20.00 m · 60.0° → 50.00 m · 199.5 Hz · 168.2 dB |
+| 50.00 m | 29.81 m · 75.42 m | 176.97 m (12.6 Hz, 189.7 dB) | 50.00 m · 20.00 m · 60.0° → 100.00 m · 199.5 Hz · 168.3 dB |
+| 100.00 m | 73.00 m · 124.40 m | 195.80 m (20.0 Hz, 186.1 dB) | 100.00 m · 20.00 m · 30.0° → 150.00 m · 199.5 Hz · 168.6 dB |
+
+Amb emissors possibles, l'anell neix com a molt uns 25–30 m per sobre de les fonts. Per arribar a 150–200 m cal posar les fonts a ≥ 100 m o anar a nivells extrems (12–50 Hz, 178–191 dB).
+
 ## 3. Què fixa l'alçada (199.5 Hz, nivell mínim de cada cas)
 
 | fonts a | separació | feix 180.0° | feix 60.0° → 100.00 m | feix 30.0° → 200.00 m |
@@ -1434,5 +1445,5 @@ Generat amb `node tests/escombrat_alcada.js` (mateix motor físic que el simulad
 
 ## 4. Què no funciona
 
-- De 2730 combinacions provades: 875 no formen l'anell ni a 191 dB; 270 el formen per sota de 25 m; 8 per sobre de 200 m; 179 el formen a 25–200 m però només amb infrasò (🔴, massa aire per cicle).
+- De 2730 combinacions provades: 875 no formen l'anell ni a 191 dB; 270 el formen per sota de 25 m; 8 per sobre de 200 m; 179 el formen a 25–200 m però amb un emissor improbable (🔴: massa aire per cicle, sobretot l'infrasò).
 - Freqüències que donen anells a 25–200 m amb emissor possible: 12.6 Hz (120), 20.0 Hz (192), 31.6 Hz (190), 50.1 Hz (188), 79.4 Hz (178), 125.9 Hz (151), 199.5 Hz (124), 316.2 Hz (86), 501.2 Hz (66), 794.3 Hz (44), 1.2589 kHz (37), 1.9953 kHz (22). Sense cap cas: 0.070 Hz.
