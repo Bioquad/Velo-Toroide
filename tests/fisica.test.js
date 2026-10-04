@@ -207,6 +207,30 @@ t('disseny al punt mig: S₁ i S₂ a ~153 dB desfasades −90° fan un anell an
   const r = F.dissenya(MIG, Object.assign({ prioritat: 'rotacio' }, OBJ));
   assert.ok(r.L > F.dbMax(MIG) && !r.viable, String(r.L));
 });
+/* Paràmetres dels generadors recuperats de la versió original */
+t('forma del senyal: el fonamental porta el 100 % (sinus), ~81 % (quadrada) i ~99 % (triangular) de l\'energia', () => {
+  const fr = (forma, nharm) => F.formaOna({ forma, nharm }).frac ** 2;
+  prop(fr(0, 9), 1, 1e-12, 'sinus');
+  prop(fr(1, 400), 8 / Math.PI ** 2, 0.002, 'quadrada');
+  prop(fr(2, 400), 96 / Math.PI ** 4, 1e-4, 'triangular');
+  const v = F.formaOna({ forma: 1, nharm: 9 }).val; let pic = 0; for (let i = 0; i < 256; i++) pic = Math.max(pic, Math.abs(v(i / 256 * 2 * Math.PI)));
+  prop(pic, 1, 1e-12, 'pic normalitzat');
+});
+t('harmònics: una quadrada de 3.57 Hz a 120 dB fa sentir harmònics ≥ 20 Hz al testimoni; la sinusoïdal no', () => {
+  const b = amb({ f1: 3.5714, f2: 3.5714, db1: 120, db2: 120, d_obs: 60, h_src: 5, so: 10 });
+  assert.strictEqual(F.harmonicsAudibles(b).length, 0);
+  const q = F.harmonicsAudibles(Object.assign({}, b, { forma: 1, nharm: 9 }));
+  assert.ok(q.length > 0 && q.every(h => h.f >= 20), JSON.stringify(q[0]));
+});
+t('β: la distància de xoc és inversament proporcional al coeficient de no-linealitat', () => {
+  const x1 = F.distanciaXoc(amb({ beta: 1.2 }), 3.57, 150), x2 = F.distanciaXoc(amb({ beta: 2.4 }), 3.57, 150);
+  prop(x1 / x2, 2, 1e-12, 'β');
+  prop(F.distanciaXoc(amb({}), 3.57, 150), x1, 1e-12, 'per defecte β = 1.2');
+});
+t('ionització residual: fixa la densitat electrònica mínima i fa conductor l\'aire', () => {
+  const N = 2.4e25, a = F.plasma(amb({ IR: 0 }), 0.01, N, 100), b = F.plasma(amb({ IR: 1 }), 0.01, N, 100);
+  prop(b.ne, 0.01 * N, 1e-12, 'ne'); assert.ok(b.pJoule > 1e6 * a.pJoule);
+});
 /* Model B: nodes emissors */
 const EMIS = amb(Object.assign({ W: 0.5, dirW: 0, az_vis: (sol.az - 90 + 360) % 360,
   e_n: 4, e_D: 25, e_cap: 3, e_T: 7, e_sent: 1, e_tau: 1.3, e_P: 1.5, e_tipus: 1, e_Temp: 2000, e_h: 25, e_vida: 150, e_ext: 30, e_impl: 1 }, ESC));

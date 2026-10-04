@@ -98,11 +98,44 @@ function hNodePressio(s, f) { return lambda(s, f) / 4; }
 function hNodeVelocitat(s, f) { return lambda(s, f) / 2; }
 
 /** Posicions de les fonts (coordenades del riu: x horitzontal, y alçada) */
+/**
+ * Forma del senyal dels generadors: 0 sinusoïdal, 1 quadrada, 2 triangular,
+ * sintetitzades amb N harmònics senars (sèrie de Fourier):
+ *   quadrada a_k = 1/k, triangular a_k = (−1)^((k−1)/2)/k², k = 1, 3, 5…
+ * El nivell en dB és el total (RMS); la fracció que porta el fonamental és
+ * a₁/√Σa_k². La física de la formació fa servir el fonamental; els harmònics
+ * (k·f) compten per saber si el so és audible.
+ */
+function formaOna(s) {
+  const tipus = Math.round(s.forma || 0), N = Math.max(1, Math.round(s.nharm || 1));
+  const harm = [];
+  if (tipus === 0) harm.push({ k: 1, a: 1 });
+  else for (let j = 0; j < N; j++) { const k = 2 * j + 1; harm.push({ k, a: tipus === 1 ? 1 / k : (j % 2 ? -1 : 1) / (k * k) }); }
+  const norma = Math.sqrt(harm.reduce((t, h) => t + h.a * h.a, 0));
+  const val = th => harm.reduce((t, h) => t + h.a * Math.sin(h.k * th), 0);
+  let pic = 0; for (let i = 0; i < 256; i++) pic = Math.max(pic, Math.abs(val(i / 256 * 2 * Math.PI)));
+  return { tipus, harm, frac: harm[0].a / norma, norma, val: th => val(th) / pic };
+}
 function fonts(s) {
+  const dF = 20 * Math.log10(formaOna(s).frac);          // nivell del fonamental respecte al total
+  const L = db => db > 0 ? db + dF : 0;
   return [
-    { x: s.sx_off - s.so / 2, y: s.h_src, f: s.f1, L: s.db1, ph: 0 },
-    { x: s.sx_off + s.so / 2, y: s.h_src, f: s.f2, L: s.db2, ph: s.phi * Math.PI / 180 },
+    { x: s.sx_off - s.so / 2, y: s.h_src, f: s.f1, L: L(s.db1), Ltot: s.db1, ph: 0 },
+    { x: s.sx_off + s.so / 2, y: s.h_src, f: s.f2, L: L(s.db2), Ltot: s.db2, ph: s.phi * Math.PI / 180 },
   ];
+}
+/** Harmònics que el testimoni sentiria (≥ 20 Hz i per sobre del llindar, al punt més proper) */
+function harmonicsAudibles(s) {
+  const fo = formaOna(s), o = posicioTestimoni(s, Infinity), out = [];
+  fonts(s).forEach((q, i) => {
+    if (q.Ltot <= 0) return;
+    const d = Math.max(Math.hypot(q.x - o.x, q.y - o.y, o.z), 1);
+    fo.harm.forEach(h => {
+      const f = h.k * q.f, L = q.Ltot + 20 * Math.log10(Math.abs(h.a) / fo.norma) - 20 * Math.log10(d);
+      if (f >= 20 && L > llindarPercepcio(f)) out.push({ font: i, k: h.k, f, L });
+    });
+  });
+  return out;
 }
 
 /**
@@ -139,7 +172,7 @@ function pAcPunt(s, x, y) {
 function distanciaXoc(s, f, L) {
   const p = pAmpDeDb(L);
   if (p <= 0) return Infinity;
-  return rho(s) * Math.pow(cSo(s), 3) / (1.2 * 2 * Math.PI * f * p);
+  return rho(s) * Math.pow(cSo(s), 3) / ((s.beta || 1.2) * 2 * Math.PI * f * p);   // β: coeficient de no-linealitat (aire 1.2)
 }
 
 /** Freqüència de batement i sentit de desplaçament de les franges */
@@ -413,6 +446,9 @@ function plasma(s, X, N, Eef) {
   let ne;
   if (X < 1) ne = K.S_COSMIC / (K.ATTACH_STP * nr * nr);
   else ne = Math.min(1e9 * nr * (X - 1) / K.BETA_REC + 1e14, 1e23);
+  // Ionització residual (%): es suposa mantinguda per alguna font externa (en aire,
+  // sense font, els electrons es recombinen o s'adhereixen en microsegons)
+  if (s.IR > 0) ne = Math.max(ne, s.IR / 100 * N);
   const nu_m = K.NU_M_STP * nr;
   const sigma = ne * K.QE * K.QE / (K.ME * nu_m);
   return { ne, sigma, pJoule: sigma * Eef * Eef };
@@ -742,8 +778,8 @@ function avaluaObservacio(s, objectiu) {
   const apF = aparenca(s, 0.1 * tau, gm.az, gm.el, gm.dist);          // vel de traçador dins la bombolla
   const dh = Math.abs(apF.C);
   fila('forat amb un to diferent', (dh * 100).toFixed(1) + ' %', dh >= 0.01 && dh <= 0.3);
-  const audible = [[s.f1, s.db1], [s.f2, s.db2]].some(([f, L]) => L > 0 && f >= 20);
-  fila('sense so audible', audible ? 'audible' : 'infrasò', !audible);
+  const hAud = harmonicsAudibles(s), audible = hAud.length > 0;
+  fila('sense so audible', audible ? `audible: ${hAud[0].f.toFixed(0)} Hz (harmònic ${hAud[0].k})` : 'infrasò', !audible);
   const cua = cuaNodes(s, an, mig.ev, rot);
   fila('cua de cometa fins al node següent', isFinite(cua.dtNodes) ? Math.round(cua.fFinal * 100) + ' % del gruix' : 'sense cua',
     cua.fFinal >= 0.05 && cua.fFinal <= 0.4);
@@ -1017,7 +1053,7 @@ const API = {
   vidaAnell, nucliTermo, tracador, profOptica, levitacio, conductors, campEPic, corona, campRuptura,
   sincronisme, ratiRuptura, plasma, dTdt, colorCosNegre,
   evolucio, vidaAnell2, rotacioNodes, cuaNodes, posicioSol, massaAire, transSol, iluminanciaSol,
-  luminanciaCel, faseHG, aparenca, geometriaVisio, posicioTestimoni, factorRadiEmissors, anellPrincipalFont, puntMig, anellVelocitat, velocitatAnell,
+  luminanciaCel, faseHG, aparenca, geometriaVisio, posicioTestimoni, factorRadiEmissors, anellPrincipalFont, puntMig, anellVelocitat, formaOna, harmonicsAudibles, velocitatAnell,
   rhoSat, llindarPercepcio, patroAcustic, avaluaPatro,
   gammaSRGB, eficaciaEmissio, colorEmissio, emissors, posicioEmissors, envolupantEmissors, avaluaEmissors, esTaronja, toHue,
   trajectoria, estatAnell, tauPunt, corbaContrast, OBS, avaluaObservacio, dissenya,
