@@ -507,12 +507,25 @@ function comparacio() {
 }
 
 /* ── Capçalera i estat ──────────────────────────────────────────────────── */
+const fmtC = T => (T >= 1000 ? T.toFixed(0) : T.toFixed(1)) + ' °C';
+/** Valors comuns a tots els models: temperatura, mida, alçada, distància i edat */
+function capcaleraMida(o) {
+  set('hv-temp', o.temp == null ? '—' : o.temp); col('hv-temp', o.colT || '');
+  set('hv-dim', o.D == null ? '—' : `Ø ${o.D.toFixed(1)} · ${o.tub.toFixed(2)} m`);
+  set('hv-h', o.h == null ? '—' : o.h.toFixed(1) + ' m');
+  set('hv-dist', o.dist == null ? '—' : o.dist.toFixed(0) + ' m');
+  set('hv-edat', o.edat == null ? '—' : fmtT(o.edat));
+}
 function refreshHeader() {
   if (S.model === 2) {
     const a = avaluacio, p = a && a.p;
     set('hv-gam', '—'); set('hv-u', '0 (patró fix)'); set('hv-rot', S.c_T.toFixed(1) + ' s ↺');
     set('hv-c', a ? a.C.toFixed(2) : '—'); col('hv-c', a && a.C > 0.3 ? '#40c080' : '#8892aa');
     set('hv-x', '—'); set('hv-n', p ? String(p.m) : '—'); set('hv-vida', 'mentre soni');
+    // Temperatura: mínima a la rarefacció dels nodes (refredament adiabàtic)
+    const gC = F.geometriaVisio(S, S.sx_off, S.c_h, 0, fenT || 0);
+    capcaleraMida({ temp: p ? `${fmtC(p.Tmin)} al node (aire ${fmtC(S.T)})` : null, colT: p && p.condensa ? '#a8d0ff' : '',
+      D: S.c_D, tub: S.c_cap, h: S.c_h, dist: gC.dist, edat: sigOn ? fenT || 0 : null });
     const es = estat(); set('hv-es', es.n); col('hv-es', es.c); set('ph-n', es.n); col('ph-n', es.c); set('ph-d', es.d);
     return;
   }
@@ -522,6 +535,10 @@ function refreshHeader() {
     set('hv-rot', S.e_T.toFixed(1) + ' s ' + (S.e_sent > 0 ? '↺' : '↻'));
     set('hv-c', a ? a.C.toFixed(2) : '—'); col('hv-c', a && a.C > 0.3 ? '#40c080' : '#8892aa');
     set('hv-x', '—'); set('hv-n', String(e.n)); set('hv-vida', fmtT(S.e_vida));
+    // Temperatura: la dels emissors si és incandescència; el sodi no és tèrmic
+    const tB = fenT || 0, pB = F.posicioEmissors(S, tB), gB = F.geometriaVisio(S, pB.x, pB.y, pB.z, tB), fr = F.factorRadiEmissors(S, tB);
+    capcaleraMida({ temp: S.e_tipus === 0 ? `${fmtC(S.e_Temp - 273.15)} (incandescent)` : 'línia del sodi (no tèrmica)', colT: '#ff9030',
+      D: 2 * e.R * fr, tub: S.e_cap, h: S.e_h, dist: gB.dist, edat: fenT });
     const es = estat(); set('hv-es', es.n); col('hv-es', es.c); set('ph-n', es.n); col('ph-n', es.c); set('ph-d', es.d);
     return;
   }
@@ -538,6 +555,15 @@ function refreshHeader() {
   set('hv-x', emOn ? X.toExponential(1) : 'EM off'); col('hv-x', X >= 1 ? '#40c080' : '#e05050');
   set('hv-n', an.es_forma ? String(an.nodes) : '—');
   set('hv-vida', avaluacio && avaluacio.tVis != null ? fmtT(avaluacio.tVis) : '—');
+  // Temperatura del toroide: l'aire de l'anell (aire emès diluït + escalfament, si n'hi ha)
+  // i la del nucli, on la caiguda de pressió del vòrtex el refreda (expansió adiabàtica)
+  if (ev) {
+    const Tair = r0 ? r0.T - 273.15 : S.T + S.dT0, nu = F.nucliTermo(S, ev.Gamma, ev.a);
+    const gA = r0 ? visibilitat(r0).g : F.geometriaVisio(S, d.src.x, d.src.y, 0, 0);
+    const dTn = nu.Tnucli - S.T;
+    capcaleraMida({ temp: `${fmtC(Tair)} · nucli ${dTn >= 0 ? '+' : '−'}${Math.abs(dTn).toFixed(Math.abs(dTn) < 0.1 ? 3 : 1)} °C`, colT: r0 && r0.T > 1500 ? '#ff9030' : nu.condensa ? '#a8d0ff' : '',
+      D: 2 * ev.R, tub: 2 * ev.a, h: r0 ? r0.y : d.src.y, dist: gA.dist, edat: r0 ? r0.age : null });
+  } else capcaleraMida({ temp: `${fmtC(S.T)} (aire, sense anell)` });
   const es = estat();
   set('hv-es', es.n); col('hv-es', es.c);
   set('ph-n', es.n); col('ph-n', es.c); set('ph-d', es.d);
