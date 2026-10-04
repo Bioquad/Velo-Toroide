@@ -232,6 +232,28 @@ t('camp a la posició de l\'anell: a M és el mateix que al punt mig i s\'afeble
   const viu = z => { const m = F.puntMig(d.cfg, { x: 0, y: 25, z }); return F.anellVelocitat(d.cfg, m.f, m.uM).es_forma; };
   assert.ok(viu(0) && !viu(30));
 });
+t('feixos direccionals: l\'alçada on es creuen mou el punt on neix l\'anell; omnidireccionals, no hi influeix', () => {
+  const b = Object.assign({}, MIG, { so: 69.2, f1: 0.0714, f2: 0.0714, db1: 161.2, db2: 161.2, phi: -90, n_inj: 4 });
+  const y = (feix, h_creu) => F.posicioFormacio(Object.assign({}, b, { feix, h_creu })).y;
+  prop(y(180, 25), y(180, 60), 1e-9, 'omni');
+  assert.ok(y(30, 60) > y(30, 25) + 3);
+  // fora de l'eix el feix cau a la meitat a α½
+  const q = F.fonts(b)[0], g = F.guanyFeix(Object.assign({}, b, { feix: 30, h_creu: 25 }), q, q.x + 100 * Math.sin(Math.atan2(34.6, 20) + 30 * Math.PI / 180), q.y + 100 * Math.cos(Math.atan2(34.6, 20) + 30 * Math.PI / 180), 0);
+  prop(g, 0.5, 1e-3, 'g(α½)');
+  // un feix de ±30° a 0.07 Hz demana una boca de quilòmetres
+  assert.ok(F.bocaFeix(Object.assign({}, b, { feix: 30 }), 0.0714) > 4000);
+});
+t('d\'on surt el gir: en infrasò, l\'absorció de les ones dona una Γ ~10⁶ vegades massa petita', () => {
+  const d = F.dissenya(MIG, Object.assign({ prioritat: 'deriva' }, OBJ));
+  const an = F.anellPrincipalFont(d.cfg).an, ca = F.correntAcustic(d.cfg, null, an.Gamma);
+  assert.ok(!ca.suficient && ca.factor > 1e5 && ca.factor < 1e7, String(ca.factor));
+  const ev = F.avaluaObservacio(d.cfg);
+  assert.strictEqual(ok(ev, 'el so mateix crea el gir (corrent acústic)'), false);
+  // la força creix amb f² (absorció): a 2 kHz el mateix nivell empeny ~10⁹ vegades més
+  const a = F.correntAcustic(Object.assign({}, d.cfg, { f1: 0.07, f2: 0.07 }), { x: 0, y: 25 }).F;
+  const bF = F.correntAcustic(Object.assign({}, d.cfg, { f1: 2000, f2: 2000 }), { x: 0, y: 25 }).F;
+  assert.ok(bF / a > 1e8, String(bF / a));
+});
 /* Paràmetres dels generadors recuperats de la versió original */
 t('forma del senyal: el fonamental porta el 100 % (sinus), ~81 % (quadrada) i ~99 % (triangular) de l\'energia', () => {
   const fr = (forma, nharm) => F.formaOna({ forma, nharm }).frac ** 2;
